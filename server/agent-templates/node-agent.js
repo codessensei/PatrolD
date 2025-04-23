@@ -19,13 +19,9 @@ const os = require('os');
 const API_KEY = '{{API_KEY}}'; // Replace with your agent API key
 const API_BASE_URL = '{{API_BASE_URL}}'; // Replace with your Service Monitor URL (e.g., https://your-app.replit.app)
 
-// Services to monitor - each service should have a host and port
-const SERVICES = [
-  { host: '192.168.1.254', port: 80 },  // Yerel ağdaki router/gateway
-  // { host: 'example.com', port: 80 }, 
-  // { host: '192.168.1.1', port: 8080 },
-  // Add your services here
-];
+// Services to monitor - this will be populated from the server response
+// You can add additional custom services here if needed
+let SERVICES = [];
 
 // Monitoring interval in milliseconds (default: 60 seconds)
 const CHECK_INTERVAL = 60 * 1000; 
@@ -240,6 +236,7 @@ async function checkService(service) {
 
 /**
  * Send a heartbeat to the API to let it know the agent is running
+ * and get the list of services to monitor
  */
 async function sendHeartbeat() {
   const serverInfo = {
@@ -287,6 +284,18 @@ async function sendHeartbeat() {
           try {
             const json = JSON.parse(responseData);
             console.log(`Heartbeat sent successfully, agent ID: ${json.agentId}`);
+            
+            // Update the services list if returned from the server
+            if (json.services && Array.isArray(json.services)) {
+              SERVICES = json.services;
+              console.log(`Received ${SERVICES.length} services to monitor from server:`);
+              SERVICES.forEach(service => {
+                console.log(`- ${service.name} (${service.host}:${service.port})`);
+              });
+            } else {
+              console.log('No services received from server');
+            }
+            
             resolve(json);
           } catch (e) {
             console.error('Error parsing heartbeat response:', e.message);

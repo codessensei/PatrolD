@@ -15,13 +15,9 @@
 API_KEY="{{API_KEY}}" # Replace with your agent API key
 API_BASE_URL="{{API_BASE_URL}}" # Replace with your Service Monitor URL (e.g., https://your-app.replit.app)
 
-# Services to monitor - each line should contain host:port
-declare -a SERVICES=(
-  "192.168.1.254:80"  # Yerel ağdaki router/gateway
-  # "example.com:80"
-  # "192.168.1.1:8080"
-  # Add your services here
-)
+# Services to monitor - this will be populated from the server response
+# You can add additional custom services here if needed
+declare -a SERVICES=()
 
 # Monitoring interval in seconds (default: 60 seconds)
 CHECK_INTERVAL=60

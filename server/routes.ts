@@ -308,7 +308,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const updatedAgent = await storage.updateAgentStatus(agent.id, "active", serverInfo);
-      res.status(200).json({ status: "ok", agentId: agent.id });
+      
+      // Get services assigned to this agent
+      const services = await storage.getServicesByUserId(agent.userId);
+      const agentServices = services.filter(
+        service => service.agentId === agent.id && service.monitorType === "agent"
+      );
+      
+      // Simplify service objects to include only what the agent needs
+      const serviceList = agentServices.map(service => ({
+        host: service.host,
+        port: service.port,
+        id: service.id,
+        name: service.name
+      }));
+      
+      res.status(200).json({ 
+        status: "ok", 
+        agentId: agent.id,
+        services: serviceList 
+      });
     } catch (error) {
       res.status(500).json({ error: "Failed to update agent status" });
     }
