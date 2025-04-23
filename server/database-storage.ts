@@ -78,8 +78,7 @@ export class DatabaseStorage implements IStorage {
       .set({ 
         status, 
         responseTime, 
-        lastChecked: now,
-        updatedAt: now
+        lastChecked: now
       })
       .where(eq(services.id, id))
       .returning();
@@ -108,7 +107,7 @@ export class DatabaseStorage implements IStorage {
   async updateConnectionStatus(id: number, status: string): Promise<Connection> {
     const [updatedConnection] = await db
       .update(connections)
-      .set({ status, updatedAt: new Date() })
+      .set({ status })
       .where(eq(connections.id, id))
       .returning();
     return updatedConnection;
@@ -124,8 +123,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(alerts)
-      .where(eq(alerts.userId, userId))
-      .orderBy(desc(alerts.createdAt));
+      .where(eq(alerts.userId, userId));
   }
   
   async getRecentAlertsByUserId(userId: number, limit: number): Promise<Alert[]> {
@@ -133,7 +131,6 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(alerts)
       .where(eq(alerts.userId, userId))
-      .orderBy(desc(alerts.createdAt))
       .limit(limit);
   }
   
@@ -145,7 +142,7 @@ export class DatabaseStorage implements IStorage {
   async acknowledgeAlert(id: number): Promise<Alert> {
     const [updatedAlert] = await db
       .update(alerts)
-      .set({ acknowledged: true, updatedAt: new Date() })
+      .set({ acknowledged: true })
       .where(eq(alerts.id, id))
       .returning();
     return updatedAlert;
@@ -190,8 +187,7 @@ export class DatabaseStorage implements IStorage {
       .set({ 
         status, 
         serverInfo: serverInfo ? JSON.stringify(serverInfo) : undefined,
-        lastSeen: new Date(),
-        updatedAt: new Date()
+        lastSeen: new Date()
       })
       .where(eq(agents.id, id))
       .returning();
@@ -214,7 +210,7 @@ export class DatabaseStorage implements IStorage {
     if (existingSettings) {
       const [updatedSettings] = await db
         .update(userSettings)
-        .set({ ...updateData, updatedAt: new Date() })
+        .set({ ...updateData })
         .where(eq(userSettings.userId, userId))
         .returning();
       return updatedSettings;
@@ -223,9 +219,7 @@ export class DatabaseStorage implements IStorage {
         .insert(userSettings)
         .values({ 
           userId,
-          ...updateData,
-          createdAt: new Date(),
-          updatedAt: new Date()
+          ...updateData
         })
         .returning();
       return newSettings;
