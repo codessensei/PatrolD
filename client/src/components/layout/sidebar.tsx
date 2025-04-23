@@ -14,10 +14,11 @@ import { useState } from "react";
 
 const navItems = [
   { label: "Dashboard", icon: <LayoutDashboard className="h-5 w-5" />, href: "/" },
-  { label: "Services", icon: <Server className="h-5 w-5" />, href: "/services" },
-  { label: "Alerts", icon: <AlertTriangle className="h-5 w-5" />, href: "/alerts" },
-  { label: "History", icon: <History className="h-5 w-5" />, href: "/history" },
-  { label: "Settings", icon: <Settings className="h-5 w-5" />, href: "/settings" },
+  // Currently we only support these main views, others will be added later
+  // { label: "Services", icon: <Server className="h-5 w-5" />, href: "/services" },
+  // { label: "Alerts", icon: <AlertTriangle className="h-5 w-5" />, href: "/alerts" },
+  // { label: "History", icon: <History className="h-5 w-5" />, href: "/history" },
+  // { label: "Settings", icon: <Settings className="h-5 w-5" />, href: "/settings" },
 ];
 
 export default function Sidebar() {
@@ -37,7 +38,7 @@ export default function Sidebar() {
     <>
       {/* Mobile Sidebar Toggle */}
       <button 
-        className="md:hidden fixed z-50 bottom-4 right-4 bg-primary-500 text-white rounded-full p-3 shadow-lg"
+        className="md:hidden fixed z-50 bottom-4 right-4 bg-primary text-white rounded-full p-3 shadow-lg"
         onClick={toggleMobileMenu}
       >
         {isMobileMenuOpen ? (
@@ -63,7 +64,7 @@ export default function Sidebar() {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <div className="relative h-8 w-8">
-                  <div className="absolute inset-0 bg-primary-500 rounded-md flex items-center justify-center">
+                  <div className="absolute inset-0 bg-primary rounded-md flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
@@ -85,28 +86,27 @@ export default function Sidebar() {
           
           <nav className="flex-grow p-4 space-y-1 overflow-y-auto">
             {navItems.map((item) => (
-              <Link 
-                key={item.href} 
-                href={item.href}
-                onClick={() => setIsMobileMenuOpen(false)}
+              <div
+                key={item.href}
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  window.location.href = item.href;
+                }}
+                className={cn(
+                  "flex items-center px-3 py-2 rounded-md cursor-pointer",
+                  location === item.href 
+                    ? "text-gray-600 bg-gray-100" 
+                    : "text-gray-600 hover:bg-gray-100"
+                )}
               >
-                <a 
-                  className={cn(
-                    "flex items-center px-3 py-2 rounded-md",
-                    location === item.href 
-                      ? "text-gray-600 bg-gray-100" 
-                      : "text-gray-600 hover:bg-gray-100"
-                  )}
-                >
-                  <span className={cn(
-                    "mr-3",
-                    location === item.href ? "text-primary-500" : ""
-                  )}>
-                    {item.icon}
-                  </span>
-                  <span>{item.label}</span>
-                </a>
-              </Link>
+                <span className={cn(
+                  "mr-3",
+                  location === item.href ? "text-primary" : ""
+                )}>
+                  {item.icon}
+                </span>
+                <span>{item.label}</span>
+              </div>
             ))}
           </nav>
           
