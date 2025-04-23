@@ -88,7 +88,7 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row items-stretch bg-gray-50">
+    <div className="min-h-screen flex flex-col md:flex-row items-stretch bg-gray-50 dark:bg-gray-900">
       {/* Auth Form */}
       <div className="flex-1 flex flex-col justify-center p-6 md:p-10 max-w-md mx-auto w-full">
         <div className="mb-8">
@@ -97,14 +97,14 @@ export default function AuthPage() {
               <div className="absolute inset-0 bg-primary rounded-md flex items-center justify-center">
                 <HeartPulse className="h-5 w-5 text-white" />
               </div>
-              <div className="absolute -right-1 -top-1 h-3 w-3 bg-green-500 rounded-full border-2 border-white"></div>
+              <div className="absolute -right-1 -top-1 h-3 w-3 bg-green-500 rounded-full border-2 border-white dark:border-gray-700"></div>
             </div>
-            <span className="text-xl font-semibold text-gray-800">UptimeMonitor</span>
+            <span className="text-xl font-semibold text-gray-800 dark:text-gray-100">UptimeMonitor</span>
           </div>
-          <h2 className="mt-6 text-3xl font-bold text-gray-900">
+          <h2 className="mt-6 text-3xl font-bold text-gray-900 dark:text-gray-100">
             {activeTab === "login" ? "Welcome back" : "Create your account"}
           </h2>
-          <p className="mt-2 text-gray-600">
+          <p className="mt-2 text-gray-600 dark:text-gray-400">
             {activeTab === "login" 
               ? "Sign in to access your service monitoring dashboard" 
               : "Get started with monitoring your services in minutes"}
