@@ -181,16 +181,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const part2 = randomBytes(4).toString('hex');
       const apiKey = `${prefix}${part1}_${part2}`;
       
-      const data = insertAgentSchema.parse({
+      const data = {
         ...req.body,
         userId: req.user!.id,
         apiKey,
         status: "inactive"
-      });
+      };
+      
+      console.log("Creating agent with data:", JSON.stringify(data));
       
       const agent = await storage.createAgent(data);
       res.status(201).json(agent);
     } catch (error) {
+      console.error("Failed to create agent:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: error.errors });
       }
