@@ -164,7 +164,9 @@ export default function ServiceCanvas({
   };
 
   // Function to get connection color based on status
-  const getConnectionColor = (status: string) => {
+  const getConnectionColor = (status: string | null) => {
+    if (!status) return "#9CA3AF"; // gray for null
+    
     switch (status) {
       case "online": return "#10B981"; // green
       case "degraded": return "#F59E0B"; // yellow
@@ -174,7 +176,9 @@ export default function ServiceCanvas({
   };
 
   // Function to get status badge color
-  const getStatusBadgeClass = (status: string) => {
+  const getStatusBadgeClass = (status: string | null) => {
+    if (!status) return "bg-gray-100 text-gray-800";
+    
     switch (status) {
       case "online": return "bg-green-100 text-green-800";
       case "degraded": return "bg-yellow-100 text-yellow-800";
@@ -184,7 +188,9 @@ export default function ServiceCanvas({
   };
 
   // Function to get status indicator color
-  const getStatusIndicatorClass = (status: string) => {
+  const getStatusIndicatorClass = (status: string | null) => {
+    if (!status) return "bg-gray-500";
+    
     switch (status) {
       case "online": return "bg-green-500";
       case "degraded": return "bg-yellow-500";
@@ -283,38 +289,52 @@ export default function ServiceCanvas({
           return (
             <div 
               key={service.id}
-              className="service-node absolute bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden"
+              className="service-node absolute bg-card dark:bg-card rounded-xl shadow-lg border-2 overflow-hidden transition-all duration-200 hover:shadow-xl"
               style={{
-                width: "160px",
+                width: "180px",
                 left: `${position.x}px`,
                 top: `${position.y}px`,
                 zIndex: draggingService === service.id ? 100 : 1,
-                cursor: draggingService === service.id ? "grabbing" : "grab"
+                cursor: draggingService === service.id ? "grabbing" : "grab",
+                borderColor: service.status === "online" ? "rgb(16, 185, 129)" : 
+                             service.status === "offline" ? "rgb(239, 68, 68)" : 
+                             service.status === "degraded" ? "rgb(245, 158, 11)" : "rgb(156, 163, 175)"
               }}
               onMouseDown={(e) => handleDragStart(e, service.id)}
             >
-              <div className="bg-primary-500 text-white text-xs font-medium px-3 py-1">
-                {service.type}
+              <div className={cn(
+                "px-4 py-2 flex items-center justify-between",
+                service.status === "online" ? "bg-gradient-to-r from-green-500 to-green-600" : 
+                service.status === "offline" ? "bg-gradient-to-r from-red-500 to-red-600" : 
+                service.status === "degraded" ? "bg-gradient-to-r from-yellow-500 to-yellow-600" : 
+                "bg-gradient-to-r from-gray-500 to-gray-600"
+              )}>
+                <span className="text-white font-medium truncate">{service.type}</span>
+                <span className={cn(
+                  "w-3 h-3 rounded-full",
+                  service.status === "online" ? "bg-green-300" : 
+                  service.status === "offline" ? "bg-red-300" : 
+                  service.status === "degraded" ? "bg-yellow-300" : "bg-gray-300"
+                )}></span>
               </div>
-              <div className="p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">{service.name}</span>
+              <div className="p-4">
+                <div className="mb-3">
+                  <h3 className="text-sm font-bold text-foreground">{service.name}</h3>
+                  <p className="text-xs text-muted-foreground mt-1">{service.host}:{service.port}</p>
+                </div>
+                <div className="flex items-center justify-between mt-2">
                   <span className={cn(
-                    "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
-                    getStatusBadgeClass(service.status)
+                    "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
+                    service.status === "online" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100" : 
+                    service.status === "offline" ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100" : 
+                    service.status === "degraded" ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100" : 
+                    "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300"
                   )}>
-                    <span className={cn(
-                      "w-2 h-2 rounded-full mr-1",
-                      getStatusIndicatorClass(service.status)
-                    )}></span>
                     {service.status === "online" ? "Online" : 
                      service.status === "offline" ? "Offline" : 
                      service.status === "degraded" ? "Degraded" : "Unknown"}
                   </span>
-                </div>
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>{service.host}:{service.port}</span>
-                  <span>
+                  <span className="text-xs font-mono bg-muted px-2 py-1 rounded">
                     {service.responseTime 
                       ? `${service.responseTime}ms` 
                       : service.status === "offline" 
@@ -329,18 +349,18 @@ export default function ServiceCanvas({
 
         {/* Add New Service Button */}
         <div 
-          className="service-node absolute bg-gray-50 rounded-lg border border-dashed border-gray-300 p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 transition-colors"
+          className="service-node absolute bg-card dark:bg-card rounded-xl border-2 border-dashed border-primary p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-accent transition-all duration-200 shadow-md hover:shadow-lg"
           style={{
-            width: "160px",
+            width: "180px",
             left: "380px",
             top: "520px",
           }}
           onClick={onAddService}
         >
-          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mb-2">
-            <Plus className="h-5 w-5 text-gray-500" />
+          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+            <Plus className="h-6 w-6 text-primary" />
           </div>
-          <p className="text-sm text-gray-500 font-medium">Add New Service</p>
+          <p className="text-sm font-medium text-primary">Add New Service</p>
         </div>
       </div>
     </Card>
