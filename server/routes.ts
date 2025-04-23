@@ -161,6 +161,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(200).json(updatedAlert);
   });
 
+  // Agents
+  app.get("/api/agents", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const agents = await storage.getAgentsByUserId(req.user!.id);
+    res.status(200).json(agents);
+  });
+
+  app.post("/api/agents", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      // Generate a unique API key for the agent
+      const apiKey = randomBytes(32).toString('hex');
+      
+      const data = insertAgentSchema.parse({
+        ...req.body,
+        userId: req.user!.id,
+        apiKey,
+        status: "inactive",
+        createdAt: new Date()
+      });
+      
+      const agent = await storage.createAgent(data);
+      res.status(201).json(agent);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create agent" });
+    }
+  });
+
+  app.put("/api/agents/:id/refresh", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const agentId = parseInt(req.params.id);
+    if (isNaN(agentId)) {
+      return res.status(400).json({ error: "Invalid agent ID" });
+    }
+    
+    const agent = await storage.getAgentById(agentId);
+    if (!agent || agent.userId !== req.user!.id) {
+      return res.status(404).json({ error: "Agent not found" });
+    }
+    
+    // Just return the current agent without changes
+    res.status(200).json(agent);
+  });
+
+  app.delete("/api/agents/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const agentId = parseInt(req.params.id);
+    if (isNaN(agentId)) {
+      return res.status(400).json({ error: "Invalid agent ID" });
+    }
+    
+    const agent = await storage.getAgentById(agentId);
+    if (!agent || agent.userId !== req.user!.id) {
+      return res.status(404).json({ error: "Agent not found" });
+    }
+    
+    await storage.deleteAgent(agentId);
+    res.status(204).send();
+  });
+
+  app.post("/api/agents/heartbeat", async (req, res) => {
+    const { apiKey, serverInfo } = req.body;
+    
+    if (!apiKey) {
+      return res.status(401).json({ error: "API key required" });
+    }
+    
+    const agent = await storage.getAgentByApiKey(apiKey);
+    if (!agent) {
+      return res.status(404).json({ error: "Agent not found" });
+    }
+    
+    try {
+      const updatedAgent = await storage.updateAgentStatus(agent.id, "active", serverInfo);
+      res.status(200).json({ status: "ok", agentId: agent.id });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update agent status" });
+    }
+  });
+
   // Stats
   app.get("/api/stats", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);

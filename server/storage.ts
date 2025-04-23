@@ -287,6 +287,9 @@ export class MemStorage implements IStorage {
       id, 
       apiKey,
       status: "inactive",
+      description: insertAgent.description || null,
+      serverInfo: null,
+      lastSeen: null,
       createdAt: new Date()
     };
     
