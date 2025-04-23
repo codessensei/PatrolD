@@ -37,7 +37,7 @@ export default function Sidebar() {
     <>
       {/* Mobile Sidebar Toggle */}
       <button 
-        className="md:hidden fixed z-50 bottom-4 right-4 bg-primary text-white rounded-full p-3 shadow-lg"
+        className="md:hidden fixed z-50 bottom-4 right-4 bg-primary text-white rounded-full p-3 shadow-lg dark:shadow-md dark:shadow-gray-900"
         onClick={toggleMobileMenu}
       >
         {isMobileMenuOpen ? (
@@ -54,12 +54,12 @@ export default function Sidebar() {
       {/* Sidebar */}
       <aside 
         className={cn(
-          "bg-white border-r border-gray-200 w-full md:w-64 fixed md:h-full z-30 transition-transform sidebar-transition",
+          "bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 w-full md:w-64 fixed md:h-full z-30 transition-transform sidebar-transition",
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
       >
         <div className="h-full flex flex-col">
-          <div className="p-4 border-b border-gray-200">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <div className="relative h-8 w-8">
@@ -68,12 +68,12 @@ export default function Sidebar() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
                   </div>
-                  <div className="absolute -right-1 -top-1 h-3 w-3 bg-green-500 rounded-full border-2 border-white"></div>
+                  <div className="absolute -right-1 -top-1 h-3 w-3 bg-green-500 rounded-full border-2 border-white dark:border-gray-700"></div>
                 </div>
-                <span className="text-lg font-semibold text-gray-800">UptimeMonitor</span>
+                <span className="text-lg font-semibold text-gray-800 dark:text-gray-100">UptimeMonitor</span>
               </div>
               <button 
-                className="md:hidden text-gray-500 hover:text-gray-700"
+                className="md:hidden text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100"
                 onClick={toggleMobileMenu}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -94,8 +94,8 @@ export default function Sidebar() {
                 className={cn(
                   "flex items-center px-3 py-2 rounded-md cursor-pointer",
                   location === item.href 
-                    ? "text-gray-600 bg-gray-100" 
-                    : "text-gray-600 hover:bg-gray-100"
+                    ? "text-gray-600 dark:text-gray-200 bg-gray-100 dark:bg-gray-700" 
+                    : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                 )}
               >
                 <span className={cn(
@@ -109,19 +109,19 @@ export default function Sidebar() {
             ))}
           </nav>
           
-          <div className="p-4 border-t border-gray-200">
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700">
             <div className="flex items-center">
-              <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-medium mr-3">
+              <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-600 dark:text-gray-200 font-medium mr-3">
                 {user?.username.charAt(0).toUpperCase()}
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-700">{user?.username}</p>
-                <p className="text-xs text-gray-500">{user?.email || "User"}</p>
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-200">{user?.username}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{user?.email || "User"}</p>
               </div>
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="ml-auto text-gray-400 hover:text-gray-600"
+                className="ml-auto text-gray-400 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-200"
                 onClick={handleLogout}
                 disabled={logoutMutation.isPending}
               >
