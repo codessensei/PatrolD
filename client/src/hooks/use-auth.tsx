@@ -21,6 +21,7 @@ type LoginData = Pick<InsertUser, "username" | "password">;
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
+  console.log("AuthProvider initializing");
   const { toast } = useToast();
   const {
     data: user,
@@ -29,6 +30,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   } = useQuery<SelectUser | null, Error>({
     queryKey: ["/api/user"],
     queryFn: getQueryFn({ on401: "returnNull" }),
+    onSuccess: (data) => {
+      console.log("Auth query success:", data);
+    },
+    onError: (err) => {
+      console.error("Auth query error:", err);
+    }
   });
 
   const loginMutation = useMutation({
