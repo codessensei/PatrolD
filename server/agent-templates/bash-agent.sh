@@ -17,6 +17,7 @@ API_BASE_URL="{{API_BASE_URL}}" # Replace with your Service Monitor URL (e.g., h
 
 # Services to monitor - each line should contain host:port
 declare -a SERVICES=(
+  "192.168.1.254:80"  # Yerel ağdaki router/gateway
   # "example.com:80"
   # "192.168.1.1:8080"
   # Add your services here
@@ -184,16 +185,9 @@ run_monitoring() {
   done
 }
 
-# Validate configuration
-if [ "$API_KEY" = "{{API_KEY}}" ]; then
-  echo "Error: Please replace {{API_KEY}} with your actual agent API key"
-  exit 1
-fi
-
-if [ "$API_BASE_URL" = "{{API_BASE_URL}}" ]; then
-  echo "Error: Please replace {{API_BASE_URL}} with your actual Service Monitor URL"
-  exit 1
-fi
+# Display important configuration info
+echo "Using API key: $API_KEY"
+echo "Using API URL: $API_BASE_URL"
 
 if [ ${#SERVICES[@]} -eq 0 ]; then
   echo "Warning: No services configured for monitoring"

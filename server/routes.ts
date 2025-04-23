@@ -330,13 +330,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Find services that are monitored by this agent
       const services = await storage.getServicesByUserId(agent.userId);
+      // Log what agent is reporting for debugging
+      console.log(`Agent ${agent.id} (${agent.name}) reporting status for ${host}:${port}: ${status}`);
+      
+      // Find matching services without strict host:port matching
       const matchingServices = services.filter(
         service => 
           service.agentId === agent.id && 
-          service.monitorType === "agent" &&
-          service.host === host && 
-          service.port === port
+          service.monitorType === "agent"
       );
+      
+      // Log all matching services
+      console.log(`Found ${matchingServices.length} services monitored by agent ${agent.id}`);
+      matchingServices.forEach(svc => {
+        console.log(`- Service ${svc.id}: ${svc.name} (${svc.host}:${svc.port}) - Current status: ${svc.status}`);
+      });
       
       if (matchingServices.length === 0) {
         return res.status(404).json({ 

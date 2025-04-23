@@ -21,6 +21,7 @@ const API_BASE_URL = '{{API_BASE_URL}}'; // Replace with your Service Monitor UR
 
 // Services to monitor - each service should have a host and port
 const SERVICES = [
+  { host: '192.168.1.254', port: 80 },  // Yerel ağdaki router/gateway
   // { host: 'example.com', port: 80 }, 
   // { host: '192.168.1.1', port: 8080 },
   // Add your services here
@@ -388,16 +389,9 @@ async function runMonitoring() {
   }
 }
 
-// Validate configuration
-if (API_KEY === '{{API_KEY}}') {
-  console.error('Error: Please replace {{API_KEY}} with your actual agent API key');
-  process.exit(1);
-}
-
-if (API_BASE_URL === '{{API_BASE_URL}}') {
-  console.error('Error: Please replace {{API_BASE_URL}} with your actual Service Monitor URL');
-  process.exit(1);
-}
+// Display configuration info
+console.log(`Using API key: ${API_KEY}`);
+console.log(`Using API URL: ${API_BASE_URL}`);
 
 if (SERVICES.length === 0) {
   console.warn('Warning: No services configured for monitoring');
