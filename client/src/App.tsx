@@ -12,6 +12,7 @@ import HistoryPage from "@/pages/history-page";
 import SettingsPage from "@/pages/settings-page";
 import { ProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
+import { ThemeProvider, ThemeToggleProvider } from "@/components/theme-provider";
 
 function Router() {
   return (
@@ -31,12 +32,16 @@ function App() {
   console.log("App component rendering");
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
-      </AuthProvider>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <ThemeToggleProvider>
+          <AuthProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Router />
+            </TooltipProvider>
+          </AuthProvider>
+        </ThemeToggleProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
