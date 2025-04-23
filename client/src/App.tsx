@@ -10,6 +10,7 @@ import ServicesPage from "@/pages/services-page";
 import AlertsPage from "@/pages/alerts-page";
 import HistoryPage from "@/pages/history-page";
 import SettingsPage from "@/pages/settings-page";
+import AgentsPage from "@/pages/agents-page";
 import { ProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
 import { ThemeProvider, ThemeToggleProvider } from "@/components/theme-provider";
@@ -20,6 +21,7 @@ function Router() {
       <ProtectedRoute path="/" component={DashboardPage} />
       <ProtectedRoute path="/services" component={ServicesPage} />
       <ProtectedRoute path="/alerts" component={AlertsPage} />
+      <ProtectedRoute path="/agents" component={AgentsPage} />
       <ProtectedRoute path="/history" component={HistoryPage} />
       <ProtectedRoute path="/settings" component={SettingsPage} />
       <Route path="/auth" component={AuthPage} />

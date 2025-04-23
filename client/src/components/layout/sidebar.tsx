@@ -8,7 +8,8 @@ import {
   AlertTriangle,
   History,
   Settings,
-  LogOut
+  LogOut,
+  Cpu
 } from "lucide-react";
 import { useState } from "react";
 
@@ -16,6 +17,7 @@ const navItems = [
   { label: "Dashboard", icon: <LayoutDashboard className="h-5 w-5" />, href: "/" },
   { label: "Services", icon: <Server className="h-5 w-5" />, href: "/services" },
   { label: "Alerts", icon: <AlertTriangle className="h-5 w-5" />, href: "/alerts" },
+  { label: "Agents", icon: <Cpu className="h-5 w-5" />, href: "/agents" },
   { label: "History", icon: <History className="h-5 w-5" />, href: "/history" },
   { label: "Settings", icon: <Settings className="h-5 w-5" />, href: "/settings" },
 ];

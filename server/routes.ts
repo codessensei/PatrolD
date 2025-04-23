@@ -4,7 +4,8 @@ import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { setupMonitoring } from "./monitor";
 import { z } from "zod";
-import { insertConnectionSchema, insertServiceSchema } from "@shared/schema";
+import { insertConnectionSchema, insertServiceSchema, insertAgentSchema } from "@shared/schema";
+import { randomBytes } from "crypto";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
