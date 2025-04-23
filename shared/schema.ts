@@ -31,6 +31,8 @@ export const services = pgTable("services", {
   status: text("status").default("unknown"),
   responseTime: integer("response_time"),
   lastChecked: timestamp("last_checked"),
+  agentId: integer("agent_id"),
+  monitorType: text("monitor_type").default("direct"),
 });
 
 export const insertServiceSchema = createInsertSchema(services).omit({

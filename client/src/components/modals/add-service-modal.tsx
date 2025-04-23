@@ -5,14 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Service } from "@shared/schema";
-import { useMutation } from "@tanstack/react-query";
+import { Service, Agent } from "@shared/schema";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface AddServiceModalProps {
   isOpen: boolean;
@@ -46,6 +47,8 @@ const formSchema = z.object({
   port: z.coerce.number().int().min(1, "Port must be a positive number"),
   checkInterval: z.coerce.number().int().min(1, "Check interval is required"),
   connections: z.array(z.number()).optional(),
+  monitorType: z.enum(["direct", "agent"]).default("direct"),
+  agentId: z.number().optional().nullable(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -57,6 +60,17 @@ export default function AddServiceModal({
 }: AddServiceModalProps) {
   const { toast } = useToast();
   const [selectedConnections, setSelectedConnections] = useState<number[]>([]);
+  const [monitorType, setMonitorType] = useState<"direct" | "agent">("direct");
+  
+  // Fetch agents for the monitoring tab
+  const { data: agents, isLoading: isLoadingAgents } = useQuery({
+    queryKey: ["/api/agents"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/agents");
+      const data = await res.json();
+      return data as Agent[];
+    },
+  });
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -67,6 +81,8 @@ export default function AddServiceModal({
       port: 80,
       checkInterval: 60,
       connections: [],
+      monitorType: "direct",
+      agentId: null
     },
   });
 
