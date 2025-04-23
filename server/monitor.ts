@@ -1,6 +1,28 @@
 import axios from "axios";
 import { IStorage } from "./storage";
-import { Service } from "@shared/schema";
+import { Service, Connection } from "@shared/schema";
+
+// Helper function to get all services from all users
+async function getAllServices(storage: IStorage): Promise<Service[]> {
+  // Get all user IDs (without exposing the users collection directly)
+  const services: Service[] = [];
+  
+  // Fetch services for each user from the storage
+  // This is a placeholder implementation that would work better with a database
+  // For now, we'll use a simple approach that works with our MemStorage
+  if ((storage as any).users && typeof (storage as any).users.values === 'function') {
+    const allUserServices = await Promise.all(
+      Array.from((storage as any).users.values()).map((user: any) => 
+        storage.getServicesByUserId(user.id)
+      )
+    );
+    
+    // Flatten the array of arrays
+    return allUserServices.flat();
+  }
+  
+  return services;
+}
 
 // Timeout for HTTP requests in ms
 const REQUEST_TIMEOUT = 5000;
@@ -31,7 +53,7 @@ async function checkServices(storage: IStorage) {
     if (services.length === 0) return;
     
     // Group services by check interval
-    const servicesByInterval = services.reduce((acc, service) => {
+    const servicesByInterval = services.reduce((acc: Record<number, Service[]>, service: Service) => {
       const interval = service.checkInterval;
       if (!acc[interval]) acc[interval] = [];
       acc[interval].push(service);
@@ -115,15 +137,28 @@ function buildServiceUrl(service: Service): string {
   return `${protocol}://${service.host}:${service.port}`;
 }
 
+// Helper function to get all connections from all users
+async function getAllConnections(storage: IStorage): Promise<Connection[]> {
+  const connections: Connection[] = [];
+  
+  // Using the same approach as getAllServices
+  if ((storage as any).users && typeof (storage as any).users.values === 'function') {
+    const allUserConnections = await Promise.all(
+      Array.from((storage as any).users.values()).map((user: any) => 
+        storage.getConnectionsByUserId(user.id)
+      )
+    );
+    
+    return allUserConnections.flat();
+  }
+  
+  return connections;
+}
+
 async function updateConnections(storage: IStorage) {
   try {
-    const connections = Array.from(new Set(
-      (await Promise.all(
-        Array.from(storage.users.values()).map(user => 
-          storage.getConnectionsByUserId(user.id)
-        )
-      )).flat()
-    ));
+    // Get all connections using the helper
+    const connections = await getAllConnections(storage);
     
     for (const connection of connections) {
       const source = await storage.getServiceById(connection.sourceId);

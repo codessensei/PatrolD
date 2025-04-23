@@ -9,7 +9,11 @@ import {
 import session from "express-session";
 import createMemoryStore from "memorystore";
 
+// Create a memory store
 const MemoryStore = createMemoryStore(session);
+
+// Define our session store type to avoid SessionStore errors
+type SessionStore = ReturnType<typeof createMemoryStore>;
 
 // Storage interface for all our data
 export interface IStorage {
@@ -54,7 +58,10 @@ export interface IStorage {
   updateUserSettings(settings: Partial<UserSettings> & { userId: number }): Promise<UserSettings>;
   
   // Session store
-  sessionStore: session.SessionStore;
+  sessionStore: SessionStore;
+  
+  // Access to users collection for monitoring
+  users: Map<number, User>;
 }
 
 export class MemStorage implements IStorage {
@@ -65,7 +72,7 @@ export class MemStorage implements IStorage {
   private agents: Map<number, Agent>;
   private userSettings: Map<number, UserSettings>;
   
-  sessionStore: session.SessionStore;
+  sessionStore: SessionStore;
   private userId: number = 1;
   private serviceId: number = 1;
   private connectionId: number = 1;
