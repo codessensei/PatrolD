@@ -6,6 +6,7 @@ import { setupMonitoring } from "./monitor";
 import { z } from "zod";
 import { insertConnectionSchema, insertServiceSchema, insertAgentSchema } from "@shared/schema";
 import { randomBytes } from "crypto";
+import * as fs from 'fs';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
@@ -249,7 +250,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       // Read the script template
-      const fs = require('fs');
       let script = fs.readFileSync(filePath, 'utf8');
       
       // Get the application base URL
