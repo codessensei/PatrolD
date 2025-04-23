@@ -36,13 +36,18 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function AuthPage() {
+  console.log("AuthPage component rendering");
   const [activeTab, setActiveTab] = useState<string>("login");
   const [location, navigate] = useLocation();
-  const { user, loginMutation, registerMutation } = useAuth();
+  const { user, loginMutation, registerMutation, isLoading } = useAuth();
+
+  console.log("AuthPage auth state:", { user, isLoading, location });
 
   // Redirect to dashboard if user is already logged in
   useEffect(() => {
+    console.log("AuthPage useEffect - user:", user);
     if (user) {
+      console.log("AuthPage: User logged in, redirecting to /");
       navigate("/");
     }
   }, [user, navigate]);
@@ -89,7 +94,7 @@ export default function AuthPage() {
         <div className="mb-8">
           <div className="flex items-center space-x-2">
             <div className="relative h-8 w-8">
-              <div className="absolute inset-0 bg-primary-500 rounded-md flex items-center justify-center">
+              <div className="absolute inset-0 bg-primary rounded-md flex items-center justify-center">
                 <HeartPulse className="h-5 w-5 text-white" />
               </div>
               <div className="absolute -right-1 -top-1 h-3 w-3 bg-green-500 rounded-full border-2 border-white"></div>
@@ -267,7 +272,7 @@ export default function AuthPage() {
       </div>
       
       {/* Hero Section */}
-      <div className="hidden md:flex flex-1 bg-primary-500 text-white p-10 items-center justify-center">
+      <div className="hidden md:flex flex-1 bg-primary text-white p-10 items-center justify-center">
         <div className="max-w-md">
           <h1 className="text-4xl font-bold mb-6">
             Monitor Your Services with Ease
@@ -283,7 +288,7 @@ export default function AuthPage() {
               </div>
               <div>
                 <h3 className="font-medium text-lg">Real-time Monitoring</h3>
-                <p className="text-primary-100">Track service status with instant updates on uptime and performance.</p>
+                <p className="text-white/80">Track service status with instant updates on uptime and performance.</p>
               </div>
             </div>
             
@@ -293,7 +298,7 @@ export default function AuthPage() {
               </div>
               <div>
                 <h3 className="font-medium text-lg">Visual Service Mesh</h3>
-                <p className="text-primary-100">Drag-and-drop interface to visualize service dependencies and connections.</p>
+                <p className="text-white/80">Drag-and-drop interface to visualize service dependencies and connections.</p>
               </div>
             </div>
             

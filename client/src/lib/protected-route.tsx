@@ -9,19 +9,24 @@ export function ProtectedRoute({
   path: string;
   component: () => React.JSX.Element;
 }) {
-  const { user, isLoading } = useAuth();
+  console.log("ProtectedRoute rendering for path:", path);
+  const { user, isLoading, error } = useAuth();
+  
+  console.log("ProtectedRoute auth state:", { user, isLoading, error });
 
   if (isLoading) {
+    console.log("ProtectedRoute: Auth is loading, showing spinner");
     return (
       <Route path={path}>
         <div className="flex items-center justify-center min-h-screen">
-          <Loader2 className="h-8 w-8 animate-spin text-border" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       </Route>
     );
   }
 
   if (!user) {
+    console.log("ProtectedRoute: No user, redirecting to /auth");
     return (
       <Route path={path}>
         <Redirect to="/auth" />
@@ -29,5 +34,6 @@ export function ProtectedRoute({
     );
   }
 
+  console.log("ProtectedRoute: User authenticated, rendering component");
   return <Route path={path} component={Component} />;
 }
