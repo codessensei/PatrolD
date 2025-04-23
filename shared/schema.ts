@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, json } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -71,3 +71,48 @@ export const insertAlertSchema = createInsertSchema(alerts).omit({
 
 export type InsertAlert = z.infer<typeof insertAlertSchema>;
 export type Alert = typeof alerts.$inferSelect;
+
+// Ajan yapısı 
+export const agents = pgTable("agents", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  name: text("name").notNull(),
+  apiKey: text("api_key").notNull().unique(),
+  description: text("description"),
+  serverInfo: json("server_info").default({}),
+  status: text("status").default("inactive"),
+  lastSeen: timestamp("last_seen"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertAgentSchema = createInsertSchema(agents).omit({
+  id: true,
+  apiKey: true,
+  lastSeen: true,
+  createdAt: true,
+});
+
+export type InsertAgent = z.infer<typeof insertAgentSchema>;
+export type Agent = typeof agents.$inferSelect;
+
+// Kullanıcı ayarları
+export const userSettings = pgTable("user_settings", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().unique(),
+  theme: text("theme").default("light"),
+  enableEmailAlerts: boolean("enable_email_alerts").default(false),
+  emailAddress: text("email_address"),
+  enableTelegramAlerts: boolean("enable_telegram_alerts").default(false),
+  telegramChatId: text("telegram_chat_id"),
+  alertFrequency: text("alert_frequency").default("immediate"), // immediate, hourly, daily
+  customSettings: json("custom_settings").default({}),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertUserSettingsSchema = createInsertSchema(userSettings).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type InsertUserSettings = z.infer<typeof insertUserSettingsSchema>;
+export type UserSettings = typeof userSettings.$inferSelect;

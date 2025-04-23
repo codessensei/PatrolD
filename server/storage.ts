@@ -2,7 +2,9 @@ import {
   User, InsertUser, 
   Service, InsertService, 
   Connection, InsertConnection,
-  Alert, InsertAlert
+  Alert, InsertAlert,
+  Agent, InsertAgent,
+  UserSettings, InsertUserSettings
 } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
@@ -38,6 +40,19 @@ export interface IStorage {
   createAlert(alert: InsertAlert): Promise<Alert>;
   acknowledgeAlert(id: number): Promise<Alert>;
 
+  // Agent
+  getAgentById(id: number): Promise<Agent | undefined>;
+  getAgentByApiKey(apiKey: string): Promise<Agent | undefined>;
+  getAgentsByUserId(userId: number): Promise<Agent[]>;
+  createAgent(agent: InsertAgent): Promise<Agent>;
+  updateAgent(agent: Agent): Promise<Agent>;
+  deleteAgent(id: number): Promise<void>;
+  updateAgentStatus(id: number, status: string, serverInfo?: any): Promise<Agent>;
+  
+  // User Settings
+  getUserSettings(userId: number): Promise<UserSettings | undefined>;
+  updateUserSettings(settings: Partial<UserSettings> & { userId: number }): Promise<UserSettings>;
+  
   // Session store
   sessionStore: session.SessionStore;
 }
@@ -47,18 +62,24 @@ export class MemStorage implements IStorage {
   private services: Map<number, Service>;
   private connections: Map<number, Connection>;
   private alerts: Map<number, Alert>;
+  private agents: Map<number, Agent>;
+  private userSettings: Map<number, UserSettings>;
   
   sessionStore: session.SessionStore;
   private userId: number = 1;
   private serviceId: number = 1;
   private connectionId: number = 1;
   private alertId: number = 1;
+  private agentId: number = 1;
+  private userSettingsId: number = 1;
 
   constructor() {
     this.users = new Map();
     this.services = new Map();
     this.connections = new Map();
     this.alerts = new Map();
+    this.agents = new Map();
+    this.userSettings = new Map();
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000, // prune expired entries every 24h
     });
@@ -237,6 +258,105 @@ export class MemStorage implements IStorage {
     const updatedAlert: Alert = { ...alert, acknowledged: true };
     this.alerts.set(id, updatedAlert);
     return updatedAlert;
+  }
+
+  // Agent methods
+  async getAgentById(id: number): Promise<Agent | undefined> {
+    return this.agents.get(id);
+  }
+
+  async getAgentByApiKey(apiKey: string): Promise<Agent | undefined> {
+    return Array.from(this.agents.values()).find(
+      agent => agent.apiKey === apiKey
+    );
+  }
+
+  async getAgentsByUserId(userId: number): Promise<Agent[]> {
+    return Array.from(this.agents.values()).filter(
+      agent => agent.userId === userId
+    );
+  }
+
+  async createAgent(insertAgent: InsertAgent): Promise<Agent> {
+    const id = this.agentId++;
+    // Generate a unique API key (combination of user id, agent id, and random string)
+    const apiKey = `agt_${Math.random().toString(36).substring(2, 15)}_${new Date().getTime().toString(36)}`;
+    
+    const agent: Agent = { 
+      ...insertAgent, 
+      id, 
+      apiKey,
+      status: "inactive",
+      createdAt: new Date()
+    };
+    
+    this.agents.set(id, agent);
+    return agent;
+  }
+
+  async updateAgent(agent: Agent): Promise<Agent> {
+    this.agents.set(agent.id, agent);
+    return agent;
+  }
+
+  async deleteAgent(id: number): Promise<void> {
+    this.agents.delete(id);
+  }
+
+  async updateAgentStatus(id: number, status: string, serverInfo?: any): Promise<Agent> {
+    const agent = await this.getAgentById(id);
+    if (!agent) throw new Error(`Agent with id ${id} not found`);
+    
+    const updatedAgent: Agent = { 
+      ...agent, 
+      status,
+      serverInfo: serverInfo ? serverInfo : agent.serverInfo,
+      lastSeen: new Date()
+    };
+    
+    this.agents.set(id, updatedAgent);
+    return updatedAgent;
+  }
+
+  // User Settings methods
+  async getUserSettings(userId: number): Promise<UserSettings | undefined> {
+    return Array.from(this.userSettings.values()).find(
+      settings => settings.userId === userId
+    );
+  }
+
+  async updateUserSettings(settings: Partial<UserSettings> & { userId: number }): Promise<UserSettings> {
+    const existingSettings = await this.getUserSettings(settings.userId);
+    
+    if (existingSettings) {
+      // Update existing settings
+      const updatedSettings: UserSettings = {
+        ...existingSettings,
+        ...settings,
+        updatedAt: new Date()
+      };
+      
+      this.userSettings.set(existingSettings.id, updatedSettings);
+      return updatedSettings;
+    } else {
+      // Create new settings
+      const id = this.userSettingsId++;
+      const newSettings: UserSettings = {
+        id,
+        userId: settings.userId,
+        theme: settings.theme || "light",
+        enableEmailAlerts: settings.enableEmailAlerts || false,
+        emailAddress: settings.emailAddress || null,
+        enableTelegramAlerts: settings.enableTelegramAlerts || false,
+        telegramChatId: settings.telegramChatId || null,
+        alertFrequency: settings.alertFrequency || "immediate",
+        customSettings: settings.customSettings || {},
+        updatedAt: new Date()
+      };
+      
+      this.userSettings.set(id, newSettings);
+      return newSettings;
+    }
   }
 }
 
