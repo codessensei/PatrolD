@@ -247,6 +247,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to update agent status" });
     }
   });
+  
+  // Endpoint for agents to report service status
+  app.post("/api/agents/service-check", async (req, res) => {
+    const { apiKey, host, port, status, responseTime } = req.body;
+    
+    if (!apiKey) {
+      return res.status(401).json({ error: "API key required" });
+    }
+    
+    const agent = await storage.getAgentByApiKey(apiKey);
+    if (!agent) {
+      return res.status(404).json({ error: "Agent not found" });
+    }
+    
+    try {
+      // Find services that are monitored by this agent
+      const services = await storage.getServicesByUserId(agent.userId);
+      const matchingServices = services.filter(
+        service => 
+          service.agentId === agent.id && 
+          service.monitorType === "agent" &&
+          service.host === host && 
+          service.port === port
+      );
+      
+      if (matchingServices.length === 0) {
+        return res.status(404).json({ 
+          error: "No matching service found",
+          message: `No service found for host ${host}:${port} monitored by this agent`
+        });
+      }
+      
+      // Update all matching services
+      await Promise.all(
+        matchingServices.map(service => 
+          storage.updateServiceStatus(service.id, status, responseTime)
+        )
+      );
+      
+      return res.status(200).json({ 
+        status: "ok", 
+        servicesUpdated: matchingServices.length 
+      });
+    } catch (error) {
+      console.error("Error updating service status from agent:", error);
+      return res.status(500).json({ error: "Failed to update service status" });
+    }
+  });
 
   // Stats
   app.get("/api/stats", async (req, res) => {

@@ -24,14 +24,9 @@ async function startMonitoring(storage: IStorage) {
 
 async function checkServices(storage: IStorage) {
   try {
-    // Get all services
-    const services = Array.from(new Set(
-      (await Promise.all(
-        Array.from(storage.users.values()).map(user => 
-          storage.getServicesByUserId(user.id)
-        )
-      )).flat()
-    ));
+    // Get all services - directly query for all services
+    // This avoids the need to access storage.users directly
+    const services = await getAllServices(storage);
     
     if (services.length === 0) return;
     
@@ -67,6 +62,24 @@ async function checkServices(storage: IStorage) {
 
 async function checkService(storage: IStorage, service: Service) {
   try {
+    // Check if this service is monitored by an agent
+    if (service.monitorType === "agent" && service.agentId) {
+      // For agent-monitored services, we don't actively check
+      // The agent will push status updates via the API
+      // We only check if the agent itself is active
+      const agent = await storage.getAgentById(service.agentId);
+      
+      if (!agent || agent.status !== "active" || 
+          !agent.lastSeen || 
+          (Date.now() - agent.lastSeen.getTime() > 5 * 60 * 1000)) { // 5 minutes timeout
+        // Agent is inactive or hasn't been seen recently
+        await storage.updateServiceStatus(service.id, "unknown");
+      }
+      
+      return;
+    }
+    
+    // For directly monitored services, proceed with HTTP check
     const url = buildServiceUrl(service);
     const startTime = Date.now();
     

@@ -97,6 +97,8 @@ export default function AddServiceModal({
         checkInterval: data.checkInterval,
         positionX: Math.floor(Math.random() * 500), // Random initial position
         positionY: Math.floor(Math.random() * 400),
+        monitorType: data.monitorType,
+        agentId: data.monitorType === "agent" ? data.agentId : null,
       });
       
       const newService = await serviceResponse.json();
@@ -138,7 +140,26 @@ export default function AddServiceModal({
   const onSubmit = (data: FormValues) => {
     // Add selected connections to form data
     data.connections = selectedConnections;
+    
+    // Validate that an agent is selected if using agent monitoring
+    if (data.monitorType === "agent" && !data.agentId) {
+      toast({
+        title: "Agent required",
+        description: "Please select an agent for agent-based monitoring",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     createServiceMutation.mutate(data);
+  };
+  
+  // Reset form and state on close
+  const handleClose = () => {
+    form.reset();
+    setSelectedConnections([]);
+    setMonitorType("direct");
+    onClose();
   };
 
   const handleConnectionToggle = (serviceId: number, checked: boolean) => {
@@ -152,7 +173,7 @@ export default function AddServiceModal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">Add New Service</DialogTitle>
@@ -256,6 +277,79 @@ export default function AddServiceModal({
               )}
             />
             
+            <div className="my-4">
+              <FormLabel className="mb-2">Monitoring Method</FormLabel>
+              <FormField
+                control={form.control}
+                name="monitorType"
+                render={({ field }) => (
+                  <FormItem>
+                    <Tabs 
+                      defaultValue="direct" 
+                      className="w-full"
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        setMonitorType(value as "direct" | "agent");
+                        if (value === "direct") {
+                          form.setValue("agentId", null);
+                        }
+                      }}
+                      value={field.value}
+                    >
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="direct">Direct Monitoring</TabsTrigger>
+                        <TabsTrigger value="agent">Agent Monitoring</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="direct" className="p-3 border rounded-md mt-2">
+                        <p className="text-sm text-gray-500">
+                          Service will be monitored directly from the server. Use this option for public or directly accessible services.
+                        </p>
+                      </TabsContent>
+                      <TabsContent value="agent" className="p-3 border rounded-md mt-2">
+                        <FormField
+                          control={form.control}
+                          name="agentId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Select Agent</FormLabel>
+                              <Select
+                                onValueChange={(value) => field.onChange(parseInt(value))}
+                                value={field.value?.toString() || ""}
+                                disabled={isLoadingAgents || !agents?.length}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select an agent" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {isLoadingAgents ? (
+                                    <SelectItem value="loading" disabled>Loading agents...</SelectItem>
+                                  ) : agents?.length ? (
+                                    agents.map(agent => (
+                                      <SelectItem key={agent.id} value={agent.id.toString()}>
+                                        {agent.name} {agent.status === "active" ? "(Active)" : "(Inactive)"}
+                                      </SelectItem>
+                                    ))
+                                  ) : (
+                                    <SelectItem value="none" disabled>No agents available</SelectItem>
+                                  )}
+                                </SelectContent>
+                              </Select>
+                              <FormDescription>
+                                Service will be monitored from the selected agent's location. Good for internal or private services.
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </TabsContent>
+                    </Tabs>
+                  </FormItem>
+                )}
+              />
+            </div>
+            
             <div>
               <Label>Connections</Label>
               <div className="p-3 bg-gray-50 rounded-md border border-gray-200 max-h-40 overflow-y-auto mt-1">
@@ -294,7 +388,7 @@ export default function AddServiceModal({
               <Button 
                 type="button" 
                 variant="outline" 
-                onClick={onClose}
+                onClick={handleClose}
                 disabled={createServiceMutation.isPending}
               >
                 Cancel
