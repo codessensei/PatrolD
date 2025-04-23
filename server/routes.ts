@@ -175,14 +175,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       // Generate a unique API key for the agent
-      const apiKey = randomBytes(32).toString('hex');
+      // Format: agt_[random 10 chars]_[random 8 chars]
+      const prefix = 'agt_';
+      const part1 = randomBytes(5).toString('hex');
+      const part2 = randomBytes(4).toString('hex');
+      const apiKey = `${prefix}${part1}_${part2}`;
       
       const data = insertAgentSchema.parse({
         ...req.body,
         userId: req.user!.id,
         apiKey,
-        status: "inactive",
-        createdAt: new Date()
+        status: "inactive"
       });
       
       const agent = await storage.createAgent(data);

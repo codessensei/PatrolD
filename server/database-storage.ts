@@ -18,6 +18,7 @@ const PostgresSessionStore = connectPg(session);
 
 export class DatabaseStorage implements IStorage {
   sessionStore: SessionStore;
+  users: Map<number, User> = new Map();
   
   constructor() {
     this.sessionStore = new PostgresSessionStore({ 
