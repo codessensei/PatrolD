@@ -34,21 +34,58 @@ check_service() {
   local port=$(echo "$1" | cut -d':' -f2)
   local start_time=$(date +%s%3N)
   
-  # Try to connect to the service using timeout to enforce a connection timeout
-  if timeout $REQUEST_TIMEOUT bash -c "</dev/tcp/$host/$port" 2>/dev/null; then
-    local end_time=$(date +%s%3N)
-    local response_time=$((end_time - start_time))
-    
-    # Determine status based on response time
-    local status="online"
-    if [ $response_time -gt 1000 ]; then
-      status="degraded"
+  # Try different connection methods based on the host type (IP or hostname)
+  if [[ "$host" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    # For IP addresses, try using netcat if available
+    if command -v nc >/dev/null 2>&1; then
+      if nc -z -w $REQUEST_TIMEOUT "$host" "$port" >/dev/null 2>&1; then
+        local end_time=$(date +%s%3N)
+        local response_time=$((end_time - start_time))
+        
+        # Determine status based on response time
+        local status="online"
+        if [ $response_time -gt 1000 ]; then
+          status="degraded"
+        fi
+        
+        echo "{ \"host\": \"$host\", \"port\": $port, \"status\": \"$status\", \"responseTime\": $response_time }"
+        return
+      fi
+    else
+      # Fallback to /dev/tcp for IP addresses if netcat is not available
+      if timeout $REQUEST_TIMEOUT bash -c "</dev/tcp/$host/$port" 2>/dev/null; then
+        local end_time=$(date +%s%3N)
+        local response_time=$((end_time - start_time))
+        
+        # Determine status based on response time
+        local status="online"
+        if [ $response_time -gt 1000 ]; then
+          status="degraded"
+        fi
+        
+        echo "{ \"host\": \"$host\", \"port\": $port, \"status\": \"$status\", \"responseTime\": $response_time }"
+        return
+      fi
     fi
-    
-    echo "{ \"host\": \"$host\", \"port\": $port, \"status\": \"$status\", \"responseTime\": $response_time }"
   else
-    echo "{ \"host\": \"$host\", \"port\": $port, \"status\": \"offline\", \"responseTime\": null }"
+    # For hostnames, try standard /dev/tcp connection
+    if timeout $REQUEST_TIMEOUT bash -c "</dev/tcp/$host/$port" 2>/dev/null; then
+      local end_time=$(date +%s%3N)
+      local response_time=$((end_time - start_time))
+      
+      # Determine status based on response time
+      local status="online"
+      if [ $response_time -gt 1000 ]; then
+        status="degraded"
+      fi
+      
+      echo "{ \"host\": \"$host\", \"port\": $port, \"status\": \"$status\", \"responseTime\": $response_time }"
+      return
+    fi
   fi
+  
+  # If we get here, all connection attempts failed
+  echo "{ \"host\": \"$host\", \"port\": $port, \"status\": \"offline\", \"responseTime\": null }"
 }
 
 # Function to get system information

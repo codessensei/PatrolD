@@ -257,8 +257,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const baseUrl = `${protocol}://${req.headers.host}`;
       
       // Replace placeholders with actual values
-      script = script.replace(/{{API_KEY}}/g, agent.apiKey);
-      script = script.replace(/{{API_BASE_URL}}/g, baseUrl);
+      script = script.replace(/["']?{{API_KEY}}["']?/g, `"${agent.apiKey}"`);
+      script = script.replace(/["']?{{API_BASE_URL}}["']?/g, `"${baseUrl}"`);
+      
+      // Double check that the API_KEY is actually replaced
+      if (script.includes("{{API_KEY}}")) {
+        console.log("Warning: API_KEY placeholder not replaced in script");
+      }
       
       // Set filename for download
       const filename = filePath.split('/').pop();

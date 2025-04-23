@@ -12,6 +12,7 @@
 
 const http = require('http');
 const https = require('https');
+const net = require('net');
 const os = require('os');
 
 // Configuration
@@ -32,10 +33,84 @@ const CHECK_INTERVAL = 60 * 1000;
 const REQUEST_TIMEOUT = 5000;
 
 /**
- * Check if a service is online by attempting an HTTP connection
+ * Check if a service is online by attempting either a TCP socket connection
+ * or HTTP connection depending on the service type
  */
 async function checkService(service) {
   const startTime = Date.now();
+  
+  // Function to check if the host is an IP address
+  function isIpAddress(host) {
+    return /^(\d{1,3}\.){3}\d{1,3}$/.test(host);
+  }
+  
+  // Try a direct TCP socket connection first, especially for local IPs and non-HTTP services
+  if (isIpAddress(service.host) || service.port !== 80 && service.port !== 443 && service.port !== 8080) {
+    return new Promise((resolve) => {
+      console.log(`Checking ${service.host}:${service.port} using TCP socket connection`);
+      
+      const socket = new net.Socket();
+      socket.setTimeout(REQUEST_TIMEOUT);
+      
+      socket.on('connect', () => {
+        const responseTime = Date.now() - startTime;
+        let status = responseTime > 1000 ? 'degraded' : 'online';
+        
+        console.log(`Socket connection successful to ${service.host}:${service.port}, response time: ${responseTime}ms`);
+        socket.destroy();
+        
+        resolve({
+          host: service.host,
+          port: service.port,
+          status,
+          responseTime
+        });
+      });
+      
+      socket.on('timeout', () => {
+        console.log(`Socket connection timeout to ${service.host}:${service.port}`);
+        socket.destroy();
+        
+        resolve({
+          host: service.host,
+          port: service.port,
+          status: 'offline',
+          responseTime: null
+        });
+      });
+      
+      socket.on('error', (err) => {
+        console.log(`Socket connection error to ${service.host}:${service.port}: ${err.message}`);
+        socket.destroy();
+        
+        resolve({
+          host: service.host,
+          port: service.port,
+          status: 'offline',
+          responseTime: null
+        });
+      });
+      
+      try {
+        socket.connect({
+          host: service.host,
+          port: service.port
+        });
+      } catch (err) {
+        console.error(`Failed to initiate socket connection to ${service.host}:${service.port}:`, err.message);
+        resolve({
+          host: service.host,
+          port: service.port,
+          status: 'offline',
+          responseTime: null
+        });
+      }
+    });
+  }
+  
+  // For web services, use HTTP/HTTPS protocol
+  console.log(`Checking ${service.host}:${service.port} using HTTP request`);
+  
   const protocol = service.port === 443 ? https : http;
   
   return new Promise((resolve) => {
@@ -58,6 +133,8 @@ async function checkService(service) {
           status = 'degraded';
         }
         
+        console.log(`HTTP response from ${service.host}:${service.port}: ${res.statusCode}, time: ${responseTime}ms`);
+        
         // Consume response data to free up memory
         res.resume();
         
@@ -70,17 +147,84 @@ async function checkService(service) {
       }
     );
 
-    req.on('error', () => {
-      resolve({
-        host: service.host,
-        port: service.port,
-        status: 'offline',
-        responseTime: null
-      });
+    req.on('error', (err) => {
+      console.log(`HTTP request error for ${service.host}:${service.port}: ${err.message}`);
+      
+      // If the HTTP request fails and this is potentially an IP address,
+      // fall back to a TCP socket connection
+      if (isIpAddress(service.host)) {
+        console.log(`Falling back to TCP socket for ${service.host}:${service.port}`);
+        
+        const socket = new net.Socket();
+        socket.setTimeout(REQUEST_TIMEOUT);
+        
+        socket.on('connect', () => {
+          const responseTime = Date.now() - startTime;
+          let status = responseTime > 1000 ? 'degraded' : 'online';
+          
+          console.log(`Fallback socket connection successful to ${service.host}:${service.port}`);
+          socket.destroy();
+          
+          resolve({
+            host: service.host,
+            port: service.port,
+            status,
+            responseTime
+          });
+        });
+        
+        socket.on('timeout', () => {
+          console.log(`Fallback socket connection timeout to ${service.host}:${service.port}`);
+          socket.destroy();
+          
+          resolve({
+            host: service.host,
+            port: service.port,
+            status: 'offline',
+            responseTime: null
+          });
+        });
+        
+        socket.on('error', (err) => {
+          console.log(`Fallback socket connection error to ${service.host}:${service.port}: ${err.message}`);
+          socket.destroy();
+          
+          resolve({
+            host: service.host,
+            port: service.port,
+            status: 'offline',
+            responseTime: null
+          });
+        });
+        
+        try {
+          socket.connect({
+            host: service.host,
+            port: service.port
+          });
+        } catch (err) {
+          console.error(`Failed to initiate fallback socket to ${service.host}:${service.port}:`, err.message);
+          resolve({
+            host: service.host,
+            port: service.port,
+            status: 'offline',
+            responseTime: null
+          });
+        }
+      } else {
+        resolve({
+          host: service.host,
+          port: service.port,
+          status: 'offline',
+          responseTime: null
+        });
+      }
     });
 
     req.on('timeout', () => {
+      console.log(`HTTP request timeout for ${service.host}:${service.port}`);
       req.destroy();
+      
       resolve({
         host: service.host,
         port: service.port,
