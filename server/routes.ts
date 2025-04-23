@@ -210,6 +210,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Just return the current agent without changes
     res.status(200).json(agent);
   });
+  
+  // Endpoint to serve agent script templates
+  app.get("/api/agents/:id/script/:type", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const agentId = parseInt(req.params.id);
+    if (isNaN(agentId)) {
+      return res.status(400).json({ error: "Invalid agent ID" });
+    }
+    
+    const agent = await storage.getAgentById(agentId);
+    if (!agent || agent.userId !== req.user!.id) {
+      return res.status(404).json({ error: "Agent not found" });
+    }
+    
+    const scriptType = req.params.type;
+    let filePath;
+    let contentType;
+    
+    // Determine which script to serve
+    switch (scriptType) {
+      case 'node':
+        filePath = 'server/agent-templates/node-agent.js';
+        contentType = 'application/javascript';
+        break;
+      case 'python':
+        filePath = 'server/agent-templates/python-agent.py';
+        contentType = 'text/plain';
+        break;
+      case 'bash':
+        filePath = 'server/agent-templates/bash-agent.sh';
+        contentType = 'text/plain';
+        break;
+      default:
+        return res.status(400).json({ error: "Invalid script type" });
+    }
+    
+    try {
+      // Read the script template
+      const fs = require('fs');
+      let script = fs.readFileSync(filePath, 'utf8');
+      
+      // Get the application base URL
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+      const baseUrl = `${protocol}://${req.headers.host}`;
+      
+      // Replace placeholders with actual values
+      script = script.replace(/{{API_KEY}}/g, agent.apiKey);
+      script = script.replace(/{{API_BASE_URL}}/g, baseUrl);
+      
+      // Set filename for download
+      const filename = filePath.split('/').pop();
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      
+      res.send(script);
+    } catch (error) {
+      console.error(`Error serving agent script template: ${error}`);
+      res.status(500).json({ error: "Failed to generate agent script" });
+    }
+  });
 
   app.delete("/api/agents/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);

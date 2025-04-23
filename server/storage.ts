@@ -65,7 +65,7 @@ export interface IStorage {
 }
 
 export class MemStorage implements IStorage {
-  private users: Map<number, User>;
+  users: Map<number, User>; // Changed from private to public to match interface
   private services: Map<number, Service>;
   private connections: Map<number, Connection>;
   private alerts: Map<number, Alert>;
