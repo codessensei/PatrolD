@@ -14,11 +14,10 @@ import { useState } from "react";
 
 const navItems = [
   { label: "Dashboard", icon: <LayoutDashboard className="h-5 w-5" />, href: "/" },
-  // Currently we only support these main views, others will be added later
-  // { label: "Services", icon: <Server className="h-5 w-5" />, href: "/services" },
-  // { label: "Alerts", icon: <AlertTriangle className="h-5 w-5" />, href: "/alerts" },
-  // { label: "History", icon: <History className="h-5 w-5" />, href: "/history" },
-  // { label: "Settings", icon: <Settings className="h-5 w-5" />, href: "/settings" },
+  { label: "Services", icon: <Server className="h-5 w-5" />, href: "/services" },
+  { label: "Alerts", icon: <AlertTriangle className="h-5 w-5" />, href: "/alerts" },
+  { label: "History", icon: <History className="h-5 w-5" />, href: "/history" },
+  { label: "Settings", icon: <Settings className="h-5 w-5" />, href: "/settings" },
 ];
 
 export default function Sidebar() {
