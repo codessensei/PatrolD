@@ -352,27 +352,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Log what agent is reporting for debugging
       console.log(`Agent ${agent.id} (${agent.name}) reporting status for ${host}:${port}: ${status}`);
       
-      // Find matching services without strict host:port matching
+      // Find matching services for this agent
       const matchingServices = services.filter(
         service => 
           service.agentId === agent.id && 
-          service.monitorType === "agent"
+          service.monitorType === "agent" &&
+          service.host === host &&
+          service.port === port
       );
       
       // Log all matching services
-      console.log(`Found ${matchingServices.length} services monitored by agent ${agent.id}`);
+      console.log(`Found ${matchingServices.length} services monitored by agent ${agent.id} for ${host}:${port}`);
       matchingServices.forEach(svc => {
         console.log(`- Service ${svc.id}: ${svc.name} (${svc.host}:${svc.port}) - Current status: ${svc.status}`);
       });
       
       if (matchingServices.length === 0) {
+        // If no exact matches, maybe the agent is reporting a service it wasn't asked to monitor
+        // For backwards compatibility, we'll update all agent services
+        const allAgentServices = services.filter(
+          service => service.agentId === agent.id && service.monitorType === "agent"
+        );
+        
+        if (allAgentServices.length > 0) {
+          console.log(`No exact match found for ${host}:${port}, updating all ${allAgentServices.length} agent services`);
+          
+          await Promise.all(
+            allAgentServices.map(service => 
+              storage.updateServiceStatus(service.id, status, responseTime)
+            )
+          );
+          
+          return res.status(200).json({ 
+            status: "ok", 
+            servicesUpdated: allAgentServices.length,
+            message: "Updated all agent services (no exact match found)"
+          });
+        }
+        
         return res.status(404).json({ 
           error: "No matching service found",
           message: `No service found for host ${host}:${port} monitored by this agent`
         });
       }
       
-      // Update all matching services
+      // Update matching services
       await Promise.all(
         matchingServices.map(service => 
           storage.updateServiceStatus(service.id, status, responseTime)

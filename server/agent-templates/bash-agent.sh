@@ -120,7 +120,7 @@ get_server_info() {
   }"
 }
 
-# Function to send a heartbeat to the API
+# Function to send a heartbeat to the API and get services to monitor
 send_heartbeat() {
   local server_info=$(get_server_info)
   local data="{\"apiKey\": \"$API_KEY\", \"serverInfo\": $server_info}"
@@ -133,7 +133,40 @@ send_heartbeat() {
   
   # Check if the request was successful
   if echo "$response" | grep -q "agentId"; then
-    echo "Heartbeat sent successfully"
+    local agent_id=$(echo "$response" | grep -o '"agentId":[^,}]*' | cut -d':' -f2)
+    echo "Heartbeat sent successfully, agent ID: $agent_id"
+    
+    # Parse services from response and update SERVICES array
+    if echo "$response" | grep -q '"services":\['; then
+      # Clear existing services array
+      SERVICES=()
+      
+      # Extract the services array
+      local services_json=$(echo "$response" | sed -n 's/.*"services":\[\(.*\)\].*/\1/p')
+      
+      # Split the array into individual service objects
+      local IFS=','
+      local service_objs=($services_json)
+      
+      echo "Received ${#service_objs[@]} services to monitor from server:"
+      
+      # Process each service object
+      for service_obj in "${service_objs[@]}"; do
+        # Extract host and port
+        local host=$(echo "$service_obj" | grep -o '"host":"[^"]*"' | cut -d'"' -f4)
+        local port=$(echo "$service_obj" | grep -o '"port":[0-9]*' | cut -d':' -f2)
+        local name=$(echo "$service_obj" | grep -o '"name":"[^"]*"' | cut -d'"' -f4)
+        
+        if [ -n "$host" ] && [ -n "$port" ]; then
+          # Add to SERVICES array
+          SERVICES+=("$host:$port")
+          echo "- $name ($host:$port)"
+        fi
+      done
+    else
+      echo "No services received from server"
+    fi
+    
     return 0
   else
     echo "Error sending heartbeat: $response"

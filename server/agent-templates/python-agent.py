@@ -27,12 +27,9 @@ from urllib.parse import urlparse
 API_KEY = "{{API_KEY}}"  # Replace with your agent API key
 API_BASE_URL = "{{API_BASE_URL}}"  # Replace with your Service Monitor URL (e.g., https://your-app.replit.app)
 
-# Services to monitor - each service should have a host and port
-SERVICES = [
-    # {"host": "example.com", "port": 80},
-    # {"host": "192.168.1.1", "port": 8080},
-    # Add your services here
-]
+# Services to monitor - this will be populated from the server response
+# You can add additional custom services here if needed
+SERVICES = []
 
 # Monitoring interval in seconds (default: 60 seconds)
 CHECK_INTERVAL = 60
@@ -160,7 +157,9 @@ def send_api_request(endpoint, data):
             conn.close()
 
 def send_heartbeat():
-    """Send a heartbeat to the API"""
+    """Send a heartbeat to the API and get the list of services to monitor"""
+    global SERVICES
+    
     try:
         data = {
             "apiKey": API_KEY,
@@ -171,6 +170,16 @@ def send_heartbeat():
         
         if result and 'agentId' in result:
             print(f"Heartbeat sent successfully, agent ID: {result['agentId']}")
+            
+            # Update services from response
+            if 'services' in result and isinstance(result['services'], list):
+                SERVICES = result['services']
+                print(f"Received {len(SERVICES)} services to monitor from server:")
+                for service in SERVICES:
+                    print(f"- {service['name']} ({service['host']}:{service['port']})")
+            else:
+                print("No services received from server")
+            
             return True
         return False
         
