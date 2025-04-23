@@ -129,7 +129,8 @@ export class MemStorage implements IStorage {
       status: "unknown",
       lastChecked: new Date(),
       monitorType: insertService.monitorType || "direct",
-      agentId: insertService.agentId || null
+      agentId: insertService.agentId || null,
+      responseTime: null
     };
     this.services.set(id, service);
     return service;

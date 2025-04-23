@@ -100,46 +100,22 @@ export default function AgentsPage() {
     setOpenScriptDialog(true);
   };
 
-  // Function to download script based on type
+  // Function to download script directly from the API
   const downloadScript = () => {
     if (!selectedAgent) return;
     
-    let scriptContent = '';
-    let filename = '';
-    let mimeType = '';
-    
-    switch (scriptType) {
-      case 'python':
-        scriptContent = getPythonScript(selectedAgent);
-        filename = `uptime-monitor-agent-${selectedAgent.id}.py`;
-        mimeType = 'text/x-python';
-        break;
-      case 'bash':
-        scriptContent = getBashScript(selectedAgent);
-        filename = `uptime-monitor-agent-${selectedAgent.id}.sh`;
-        mimeType = 'text/x-sh';
-        break;
-      case 'node':
-        scriptContent = getNodeScript(selectedAgent);
-        filename = `uptime-monitor-agent-${selectedAgent.id}.js`;
-        mimeType = 'application/javascript';
-        break;
-    }
-    
-    // Create a blob with the script content
-    const blob = new Blob([scriptContent], { type: mimeType });
-    const url = URL.createObjectURL(blob);
+    // Get the script URL from our API
+    const scriptUrl = `/api/agents/${selectedAgent.id}/script/${scriptType}`;
     
     // Create a link element and trigger the download
     const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
+    a.href = scriptUrl;
+    a.target = '_blank'; // Opens in a new tab if browser blocks direct downloads
     document.body.appendChild(a);
     a.click();
     
     // Clean up
     document.body.removeChild(a);
-    URL.revokeObjectURL(url);
   };
   
   // Python script template
@@ -1156,7 +1132,7 @@ process.on('SIGINT', () => {
       
       {/* Script Type Selection Dialog */}
       <Dialog open={openScriptDialog} onOpenChange={setOpenScriptDialog}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Download Agent Script</DialogTitle>
             <DialogDescription>
@@ -1165,6 +1141,38 @@ process.on('SIGINT', () => {
           </DialogHeader>
           
           <div className="space-y-4 py-4">
+            <div className="p-4 border rounded-lg bg-slate-50 dark:bg-slate-900 text-sm mb-4">
+              <p className="font-medium mb-2">Agent Information</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>Name:</div>
+                <div className="font-semibold">{selectedAgent?.name}</div>
+                
+                <div>API Key:</div>
+                <div className="flex items-center">
+                  <span className="font-mono text-xs truncate mr-2">
+                    {selectedAgent?.apiKey.substring(0, 12)}...
+                  </span>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-6 w-6"
+                          onClick={() => selectedAgent && copyApiKey(selectedAgent.apiKey)}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {copiedApiKey === selectedAgent?.apiKey ? "Copied!" : "Copy API Key"}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+              </div>
+            </div>
+            
             <Label htmlFor="script-type">Script Type</Label>
             <div className="flex flex-col space-y-2">
               <div className="flex items-center space-x-2">
@@ -1198,12 +1206,37 @@ process.on('SIGINT', () => {
                 </Button>
               </div>
             </div>
+            
+            <div className="text-sm text-muted-foreground mt-4">
+              <p className="mb-2">Installation instructions:</p>
+              {scriptType === 'python' && (
+                <ol className="list-decimal pl-5 space-y-1">
+                  <li>Download the script to your server</li>
+                  <li>Make it executable: <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">chmod +x python-agent.py</code></li>
+                  <li>Run it: <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">python3 python-agent.py</code></li>
+                </ol>
+              )}
+              {scriptType === 'bash' && (
+                <ol className="list-decimal pl-5 space-y-1">
+                  <li>Download the script to your server</li>
+                  <li>Make it executable: <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">chmod +x bash-agent.sh</code></li>
+                  <li>Run it: <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">./bash-agent.sh</code></li>
+                </ol>
+              )}
+              {scriptType === 'node' && (
+                <ol className="list-decimal pl-5 space-y-1">
+                  <li>Download the script to your server</li>
+                  <li>Install dependencies: <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">npm install</code></li>
+                  <li>Run it: <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">node node-agent.js</code></li>
+                </ol>
+              )}
+            </div>
           </div>
           
           <DialogFooter>
             <Button onClick={downloadScript}>
               <Download className="h-4 w-4 mr-2" />
-              Download
+              Download Script
             </Button>
           </DialogFooter>
         </DialogContent>
