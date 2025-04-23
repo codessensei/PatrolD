@@ -32,8 +32,10 @@ type FormValues = z.infer<typeof formSchema>;
 export default function AgentsPage() {
   const { user } = useAuth();
   const [openCreateDialog, setOpenCreateDialog] = useState(false);
-  const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
+  const [openScriptDialog, setOpenScriptDialog] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [copiedApiKey, setCopiedApiKey] = useState<string | null>(null);
+  const [scriptType, setScriptType] = useState<'python' | 'bash' | 'node'>('python');
   
   // Form for creating a new agent
   const form = useForm<FormValues>({
@@ -92,12 +94,624 @@ export default function AgentsPage() {
     createAgentMutation.mutate(data);
   };
 
-  // Function to download agent script
-  const downloadAgentScript = (agent: Agent) => {
-    // Create the agent script content
-    const scriptContent = `#!/usr/bin/env node
+  // Function to open script dialog
+  const openScriptDialogHandler = (agent: Agent) => {
+    setSelectedAgent(agent);
+    setOpenScriptDialog(true);
+  };
+
+  // Function to download script based on type
+  const downloadScript = () => {
+    if (!selectedAgent) return;
+    
+    let scriptContent = '';
+    let filename = '';
+    let mimeType = '';
+    
+    switch (scriptType) {
+      case 'python':
+        scriptContent = getPythonScript(selectedAgent);
+        filename = `uptime-monitor-agent-${selectedAgent.id}.py`;
+        mimeType = 'text/x-python';
+        break;
+      case 'bash':
+        scriptContent = getBashScript(selectedAgent);
+        filename = `uptime-monitor-agent-${selectedAgent.id}.sh`;
+        mimeType = 'text/x-sh';
+        break;
+      case 'node':
+        scriptContent = getNodeScript(selectedAgent);
+        filename = `uptime-monitor-agent-${selectedAgent.id}.js`;
+        mimeType = 'application/javascript';
+        break;
+    }
+    
+    // Create a blob with the script content
+    const blob = new Blob([scriptContent], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    
+    // Create a link element and trigger the download
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    
+    // Clean up
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+  
+  // Python script template
+  function getPythonScript(agent: Agent): string {
+    return `#!/usr/bin/env python3
+"""
+UptimeMonitor Agent Script (Python)
+Version: 1.0.0
+Agent ID: ${agent.id}
+Agent Name: ${agent.name}
+
+This script sends heartbeat signals and server stats to your UptimeMonitor instance.
+It helps you monitor remote servers from your central dashboard.
+
+Requirements:
+- Python 3.6+ (works on all major operating systems)
+- Minimal dependencies (only standard library)
+"""
+import os
+import sys
+import json
+import time
+import socket
+import platform
+import subprocess
+import urllib.request
+import urllib.error
+from datetime import datetime
+import ssl
+
+# Agent configuration
+API_KEY = "${agent.apiKey}"
+MONITOR_URL = "${window.location.origin}" 
+HEARTBEAT_INTERVAL = 30  # seconds
+DEBUG = True  # Set to False to reduce console output
+
+# Get the hostname of the current machine
+HOSTNAME = socket.gethostname()
+
+def log(message):
+    """Simple logging function"""
+    if DEBUG:
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {message}")
+
+def get_system_info():
+    """Gather system information for the heartbeat report"""
+    info = {
+        "hostname": HOSTNAME,
+        "platform": sys.platform,
+        "python_version": sys.version,
+        "architecture": platform.machine(),
+        "os_name": platform.system(),
+        "os_version": platform.version(),
+        "timestamp": datetime.now().isoformat()
+    }
+    
+    # Add memory information if available
+    try:
+        if platform.system() == "Linux":
+            with open('/proc/meminfo', 'r') as f:
+                meminfo = f.read()
+            total_mem = int([line for line in meminfo.split('\\n') if 'MemTotal' in line][0].split()[1]) * 1024
+            free_mem = int([line for line in meminfo.split('\\n') if 'MemFree' in line][0].split()[1]) * 1024
+            info["total_memory"] = total_mem
+            info["free_memory"] = free_mem
+            info["memory_usage"] = f"{((total_mem - free_mem) / total_mem * 100):.2f}%"
+        elif platform.system() == "Darwin":  # macOS
+            # Use vm_stat for macOS memory information
+            vm_stat = subprocess.check_output(['vm_stat']).decode('utf-8')
+            lines = vm_stat.split('\\n')
+            page_size = 4096  # Default page size for macOS
+            free_pages = int([line for line in lines if 'Pages free' in line][0].split()[2].strip('.'))
+            active_pages = int([line for line in lines if 'Pages active' in line][0].split()[2].strip('.'))
+            inactive_pages = int([line for line in lines if 'Pages inactive' in line][0].split()[2].strip('.'))
+            speculative_pages = int([line for line in lines if 'Pages speculative' in line][0].split()[2].strip('.'))
+            wired_pages = int([line for line in lines if 'Pages wired down' in line][0].split()[3].strip('.'))
+            
+            free_mem = free_pages * page_size
+            used_mem = (active_pages + inactive_pages + wired_pages) * page_size
+            total_mem = free_mem + used_mem
+            
+            info["total_memory"] = total_mem
+            info["free_memory"] = free_mem
+            info["memory_usage"] = f"{(used_mem / total_mem * 100):.2f}%"
+        elif platform.system() == "Windows":
+            # For Windows, we could use the wmi module, but it's not standard library
+            # Only include it if it's already installed
+            try:
+                import wmi
+                c = wmi.WMI()
+                os_info = c.Win32_OperatingSystem()[0]
+                free_mem = int(os_info.FreePhysicalMemory) * 1024
+                total_mem = int(os_info.TotalVisibleMemorySize) * 1024
+                info["total_memory"] = total_mem
+                info["free_memory"] = free_mem
+                info["memory_usage"] = f"{((total_mem - free_mem) / total_mem * 100):.2f}%"
+            except ImportError:
+                info["memory_info"] = "wmi module not installed"
+    except Exception as e:
+        info["memory_error"] = str(e)
+    
+    # Add uptime information
+    try:
+        if platform.system() == "Linux":
+            with open('/proc/uptime', 'r') as f:
+                uptime_seconds = float(f.readline().split()[0])
+            info["uptime_seconds"] = uptime_seconds
+        elif platform.system() == "Darwin":  # macOS
+            uptime = subprocess.check_output(['uptime']).decode('utf-8')
+            # Parse the uptime output to extract days, hours, mins
+            info["uptime_raw"] = uptime.strip()
+        elif platform.system() == "Windows":
+            # For Windows, get the system boot time
+            try:
+                import wmi
+                c = wmi.WMI()
+                os_info = c.Win32_OperatingSystem()[0]
+                last_boot = os_info.LastBootUpTime.split('.')[0]
+                last_boot_time = datetime.strptime(last_boot, '%Y%m%d%H%M%S')
+                now = datetime.now()
+                uptime_seconds = (now - last_boot_time).total_seconds()
+                info["uptime_seconds"] = uptime_seconds
+            except ImportError:
+                info["uptime_info"] = "wmi module not installed"
+    except Exception as e:
+        info["uptime_error"] = str(e)
+    
+    return info
+
+def check_url(url, timeout=5):
+    """Check if a URL is accessible and return status with response time"""
+    start_time = time.time()
+    try:
+        # Create a context that doesn't verify SSL certificates
+        context = ssl._create_unverified_context()
+        req = urllib.request.Request(url)
+        response = urllib.request.urlopen(req, timeout=timeout, context=context)
+        status_code = response.getcode()
+        response_time = int((time.time() - start_time) * 1000)  # Convert to ms
+        return {
+            "url": url,
+            "status": "online" if 200 <= status_code < 400 else "degraded",
+            "response_time_ms": response_time,
+            "status_code": status_code,
+            "last_checked": datetime.now().isoformat()
+        }
+    except urllib.error.HTTPError as e:
+        response_time = int((time.time() - start_time) * 1000)
+        return {
+            "url": url,
+            "status": "degraded" if 400 <= e.code < 500 else "offline",
+            "response_time_ms": response_time,
+            "status_code": e.code,
+            "error": str(e),
+            "last_checked": datetime.now().isoformat()
+        }
+    except Exception as e:
+        response_time = int((time.time() - start_time) * 1000)
+        return {
+            "url": url,
+            "status": "offline",
+            "response_time_ms": response_time,
+            "error": str(e),
+            "last_checked": datetime.now().isoformat()
+        }
+
+def check_tcp_port(host, port, timeout=3):
+    """Check if a TCP port is open and responsive"""
+    start_time = time.time()
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(timeout)
+    
+    try:
+        sock.connect((host, port))
+        sock.close()
+        response_time = int((time.time() - start_time) * 1000)  # Convert to ms
+        return {
+            "host": host,
+            "port": port,
+            "status": "online",
+            "response_time_ms": response_time,
+            "last_checked": datetime.now().isoformat()
+        }
+    except socket.error as e:
+        response_time = int((time.time() - start_time) * 1000)
+        return {
+            "host": host,
+            "port": port,
+            "status": "offline",
+            "error": str(e),
+            "response_time_ms": response_time,
+            "last_checked": datetime.now().isoformat()
+        }
+    finally:
+        sock.close()
+
+def check_service(service_name):
+    """Check if a system service is running (works on systemd-based Linux systems)"""
+    try:
+        if platform.system() == "Linux":
+            # For Linux with systemd
+            process = subprocess.run(['systemctl', 'is-active', service_name], 
+                                    stdout=subprocess.PIPE, 
+                                    stderr=subprocess.PIPE,
+                                    universal_newlines=True)
+            is_active = process.stdout.strip() == 'active'
+            return {
+                "name": service_name,
+                "status": "online" if is_active else "offline",
+                "last_checked": datetime.now().isoformat()
+            }
+        elif platform.system() == "Darwin":  # macOS
+            # For macOS, we check for launchd services
+            process = subprocess.run(['launchctl', 'list', service_name], 
+                                    stdout=subprocess.PIPE, 
+                                    stderr=subprocess.PIPE,
+                                    universal_newlines=True)
+            is_running = process.returncode == 0
+            return {
+                "name": service_name,
+                "status": "online" if is_running else "offline",
+                "last_checked": datetime.now().isoformat()
+            }
+        elif platform.system() == "Windows":
+            # For Windows, use the 'sc' command
+            process = subprocess.run(['sc', 'query', service_name], 
+                                    stdout=subprocess.PIPE, 
+                                    stderr=subprocess.PIPE,
+                                    universal_newlines=True)
+            is_running = 'RUNNING' in process.stdout
+            return {
+                "name": service_name,
+                "status": "online" if is_running else "offline",
+                "last_checked": datetime.now().isoformat()
+            }
+        else:
+            return {
+                "name": service_name,
+                "status": "unknown",
+                "error": f"Unsupported platform: {platform.system()}",
+                "last_checked": datetime.now().isoformat()
+            }
+    except Exception as e:
+        return {
+            "name": service_name,
+            "status": "unknown",
+            "error": str(e),
+            "last_checked": datetime.now().isoformat()
+        }
+
+def report_to_server():
+    """Send heartbeat and monitoring data to the UptimeMonitor server"""
+    system_info = get_system_info()
+    
+    # Add your monitoring checks here for URLs, ports, or services
+    checks = [
+        # Example checks (uncomment and modify as needed):
+        # check_url("https://example.com"),
+        # check_tcp_port("localhost", 80),
+        # check_service("nginx"),
+    ]
+    
+    # Prepare the data payload
+    payload = {
+        "apiKey": API_KEY,
+        "serverInfo": system_info,
+        "checks": checks
+    }
+    
+    # Convert to JSON
+    data = json.dumps(payload).encode('utf-8')
+    
+    try:
+        # Prepare the HTTP request
+        url = f"{MONITOR_URL}/api/agents/heartbeat"
+        headers = {
+            "Content-Type": "application/json",
+            "Content-Length": str(len(data)),
+            "User-Agent": f"UptimeMonitorAgent/1.0.0 Python/{platform.python_version()}"
+        }
+        
+        # Create a request object
+        req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+        
+        # Create a context that doesn't verify SSL certificates for development environments
+        context = ssl._create_unverified_context()
+        
+        # Send the request
+        with urllib.request.urlopen(req, context=context) as response:
+            status_code = response.getcode()
+            response_body = response.read().decode('utf-8')
+            log(f"Heartbeat sent. Status: {status_code}")
+            if status_code != 200:
+                log(f"Error response: {response_body}")
+    except Exception as e:
+        log(f"Error sending heartbeat: {str(e)}")
+
+def main():
+    """Main function to run the agent"""
+    log(f"UptimeMonitor Agent started for ${agent.name}")
+    log(f"Sending heartbeats every {HEARTBEAT_INTERVAL} seconds")
+    log(f"Press Ctrl+C to exit")
+    
+    # Send initial heartbeat
+    report_to_server()
+    
+    # Set up regular heartbeat interval
+    try:
+        while True:
+            time.sleep(HEARTBEAT_INTERVAL)
+            report_to_server()
+    except KeyboardInterrupt:
+        log("Shutting down...")
+        sys.exit(0)
+
+if __name__ == "__main__":
+    main()
+`;
+  }
+  
+  // Bash script template
+  function getBashScript(agent: Agent): string {
+    return `#!/bin/bash
+#
+# UptimeMonitor Agent Script (Bash)
+# Version: 1.0.0
+# Agent ID: ${agent.id}
+# Agent Name: ${agent.name}
+#
+# This script sends heartbeat signals and server stats to your UptimeMonitor instance.
+# It works on any Unix-like system with bash, curl, and common utilities.
+#
+
+# Agent configuration
+API_KEY="${agent.apiKey}"
+MONITOR_URL="${window.location.origin}"
+HEARTBEAT_INTERVAL=30  # seconds
+DEBUG=true  # Set to false to reduce console output
+
+# Log function
+log() {
+  if [ "$DEBUG" = true ]; then
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+  fi
+}
+
+# Get hostname
+HOSTNAME=$(hostname)
+
+# Function to get system information
+get_system_info() {
+  # Create a temporary JSON file
+  TMP_FILE=$(mktemp)
+  
+  # Basic system information
+  OS_TYPE=$(uname -s)
+  OS_RELEASE=$(uname -r)
+  ARCHITECTURE=$(uname -m)
+  
+  # Start building JSON
+  echo "{" > "$TMP_FILE"
+  echo "  \\"hostname\\": \\"$HOSTNAME\\"," >> "$TMP_FILE"
+  echo "  \\"platform\\": \\"$OS_TYPE\\"," >> "$TMP_FILE"
+  echo "  \\"architecture\\": \\"$ARCHITECTURE\\"," >> "$TMP_FILE"
+  echo "  \\"os_release\\": \\"$OS_RELEASE\\"," >> "$TMP_FILE"
+  echo "  \\"timestamp\\": \\"$(date -u +'%Y-%m-%dT%H:%M:%SZ')\\"," >> "$TMP_FILE"
+  
+  # Memory information
+  if [ "$OS_TYPE" = "Linux" ]; then
+    # Linux memory information
+    TOTAL_MEM=$(free -b | grep Mem | awk '{print $2}')
+    FREE_MEM=$(free -b | grep Mem | awk '{print $4+$6}')
+    USED_MEM=$((TOTAL_MEM - FREE_MEM))
+    MEM_USAGE=$(echo "scale=2; $USED_MEM*100/$TOTAL_MEM" | bc)
+    
+    echo "  \\"total_memory\\": $TOTAL_MEM," >> "$TMP_FILE"
+    echo "  \\"free_memory\\": $FREE_MEM," >> "$TMP_FILE"
+    echo "  \\"memory_usage\\": \\"$MEM_USAGE%\\"," >> "$TMP_FILE"
+    
+    # Uptime information
+    UPTIME_SECONDS=$(cat /proc/uptime | awk '{print $1}' | cut -d. -f1)
+    echo "  \\"uptime_seconds\\": $UPTIME_SECONDS," >> "$TMP_FILE"
+    
+    # Load average
+    LOAD_AVG=$(cat /proc/loadavg | awk '{print $1", "$2", "$3}')
+    echo "  \\"load_average\\": \\"$LOAD_AVG\\"," >> "$TMP_FILE"
+    
+    # CPU info
+    CPU_COUNT=$(grep -c "processor" /proc/cpuinfo)
+    echo "  \\"cpu_count\\": $CPU_COUNT," >> "$TMP_FILE"
+    
+    # CPU model
+    CPU_MODEL=$(grep "model name" /proc/cpuinfo | head -1 | cut -d: -f2 | sed 's/^[ \\t]*//')
+    echo "  \\"cpu_model\\": \\"$CPU_MODEL\\"" >> "$TMP_FILE"
+  elif [ "$OS_TYPE" = "Darwin" ]; then
+    # macOS memory information
+    TOTAL_MEM=$(sysctl -n hw.memsize)
+    # This is an approximation for macOS free memory
+    FREE_MEM=$(vm_stat | grep "Pages free" | awk '{print $3}' | sed 's/\\.//' | xargs -I {} echo "{} * 4096" | bc)
+    USED_MEM=$((TOTAL_MEM - FREE_MEM))
+    MEM_USAGE=$(echo "scale=2; $USED_MEM*100/$TOTAL_MEM" | bc)
+    
+    echo "  \\"total_memory\\": $TOTAL_MEM," >> "$TMP_FILE"
+    echo "  \\"free_memory\\": $FREE_MEM," >> "$TMP_FILE"
+    echo "  \\"memory_usage\\": \\"$MEM_USAGE%\\"," >> "$TMP_FILE"
+    
+    # Uptime information for macOS
+    UPTIME_SECONDS=$(sysctl -n kern.boottime | awk '{print $4}' | sed 's/,//' | xargs -I {} echo $(date +%s) - {} | bc)
+    echo "  \\"uptime_seconds\\": $UPTIME_SECONDS," >> "$TMP_FILE"
+    
+    # Load average
+    LOAD_AVG=$(sysctl -n vm.loadavg | awk '{print $2", "$3", "$4}')
+    echo "  \\"load_average\\": \\"$LOAD_AVG\\"," >> "$TMP_FILE"
+    
+    # CPU info
+    CPU_COUNT=$(sysctl -n hw.ncpu)
+    echo "  \\"cpu_count\\": $CPU_COUNT," >> "$TMP_FILE"
+    
+    # CPU model
+    CPU_MODEL=$(sysctl -n machdep.cpu.brand_string)
+    echo "  \\"cpu_model\\": \\"$CPU_MODEL\\"" >> "$TMP_FILE"
+  else
+    # Fallback for other Unix-like systems
+    echo "  \\"memory_info\\": \\"Not available for this OS\\"," >> "$TMP_FILE"
+    echo "  \\"uptime_info\\": \\"Not available for this OS\\"," >> "$TMP_FILE"
+    echo "  \\"cpu_info\\": \\"Not available for this OS\\"" >> "$TMP_FILE"
+  fi
+  
+  echo "}" >> "$TMP_FILE"
+  
+  # Read the file contents and clean up
+  cat "$TMP_FILE"
+  rm "$TMP_FILE"
+}
+
+# Function to check a URL
+check_url() {
+  URL="$1"
+  START_TIME=$(date +%s.%N)
+  
+  # Use curl to check the URL
+  HTTP_CODE=$(curl -o /dev/null -s -w "%{http_code}" --insecure --max-time 5 "$URL")
+  
+  # Calculate response time
+  END_TIME=$(date +%s.%N)
+  RESPONSE_TIME=$(echo "($END_TIME - $START_TIME) * 1000" | bc | cut -d. -f1)
+  
+  # Determine status
+  if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 400 ]; then
+    STATUS="online"
+  elif [ "$HTTP_CODE" -ge 400 ] && [ "$HTTP_CODE" -lt 500 ]; then
+    STATUS="degraded"
+  else
+    STATUS="offline"
+  fi
+  
+  # Return JSON
+  echo "{"
+  echo "  \\"url\\": \\"$URL\\","
+  echo "  \\"status\\": \\"$STATUS\\","
+  echo "  \\"response_time_ms\\": $RESPONSE_TIME,"
+  echo "  \\"status_code\\": $HTTP_CODE,"
+  echo "  \\"last_checked\\": \\"$(date -u +'%Y-%m-%dT%H:%M:%SZ')\\""
+  echo "}"
+}
+
+# Function to check a TCP port
+check_tcp_port() {
+  HOST="$1"
+  PORT="$2"
+  TIMEOUT="$3"
+  
+  if [ -z "$TIMEOUT" ]; then
+    TIMEOUT=3
+  fi
+  
+  START_TIME=$(date +%s.%N)
+  
+  # Check if the port is open
+  if timeout "$TIMEOUT" bash -c "echo > /dev/tcp/$HOST/$PORT" 2>/dev/null; then
+    STATUS="online"
+  else
+    STATUS="offline"
+  fi
+  
+  # Calculate response time
+  END_TIME=$(date +%s.%N)
+  RESPONSE_TIME=$(echo "($END_TIME - $START_TIME) * 1000" | bc | cut -d. -f1)
+  
+  # Return JSON
+  echo "{"
+  echo "  \\"host\\": \\"$HOST\\","
+  echo "  \\"port\\": $PORT,"
+  echo "  \\"status\\": \\"$STATUS\\","
+  echo "  \\"response_time_ms\\": $RESPONSE_TIME,"
+  echo "  \\"last_checked\\": \\"$(date -u +'%Y-%m-%dT%H:%M:%SZ')\\""
+  echo "}"
+}
+
+# Function to send a heartbeat to the server
+report_to_server() {
+  SYSTEM_INFO=$(get_system_info)
+  
+  # Create a temporary file for the full JSON payload
+  TMP_PAYLOAD=$(mktemp)
+  
+  # Start building the JSON payload
+  echo "{" > "$TMP_PAYLOAD"
+  echo "  \\"apiKey\\": \\"$API_KEY\\"," >> "$TMP_PAYLOAD"
+  echo "  \\"serverInfo\\": $SYSTEM_INFO," >> "$TMP_PAYLOAD"
+  
+  # Add checks array (customize as needed)
+  echo "  \\"checks\\": [" >> "$TMP_PAYLOAD"
+  
+  # Add your URL, port, or service checks here (examples)
+  # Uncomment and modify as needed
+  # URL_CHECK=$(check_url "https://example.com")
+  # echo "    $URL_CHECK," >> "$TMP_PAYLOAD"
+  
+  # PORT_CHECK=$(check_tcp_port "localhost" 80)
+  # echo "    $PORT_CHECK," >> "$TMP_PAYLOAD"
+  
+  # Close the checks array and the main JSON object
+  echo "  ]" >> "$TMP_PAYLOAD"
+  echo "}" >> "$TMP_PAYLOAD"
+  
+  # Send the payload to the server
+  RESPONSE=$(curl -s -X POST \
+    -H "Content-Type: application/json" \
+    -H "User-Agent: UptimeMonitorAgent/1.0.0 Bash" \
+    --data @"$TMP_PAYLOAD" \
+    --insecure \
+    "$MONITOR_URL/api/agents/heartbeat")
+  
+  STATUS_CODE=$?
+  
+  if [ $STATUS_CODE -eq 0 ]; then
+    log "Heartbeat sent successfully"
+  else
+    log "Error sending heartbeat: $RESPONSE"
+  fi
+  
+  # Clean up
+  rm "$TMP_PAYLOAD"
+}
+
+# Main function
+main() {
+  log "UptimeMonitor Agent started for ${agent.name}"
+  log "Sending heartbeats every $HEARTBEAT_INTERVAL seconds"
+  log "Press Ctrl+C to exit"
+  
+  # Send initial heartbeat
+  report_to_server
+  
+  # Set up regular heartbeat interval
+  while true; do
+    sleep $HEARTBEAT_INTERVAL
+    report_to_server
+  done
+}
+
+# Start the agent
+main
+`;
+  }
+  
+  // Node.js script template
+  function getNodeScript(agent: Agent): string {
+    return `#!/usr/bin/env node
 /**
- * UptimeMonitor Agent Script
+ * UptimeMonitor Agent Script (Node.js)
  * Version: 1.0.0
  * Agent ID: ${agent.id}
  * Agent Name: ${agent.name}
@@ -106,14 +720,25 @@ export default function AgentsPage() {
  * It helps you monitor remote servers from your central dashboard.
  */
 const https = require('https');
+const http = require('http');
 const os = require('os');
 const fs = require('fs');
 const child_process = require('child_process');
+const net = require('net');
+const url = require('url');
 
 // Agent configuration
 const API_KEY = "${agent.apiKey}";
-const MONITOR_URL = window.location.origin; // Replace with your actual UptimeMonitor URL
+const MONITOR_URL = "${window.location.origin}";
 const HEARTBEAT_INTERVAL = 30000; // milliseconds (30 seconds)
+const DEBUG = true; // Set to false to reduce console output
+
+// Log function
+function log(message) {
+  if (DEBUG) {
+    console.log(\`[\${new Date().toISOString()}] \${message}\`);
+  }
+}
 
 // Function to get system info
 function getSystemInfo() {
@@ -137,71 +762,169 @@ function getSystemInfo() {
   };
 }
 
-// Function to check a service status
-function checkService(serviceName) {
-  try {
-    // This is a simple implementation and may need to be adjusted for specific services
-    const result = child_process.execSync(\`systemctl status \${serviceName}\`).toString();
-    const isActive = result.includes('Active: active');
-    return {
-      name: serviceName,
-      status: isActive ? 'online' : 'offline',
-      lastChecked: new Date().toISOString()
-    };
-  } catch (err) {
-    return {
-      name: serviceName,
-      status: 'unknown',
-      error: err.message,
-      lastChecked: new Date().toISOString()
-    };
-  }
+// Function to check a URL
+function checkUrl(urlToCheck, timeout = 5000) {
+  return new Promise((resolve) => {
+    const startTime = Date.now();
+    const parsedUrl = url.parse(urlToCheck);
+    const protocol = parsedUrl.protocol === 'https:' ? https : http;
+    
+    const req = protocol.request({
+      hostname: parsedUrl.hostname,
+      port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
+      path: parsedUrl.path,
+      method: 'HEAD',
+      timeout: timeout,
+      rejectUnauthorized: false // Allow self-signed certificates
+    }, (res) => {
+      const responseTime = Date.now() - startTime;
+      
+      let status;
+      if (res.statusCode >= 200 && res.statusCode < 400) {
+        status = 'online';
+      } else if (res.statusCode >= 400 && res.statusCode < 500) {
+        status = 'degraded';
+      } else {
+        status = 'offline';
+      }
+      
+      resolve({
+        url: urlToCheck,
+        status: status,
+        response_time_ms: responseTime,
+        status_code: res.statusCode,
+        last_checked: new Date().toISOString()
+      });
+      
+      res.resume(); // Consume response data to free up memory
+    });
+    
+    req.on('error', (err) => {
+      const responseTime = Date.now() - startTime;
+      resolve({
+        url: urlToCheck,
+        status: 'offline',
+        response_time_ms: responseTime,
+        error: err.message,
+        last_checked: new Date().toISOString()
+      });
+    });
+    
+    req.on('timeout', () => {
+      req.abort();
+      const responseTime = Date.now() - startTime;
+      resolve({
+        url: urlToCheck,
+        status: 'offline',
+        response_time_ms: responseTime,
+        error: 'Connection timed out',
+        last_checked: new Date().toISOString()
+      });
+    });
+    
+    req.end();
+  });
+}
+
+// Function to check a TCP port
+function checkTcpPort(host, port, timeout = 3000) {
+  return new Promise((resolve) => {
+    const startTime = Date.now();
+    const socket = new net.Socket();
+    socket.setTimeout(timeout);
+    
+    socket.on('connect', () => {
+      const responseTime = Date.now() - startTime;
+      socket.destroy();
+      resolve({
+        host: host,
+        port: port,
+        status: 'online',
+        response_time_ms: responseTime,
+        last_checked: new Date().toISOString()
+      });
+    });
+    
+    socket.on('timeout', () => {
+      const responseTime = Date.now() - startTime;
+      socket.destroy();
+      resolve({
+        host: host,
+        port: port,
+        status: 'offline',
+        error: 'Connection timed out',
+        response_time_ms: responseTime,
+        last_checked: new Date().toISOString()
+      });
+    });
+    
+    socket.on('error', (err) => {
+      const responseTime = Date.now() - startTime;
+      resolve({
+        host: host,
+        port: port,
+        status: 'offline',
+        error: err.message,
+        response_time_ms: responseTime,
+        last_checked: new Date().toISOString()
+      });
+    });
+    
+    socket.connect(port, host);
+  });
 }
 
 // Function to report data to UptimeMonitor
-function reportToServer() {
+async function reportToServer() {
   const systemInfo = getSystemInfo();
   
-  // You can add specific service checks here
-  const services = [
-    // Example: checking nginx status
-    // checkService('nginx'),
-    // Add more services as needed
+  // Add your checks here (URL, TCP port, or service)
+  // For example:
+  const checks = [
+    // Uncomment and modify these examples as needed:
+    // await checkUrl('https://example.com'),
+    // await checkTcpPort('localhost', 80),
   ];
   
   const data = JSON.stringify({
     apiKey: API_KEY,
     serverInfo: systemInfo,
-    services: services
+    checks: checks
   });
   
+  const parsedUrl = url.parse(MONITOR_URL);
+  
   const options = {
-    hostname: new URL(MONITOR_URL).hostname,
-    port: 443,
+    hostname: parsedUrl.hostname,
+    port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
     path: '/api/agents/heartbeat',
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Content-Length': data.length
-    }
+      'Content-Length': data.length,
+      'User-Agent': \`UptimeMonitorAgent/1.0.0 Node.js/\${process.version}\`
+    },
+    rejectUnauthorized: false // Allow self-signed certificates
   };
   
-  const req = https.request(options, (res) => {
+  const protocol = parsedUrl.protocol === 'https:' ? https : http;
+  
+  const req = protocol.request(options, (res) => {
     let responseData = '';
     res.on('data', (chunk) => {
       responseData += chunk;
     });
     
     res.on('end', () => {
-      console.log(\`[UptimeMonitor Agent] Heartbeat sent. Status: \${res.statusCode}\`);
+      log(\`Heartbeat sent. Status: \${res.statusCode}\`);
       if (res.statusCode !== 200) {
-        console.error(\`[UptimeMonitor Agent] Error: \${responseData}\`);
+        log(\`Error response: \${responseData}\`);
       }
     });
   });
   
   req.on('error', (error) => {
-    console.error(\`[UptimeMonitor Agent] Error: \${error.message}\`);
+    log(\`Error sending heartbeat: \${error.message}\`);
   });
   
   req.write(data);
@@ -209,37 +932,24 @@ function reportToServer() {
 }
 
 // Main execution
-console.log(\`[UptimeMonitor Agent] Started for \${agent.name}\`);
-console.log(\`[UptimeMonitor Agent] Sending heartbeats every \${HEARTBEAT_INTERVAL/1000} seconds\`);
+log(\`UptimeMonitor Agent started for ${agent.name}\`);
+log(\`Sending heartbeats every \${HEARTBEAT_INTERVAL/1000} seconds\`);
+log(\`Press Ctrl+C to exit\`);
 
 // Send initial heartbeat
 reportToServer();
 
 // Set up regular heartbeat interval
-setInterval(reportToServer, HEARTBEAT_INTERVAL);
+const interval = setInterval(reportToServer, HEARTBEAT_INTERVAL);
 
 // Handle graceful shutdown
 process.on('SIGINT', () => {
-  console.log('[UptimeMonitor Agent] Shutting down...');
+  log('Shutting down...');
+  clearInterval(interval);
   process.exit(0);
 });
 `;
-
-    // Create a blob with the script content
-    const blob = new Blob([scriptContent], { type: 'application/javascript' });
-    const url = URL.createObjectURL(blob);
-    
-    // Create a link element and trigger the download
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `uptime-monitor-agent-${agent.id}.js`;
-    document.body.appendChild(a);
-    a.click();
-    
-    // Clean up
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -252,7 +962,7 @@ process.on('SIGINT', () => {
           <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Agent Management</h1>
-              <p className="text-gray-600 dark:text-gray-400">Deploy and manage monitoring agents on your servers</p>
+              <p className="text-gray-600 dark:text-gray-400">Deploy and monitor agents on any server with Python, Bash, or Node.js</p>
             </div>
             
             <Dialog open={openCreateDialog} onOpenChange={setOpenCreateDialog}>
@@ -406,7 +1116,7 @@ process.on('SIGINT', () => {
                       variant="outline" 
                       size="sm" 
                       className="text-xs"
-                      onClick={() => downloadAgentScript(agent)}
+                      onClick={() => openScriptDialogHandler(agent)}
                     >
                       <Download className="h-3 w-3 mr-1" />
                       Download Script
@@ -416,10 +1126,11 @@ process.on('SIGINT', () => {
                       size="sm" 
                       className="text-xs"
                       onClick={() => refreshAgentMutation.mutate(agent.id)}
+                      disabled={refreshAgentMutation.isPending && selectedAgent?.id === agent.id}
                     >
                       <RefreshCw className={cn(
                         "h-3 w-3 mr-1",
-                        refreshAgentMutation.isPending && selectedAgentId === agent.id ? "animate-spin" : ""
+                        refreshAgentMutation.isPending && selectedAgent?.id === agent.id ? "animate-spin" : ""
                       )} />
                       Refresh
                     </Button>
@@ -428,67 +1139,75 @@ process.on('SIGINT', () => {
               ))}
             </div>
           ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>No Agents Found</CardTitle>
-                <CardDescription>
-                  You haven't created any monitoring agents yet.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Server className="h-16 w-16 text-gray-300 dark:text-gray-600 mb-4" />
-                <h3 className="text-lg font-medium text-gray-600 dark:text-gray-300">Get Started with Agents</h3>
-                <p className="text-gray-500 dark:text-gray-400 max-w-md mt-2 text-center">
-                  Agents allow you to monitor servers from anywhere. Create your first agent and deploy it to start collecting metrics.
-                </p>
-                <Button className="mt-6" onClick={() => setOpenCreateDialog(true)}>
-                  <Server className="h-4 w-4 mr-2" />
-                  Create Your First Agent
-                </Button>
-              </CardContent>
-            </Card>
+            <div className="text-center py-12">
+              <Server className="h-12 w-12 mx-auto text-gray-400 dark:text-gray-600 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No agents found</h3>
+              <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
+                Deploy monitoring agents on your servers to track their health and performance.
+              </p>
+              <Button onClick={() => setOpenCreateDialog(true)}>
+                <Server className="h-4 w-4 mr-2" />
+                Create Your First Agent
+              </Button>
+            </div>
           )}
-          
-          <div className="mt-12">
-            <h2 className="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-100">How Agents Work</h2>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="flex flex-col items-center text-center">
-                    <div className="bg-primary/10 rounded-full p-3 mb-4">
-                      <Download className="h-6 w-6 text-primary" />
-                    </div>
-                    <h3 className="font-medium mb-2">1. Deploy the Agent</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Download the agent script and run it on your server with Node.js
-                    </p>
-                  </div>
-                  
-                  <div className="flex flex-col items-center text-center">
-                    <div className="bg-primary/10 rounded-full p-3 mb-4">
-                      <Cpu className="h-6 w-6 text-primary" />
-                    </div>
-                    <h3 className="font-medium mb-2">2. Collect Metrics</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      The agent collects system metrics and monitors services
-                    </p>
-                  </div>
-                  
-                  <div className="flex flex-col items-center text-center">
-                    <div className="bg-primary/10 rounded-full p-3 mb-4">
-                      <Globe className="h-6 w-6 text-primary" />
-                    </div>
-                    <h3 className="font-medium mb-2">3. View in Dashboard</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Monitor all your servers from one central dashboard
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         </main>
       </div>
+      
+      {/* Script Type Selection Dialog */}
+      <Dialog open={openScriptDialog} onOpenChange={setOpenScriptDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Download Agent Script</DialogTitle>
+            <DialogDescription>
+              Choose the type of script for your agent deployment
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <Label htmlFor="script-type">Script Type</Label>
+            <div className="flex flex-col space-y-2">
+              <div className="flex items-center space-x-2">
+                <Button 
+                  variant={scriptType === 'python' ? 'default' : 'outline'} 
+                  onClick={() => setScriptType('python')}
+                  className="w-full justify-start"
+                >
+                  <Globe className="h-4 w-4 mr-2" />
+                  Python (Cross-Platform)
+                </Button>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button 
+                  variant={scriptType === 'bash' ? 'default' : 'outline'} 
+                  onClick={() => setScriptType('bash')}
+                  className="w-full justify-start"
+                >
+                  <Cpu className="h-4 w-4 mr-2" />
+                  Bash (Linux/macOS)
+                </Button>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button 
+                  variant={scriptType === 'node' ? 'default' : 'outline'} 
+                  onClick={() => setScriptType('node')}
+                  className="w-full justify-start"
+                >
+                  <Server className="h-4 w-4 mr-2" />
+                  Node.js
+                </Button>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button onClick={downloadScript}>
+              <Download className="h-4 w-4 mr-2" />
+              Download
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
