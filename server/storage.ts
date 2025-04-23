@@ -10,10 +10,10 @@ import session from "express-session";
 import createMemoryStore from "memorystore";
 
 // Create a memory store
-const MemoryStore = createMemoryStore(session);
+const MemoryStoreConstructor = createMemoryStore(session);
 
 // Define our session store type to avoid SessionStore errors
-type SessionStore = ReturnType<typeof createMemoryStore>;
+type SessionStore = session.Store;
 
 // Storage interface for all our data
 export interface IStorage {
@@ -87,7 +87,7 @@ export class MemStorage implements IStorage {
     this.alerts = new Map();
     this.agents = new Map();
     this.userSettings = new Map();
-    this.sessionStore = new MemoryStore({
+    this.sessionStore = new MemoryStoreConstructor({
       checkPeriod: 86400000, // prune expired entries every 24h
     });
   }
@@ -218,7 +218,11 @@ export class MemStorage implements IStorage {
 
   async createConnection(insertConnection: InsertConnection): Promise<Connection> {
     const id = this.connectionId++;
-    const connection: Connection = { ...insertConnection, id };
+    const connection: Connection = { 
+      ...insertConnection, 
+      id,
+      status: "unknown" 
+    };
     this.connections.set(id, connection);
     return connection;
   }
@@ -256,7 +260,12 @@ export class MemStorage implements IStorage {
 
   async createAlert(insertAlert: InsertAlert): Promise<Alert> {
     const id = this.alertId++;
-    const alert: Alert = { ...insertAlert, id };
+    const alert: Alert = { 
+      ...insertAlert, 
+      id,
+      timestamp: insertAlert.timestamp || new Date(),
+      acknowledged: insertAlert.acknowledged ?? false
+    };
     this.alerts.set(id, alert);
     return alert;
   }
