@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
-import { setupMonitoring } from "./monitor";
+import { setupMonitoring, getTelegramService } from "./monitor";
 import { z } from "zod";
 import { insertConnectionSchema, insertServiceSchema, insertAgentSchema } from "@shared/schema";
 import { randomBytes } from "crypto";
@@ -416,6 +416,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating service status from agent:", error);
       return res.status(500).json({ error: "Failed to update service status" });
+    }
+  });
+
+  // Telegram API endpoints
+  app.post("/api/telegram/test", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const telegramService = getTelegramService();
+    if (!telegramService) {
+      return res.status(500).json({ 
+        success: false, 
+        error: "Telegram servisi başlatılamadı" 
+      });
+    }
+    
+    try {
+      const result = await telegramService.sendTestMessage(req.user!.id);
+      
+      if (result) {
+        res.status(200).json({ 
+          success: true, 
+          message: "Test mesajı başarıyla gönderildi" 
+        });
+      } else {
+        res.status(400).json({ 
+          success: false, 
+          message: "Mesaj gönderilemedi. Telegram ayarlarınızı kontrol edin." 
+        });
+      }
+    } catch (error) {
+      console.error("Test mesajı gönderilirken hata oluştu:", error);
+      res.status(500).json({ 
+        success: false, 
+        error: "Test mesajı gönderilirken bir hata oluştu" 
+      });
+    }
+  });
+  
+  // Telegram ayarlarını güncelleme
+  app.post("/api/telegram/settings", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const { chatId, enableAlerts } = req.body;
+    
+    try {
+      // Kullanıcı ayarlarını güncelle
+      const settings = await storage.updateUserSettings({
+        userId: req.user!.id,
+        enableTelegramAlerts: enableAlerts === true,
+        telegramChatId: chatId
+      });
+      
+      res.status(200).json({ 
+        success: true, 
+        settings
+      });
+    } catch (error) {
+      console.error("Telegram ayarları güncellenirken hata oluştu:", error);
+      res.status(500).json({ 
+        success: false, 
+        error: "Telegram ayarları güncellenirken bir hata oluştu" 
+      });
+    }
+  });
+  
+  // Telegram ayarlarını getirme
+  app.get("/api/telegram/settings", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const settings = await storage.getUserSettings(req.user!.id);
+      
+      res.status(200).json({
+        enableTelegramAlerts: settings?.enableTelegramAlerts || false,
+        telegramChatId: settings?.telegramChatId || null
+      });
+    } catch (error) {
+      console.error("Telegram ayarları alınırken hata oluştu:", error);
+      res.status(500).json({ 
+        success: false, 
+        error: "Telegram ayarları alınırken bir hata oluştu" 
+      });
     }
   });
 

@@ -1,6 +1,14 @@
 import TelegramBot from 'node-telegram-bot-api';
 import { IStorage } from './storage';
 
+// Type tanımlamaları
+type TelegramMessage = {
+  chat: {
+    id: number;
+  };
+  text?: string;
+};
+
 // Telegram Bot'u için gerekli olan token
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
@@ -32,7 +40,7 @@ export class TelegramService {
     if (!this.bot) return;
 
     // /start komutu ile kullanıcıya hoş geldin mesajı
-    this.bot.onText(/\/start/, (msg) => {
+    this.bot.onText(/\/start/, (msg: TelegramMessage) => {
       const chatId = msg.chat.id;
       const message = `Merhaba! 👋 Servis Monitoring sistemine hoş geldiniz.\n\n`
         + `Komutlar:\n`
@@ -44,7 +52,7 @@ export class TelegramService {
     });
 
     // /subscribe komutu ile bildirim almak için abone olma
-    this.bot.onText(/\/subscribe/, async (msg) => {
+    this.bot.onText(/\/subscribe/, async (msg: TelegramMessage) => {
       const chatId = String(msg.chat.id);
       
       try {
@@ -59,18 +67,18 @@ export class TelegramService {
             enableTelegramAlerts: true,
             telegramChatId: chatId
           });
-          this.bot.sendMessage(chatId, "✅ Bildirimlere abone oldunuz! Artık sistemden alarm mesajları alacaksınız.");
+          this.bot.sendMessage(msg.chat.id, "✅ Bildirimlere abone oldunuz! Artık sistemden alarm mesajları alacaksınız.");
         } else {
-          this.bot.sendMessage(chatId, "❌ Abone olunamadı. Lütfen web arayüzünden hesabınızı bağlayın.");
+          this.bot.sendMessage(msg.chat.id, "❌ Abone olunamadı. Lütfen web arayüzünden hesabınızı bağlayın.");
         }
       } catch (error) {
         console.error('Error in /subscribe:', error);
-        this.bot.sendMessage(chatId, "❌ Bir hata oluştu. Lütfen daha sonra tekrar deneyin.");
+        this.bot.sendMessage(msg.chat.id, "❌ Bir hata oluştu. Lütfen daha sonra tekrar deneyin.");
       }
     });
 
     // /unsubscribe komutu ile bildirim aboneliğini iptal etme
-    this.bot.onText(/\/unsubscribe/, async (msg) => {
+    this.bot.onText(/\/unsubscribe/, async (msg: TelegramMessage) => {
       const chatId = String(msg.chat.id);
       
       try {
@@ -84,30 +92,30 @@ export class TelegramService {
             userId,
             enableTelegramAlerts: false
           });
-          this.bot.sendMessage(chatId, "✅ Bildirim aboneliğiniz iptal edildi.");
+          this.bot.sendMessage(msg.chat.id, "✅ Bildirim aboneliğiniz iptal edildi.");
         } else {
-          this.bot.sendMessage(chatId, "❌ İşlem başarısız. Hesap bulunamadı.");
+          this.bot.sendMessage(msg.chat.id, "❌ İşlem başarısız. Hesap bulunamadı.");
         }
       } catch (error) {
         console.error('Error in /unsubscribe:', error);
-        this.bot.sendMessage(chatId, "❌ Bir hata oluştu. Lütfen daha sonra tekrar deneyin.");
+        this.bot.sendMessage(msg.chat.id, "❌ Bir hata oluştu. Lütfen daha sonra tekrar deneyin.");
       }
     });
 
     // /status komutu ile sistemdeki servislerin durumunu gösterme
-    this.bot.onText(/\/status/, async (msg) => {
-      const chatId = msg.chat.id;
+    this.bot.onText(/\/status/, async (msg: TelegramMessage) => {
+      const chatId = String(msg.chat.id);
       
       try {
-        const userId = await this.findOrCreateUserByChatId(String(chatId));
+        const userId = await this.findOrCreateUserByChatId(chatId);
         if (!userId) {
-          this.bot.sendMessage(chatId, "❌ Sistemde kayıtlı hesabınız bulunamadı.");
+          this.bot.sendMessage(msg.chat.id, "❌ Sistemde kayıtlı hesabınız bulunamadı.");
           return;
         }
         
         const services = await this.storage.getServicesByUserId(userId);
         if (services.length === 0) {
-          this.bot.sendMessage(chatId, "ℹ️ Henüz izlenen servisiniz bulunmuyor.");
+          this.bot.sendMessage(msg.chat.id, "ℹ️ Henüz izlenen servisiniz bulunmuyor.");
           return;
         }
         
@@ -129,10 +137,10 @@ export class TelegramService {
           message += `${index + 1}. ${statusEmoji} ${service.name} (${service.host}:${service.port})\n`;
         });
         
-        this.bot.sendMessage(chatId, message);
+        this.bot.sendMessage(msg.chat.id, message);
       } catch (error) {
         console.error('Error in /status:', error);
-        this.bot.sendMessage(chatId, "❌ Bir hata oluştu. Lütfen daha sonra tekrar deneyin.");
+        this.bot.sendMessage(msg.chat.id, "❌ Bir hata oluştu. Lütfen daha sonra tekrar deneyin.");
       }
     });
   }
