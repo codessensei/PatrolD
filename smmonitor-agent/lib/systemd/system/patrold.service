@@ -1,11 +1,11 @@
 [Unit]
-Description=Service Monitor Agent
+Description=Patrol Monitoring Agent
 After=network.target
 
 [Service]
 Type=simple
 User=root
-ExecStart=/usr/local/bin/smmonitor-agent
+ExecStart=/usr/local/bin/patrold
 Restart=always
 RestartSec=5
 StartLimitBurst=10

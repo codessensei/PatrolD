@@ -2,8 +2,8 @@
 set -e
 
 # Stop and disable the service
-systemctl stop smmonitor-agent.service || true
-systemctl disable smmonitor-agent.service || true
+systemctl stop patrold.service || true
+systemctl disable patrold.service || true
 
 # Exit with success
 exit 0

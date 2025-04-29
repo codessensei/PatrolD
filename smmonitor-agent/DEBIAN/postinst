@@ -3,13 +3,13 @@ set -e
 
 # Enable and start the service
 systemctl daemon-reload
-systemctl enable smmonitor-agent.service
-systemctl start smmonitor-agent.service
+systemctl enable patrold.service
+systemctl start patrold.service
 
 # Print success message
-echo "Service Monitor Agent has been installed and started."
-echo "To check the status, run: systemctl status smmonitor-agent.service"
-echo "To view logs, run: journalctl -u smmonitor-agent.service"
+echo "Patrol Agent has been installed and started."
+echo "To check the status, run: systemctl status patrold.service"
+echo "To view logs, run: journalctl -u patrold.service"
 
 # Exit with success
 exit 0

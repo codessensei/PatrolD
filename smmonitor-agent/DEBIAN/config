@@ -1,0 +1,18 @@
+#!/bin/bash
+set -e
+
+# Read configuration from user
+echo "Patrol Monitoring Agent Configuration"
+echo "===================================="
+echo
+
+# Get API key
+db_input high patrold/api_key || true
+db_go
+
+# Get API base URL
+db_input high patrold/api_base_url || true
+db_go
+
+# Exit
+exit 0
