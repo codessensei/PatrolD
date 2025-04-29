@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
-import { setupMonitoring, getTelegramService } from "./monitor";
+import { setupMonitoring, getTelegramService, createStatusChangeAlert } from "./monitor";
 import { z } from "zod";
 import { insertConnectionSchema, insertServiceSchema, insertAgentSchema } from "@shared/schema";
 import { randomBytes } from "crypto";
