@@ -336,12 +336,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         filePath = 'server/agent-templates/bash-agent.sh';
         contentType = 'text/plain';
         break;
+      case 'deb':
+        filePath = 'patrold_1.0.0_all.deb';
+        contentType = 'application/vnd.debian.binary-package';
+        break;
       default:
         return res.status(400).json({ error: "Invalid script type" });
     }
     
     try {
-      // Read the script template
+      // Set filename for download
+      const filename = filePath.split('/').pop();
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      
+      // Handle differently for binary files (deb package)
+      if (scriptType === 'deb') {
+        // Read and send as binary
+        const fileBuffer = fs.readFileSync(filePath);
+        return res.send(fileBuffer);
+      }
+      
+      // For script files, read as text and process templates
       let script = fs.readFileSync(filePath, 'utf8');
       
       // Get the application base URL
@@ -362,11 +378,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (script.includes("{{API_KEY}}")) {
         console.log("Warning: API_KEY placeholder not replaced in script");
       }
-      
-      // Set filename for download
-      const filename = filePath.split('/').pop();
-      res.setHeader('Content-Type', contentType);
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       
       res.send(script);
     } catch (error) {

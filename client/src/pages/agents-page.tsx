@@ -1254,6 +1254,16 @@ process.on('SIGINT', () => {
             <div className="flex flex-col space-y-2">
               <div className="flex items-center space-x-2">
                 <Button 
+                  variant={scriptType === 'deb' ? 'default' : 'outline'} 
+                  onClick={() => setScriptType('deb')}
+                  className="w-full justify-start"
+                >
+                  <Server className="h-4 w-4 mr-2" />
+                  Debian Paketi (Önerilen)
+                </Button>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button 
                   variant={scriptType === 'python' ? 'default' : 'outline'} 
                   onClick={() => setScriptType('python')}
                   className="w-full justify-start"
@@ -1306,6 +1316,32 @@ process.on('SIGINT', () => {
                   <li>Install dependencies: <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">npm install</code></li>
                   <li>Run it: <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">node node-agent.js</code></li>
                 </ol>
+              )}
+              {scriptType === 'deb' && (
+                <div>
+                  <ol className="list-decimal pl-5 space-y-1">
+                    <li>Debian paketi ile kurulum (Debian, Ubuntu, Raspberry Pi OS, vb.):</li>
+                    <div className="ml-5 mt-2 mb-3">
+                      <code className="bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded block">wget {window.location.origin}/api/agents/{selectedAgent?.id}/script/deb -O patrold_1.0.0_all.deb</code>
+                      <code className="bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded block mt-1">sudo dpkg -i patrold_1.0.0_all.deb</code>
+                      <code className="bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded block mt-1">sudo apt-get install -f</code>
+                    </div>
+                    <li>Kurulum sırasında istenecek bilgiler:</li>
+                    <ul className="list-disc pl-8 mt-1">
+                      <li>API Anahtarı: <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">{selectedAgent?.apiKey}</code></li>
+                      <li>Monitor URL: <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">{window.location.origin}</code></li>
+                    </ul>
+                  </ol>
+                  <div className="mt-4 border-t pt-3 text-xs text-muted-foreground">
+                    <p className="font-semibold">Avantajları:</p>
+                    <ul className="list-disc pl-6">
+                      <li>Otomatik başlatma/durma/yeniden başlatma için systemd servisi</li>
+                      <li>Log yönetimi ve otomatik hata ayıklama</li>
+                      <li>Kolay güncelleme ve kaldırma</li>
+                      <li>Sağlam yapılandırma dosyası yönetimi</li>
+                    </ul>
+                  </div>
+                </div>
               )}
             </div>
           </div>
