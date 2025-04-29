@@ -107,37 +107,49 @@ async function checkService(storage: IStorage, service: Service) {
       // We only check if the agent itself is active
       const agent = await storage.getAgentById(service.agentId);
       
-      // Agent durumunu kontrol et
-      const agentTimeout = 3 * 60 * 1000; // 3 minutes timeout - daha sıkı
+      // Agent durumunu çok daha sıkı kontrol ediyoruz
+      // Artık 2 dakika içinde heartbeat göndermeyen agentları inactive olarak işaretle
+      const agentTimeout = 2 * 60 * 1000; // 2 dakika timeout (daha sıkı)
+      
+      // Agent inaktif mi kontrol et
       const agentInactive = 
         !agent || 
-        agent.status !== "active" || 
         !agent.lastSeen || 
         (Date.now() - agent.lastSeen.getTime() > agentTimeout);
       
+      // Agent'ın durumunu kontrol et
       if (agentInactive) {
-        // Agent is inactive or hasn't been seen recently
-        // Agent'ın inactive olduğunu belirt
-        if (agent) {
+        // Agent inactive olarak işaretle
+        if (agent && agent.status !== "inactive") {
+          console.log(`Agent ${agent.id} (${agent.name}) marked as inactive - has not reported in over 2 minutes`);
           await storage.updateAgentStatus(agent.id, "inactive");
-          console.log(`Agent ${agent.id} (${agent.name}) marked as inactive - hasn't reported in over 3 minutes`);
+          
+          // Agent inactive olduğunda bağlı tüm servisleri de unknown olarak işaretle
+          const agentServices = await storage.getServicesByUserId(agent.userId);
+          const linkedServices = agentServices.filter(s => s.agentId === agent.id && s.monitorType === "agent");
+          
+          for (const linkedService of linkedServices) {
+            if (linkedService.status !== "unknown") {
+              console.log(`Service ${linkedService.id} (${linkedService.name}) marked as unknown because agent ${agent.id} is inactive`);
+              await storage.updateServiceStatus(linkedService.id, "unknown");
+              await createStatusChangeAlert(storage, linkedService, linkedService.status, "unknown");
+            }
+          }
         }
         
-        // Servis durumunu unknown olarak güncelle
-        await storage.updateServiceStatus(service.id, "unknown");
-        
-        // Durum "unknown" olarak değiştiyse bildirim gönder
-        if (previousStatus !== "unknown") {
-          await createStatusChangeAlert(storage, service, previousStatus, "unknown");
+        // Bu servisin durumunu güncelle
+        if (service.status !== "unknown") {
+          await storage.updateServiceStatus(service.id, "unknown");
+          
+          // Durum "unknown" olarak değiştiyse bildirim gönder
+          if (previousStatus !== "unknown") {
+            await createStatusChangeAlert(storage, service, previousStatus, "unknown");
+          }
         }
-      } else {
-        // Agent active, but make sure service status is propagated 
-        // Bu kod, agent aktif olduğu halde servis durumu unknown kaldıysa düzeltir
-        if (service.status === "unknown" && agent.status === "active") {
-          // Agent aktif olduğunda bu servisi tekrar kontrol etmesi için zorlayalım
-          // Bu işlemi agent'ın heartbeat fonksiyonunda yapacağız, burada yalnızca loglama yapıyoruz
-          console.log(`Service ${service.id} (${service.name}) is monitored by active agent ${agent.id} but status is unknown. Will request update.`);
-        }
+      } else if (agent && agent.status !== "active") {
+        // Agent aktif değilse aktife çevir
+        console.log(`Agent ${agent.id} (${agent.name}) is reporting but not marked as active - updating status`);
+        await storage.updateAgentStatus(agent.id, "active");
       }
       
       return;
