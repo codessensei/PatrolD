@@ -36,7 +36,7 @@ export default function AgentsPage() {
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [copiedApiKey, setCopiedApiKey] = useState<string | null>(null);
-  const [scriptType, setScriptType] = useState<'python' | 'bash' | 'node'>('python');
+  const [scriptType, setScriptType] = useState<'python' | 'bash' | 'node' | 'deb'>('python');
   
   // Form for creating a new agent
   const form = useForm<FormValues>({
