@@ -9,7 +9,10 @@ import {
   History,
   Settings,
   LogOut,
-  Cpu
+  Cpu,
+  Zap,
+  Menu,
+  X
 } from "lucide-react";
 import { useState } from "react";
 
@@ -39,95 +42,107 @@ export default function Sidebar() {
     <>
       {/* Mobile Sidebar Toggle */}
       <button 
-        className="md:hidden fixed z-50 bottom-4 right-4 bg-primary text-white rounded-full p-3 shadow-lg dark:shadow-md dark:shadow-gray-900"
+        className="md:hidden fixed z-50 bottom-6 right-6 glass-button shadow-lg text-blue-500 dark:text-blue-400 rounded-full p-3 backdrop-blur-md"
         onClick={toggleMobileMenu}
       >
         {isMobileMenuOpen ? (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <X className="h-6 w-6" />
         ) : (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
+          <Menu className="h-6 w-6" />
         )}
       </button>
 
       {/* Sidebar */}
       <aside 
         className={cn(
-          "bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 w-full md:w-64 fixed md:h-full z-30 transition-transform sidebar-transition",
+          "glass-card fixed md:h-full z-40 transition-transform sidebar-transition border-0 backdrop-blur-lg",
+          "w-72 md:w-64 rounded-none md:rounded-r-3xl shadow-xl",
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
       >
         <div className="h-full flex flex-col">
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+          {/* Logo and Brand */}
+          <div className="p-6 border-b border-slate-200/20 dark:border-slate-700/20">
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <div className="relative h-8 w-8">
-                  <div className="absolute inset-0 bg-primary rounded-md flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
+              <Link href="/" className="flex items-center space-x-3 group">
+                <div className="glow">
+                  <div className="relative h-9 w-9 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-500 rounded-lg flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-300">
+                    <Zap className="h-5 w-5 text-white" />
+                    <div className="absolute h-2 w-2 bg-green-500 right-0 top-0 rounded-full"></div>
                   </div>
-                  <div className="absolute -right-1 -top-1 h-3 w-3 bg-green-500 rounded-full border-2 border-white dark:border-gray-700"></div>
                 </div>
-                <span className="text-lg font-semibold text-gray-800 dark:text-gray-100">UptimeMonitor</span>
-              </div>
+                <div>
+                  <span className="font-bold text-lg bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-indigo-600 dark:from-blue-400 dark:to-indigo-500">
+                    UptimeMonitor
+                  </span>
+                </div>
+              </Link>
+              
               <button 
-                className="md:hidden text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100"
+                className="md:hidden glass-button p-2 rounded-lg text-slate-600 dark:text-slate-300"
                 onClick={toggleMobileMenu}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <X className="h-5 w-5" />
               </button>
             </div>
           </div>
           
+          {/* Navigation */}
           <nav className="flex-grow p-4 space-y-1 overflow-y-auto">
-            {navItems.map((item) => (
-              <div
-                key={item.href}
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  window.location.href = item.href;
-                }}
-                className={cn(
-                  "flex items-center px-3 py-2 rounded-md cursor-pointer",
-                  location === item.href 
-                    ? "text-gray-600 dark:text-gray-200 bg-gray-100 dark:bg-gray-700" 
-                    : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                )}
-              >
-                <span className={cn(
-                  "mr-3",
-                  location === item.href ? "text-primary" : ""
-                )}>
-                  {item.icon}
-                </span>
-                <span>{item.label}</span>
-              </div>
-            ))}
+            {navItems.map((item) => {
+              const isActive = location === item.href;
+              
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={cn(
+                    "flex items-center px-4 py-3 rounded-xl transition-all duration-200 group",
+                    isActive 
+                      ? "bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400" 
+                      : "text-slate-600 dark:text-slate-300 hover:bg-white/30 dark:hover:bg-slate-800/30"
+                  )}
+                >
+                  <span className={cn(
+                    "mr-3 transition-transform duration-200",
+                    isActive 
+                      ? "text-blue-500 dark:text-blue-400" 
+                      : "text-slate-500 dark:text-slate-400 group-hover:text-blue-500 dark:group-hover:text-blue-400 group-hover:scale-110"
+                  )}>
+                    {item.icon}
+                  </span>
+                  <span className="font-medium">{item.label}</span>
+                  
+                  {isActive && (
+                    <div className="ml-auto w-1.5 h-6 bg-blue-500 rounded-full"></div>
+                  )}
+                </Link>
+              );
+            })}
           </nav>
           
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-            <div className="flex items-center">
-              <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-600 dark:text-gray-200 font-medium mr-3">
+          {/* User Profile */}
+          <div className="p-4 border-t border-slate-200/20 dark:border-slate-700/20 mt-auto">
+            <div className="glass-card p-3 rounded-xl flex items-center">
+              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-medium mr-3 shadow-md">
                 {user?.username.charAt(0).toUpperCase()}
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-200">{user?.username}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{user?.email || "User"}</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{user?.username}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{user?.email || "User"}</p>
               </div>
               <Button 
-                variant="ghost" 
                 size="icon" 
-                className="ml-auto text-gray-400 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-200"
+                className="ml-auto glass-button text-slate-600 dark:text-slate-300 hover:text-red-500 dark:hover:text-red-400 rounded-lg"
                 onClick={handleLogout}
                 disabled={logoutMutation.isPending}
               >
-                <LogOut className="h-5 w-5" />
+                {logoutMutation.isPending ? (
+                  <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div>
+                ) : (
+                  <LogOut className="h-4 w-4" />
+                )}
               </Button>
             </div>
           </div>

@@ -10,8 +10,12 @@ import AddServiceModal from "@/components/modals/add-service-modal";
 import { Alert, Connection, Service } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, AlertTriangle, AlertCircle, Clock } from "lucide-react";
+import { 
+  CheckCircle2, AlertTriangle, AlertCircle, Clock, PlusCircle, 
+  RefreshCw, ArrowDown, Calendar, Network, Activity, Filter
+} from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { cn } from "@/lib/utils";
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -53,156 +57,215 @@ export default function DashboardPage() {
   const recentAlerts = alerts.slice(0, 5);
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row">
+    <div className="min-h-screen flex flex-col md:flex-row overflow-hidden">
       <Sidebar />
       
-      <main className="flex-1 md:ml-64">
+      <main className="flex-1 md:ml-64 relative">
         <Topbar 
           title="Service Monitor" 
           onSearch={setSearchQuery} 
         />
         
-        <div className="p-4 md:p-6">
+        <div className="p-4 md:p-8 relative">
           {/* Dashboard Header */}
-          <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between">
+          <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-xl font-semibold text-gray-800">Service Mesh View</h2>
-              <p className="text-gray-600 mt-1">Monitor your services and manage connections</p>
+              <h1 className="text-3xl font-bold glow-text animate-gradient-text mb-2 tracking-tight">
+                Service Mesh View
+              </h1>
+              <p className="text-slate-600 dark:text-slate-400 text-lg">
+                Monitor your services and visualize connections
+              </p>
             </div>
             
             <div className="mt-4 md:mt-0 flex flex-wrap gap-3">
               <Button 
-                variant="default" 
-                className="inline-flex items-center"
+                className="glass-button flex items-center gap-2 font-medium"
                 onClick={() => setIsAddServiceModalOpen(true)}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
+                <PlusCircle className="h-4 w-4" />
                 Add Service
               </Button>
               
-              <select 
-                className="appearance-none bg-white pl-3 pr-8 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-              >
-                <option>Last 24 hours</option>
-                <option>Last 7 days</option>
-                <option>Last 30 days</option>
-                <option>Custom range</option>
-              </select>
+              <div className="relative">
+                <Button 
+                  variant="outline" 
+                  className="glass-button flex items-center gap-2 pr-8 font-medium"
+                >
+                  <Calendar className="h-4 w-4" />
+                  Last 24 hours
+                  <ArrowDown className="h-3 w-3 absolute right-3" />
+                </Button>
+              </div>
               
-              <Button variant="outline" className="inline-flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
+              <Button variant="outline" className="glass-button flex items-center gap-2 font-medium">
+                <RefreshCw className="h-4 w-4" />
                 Refresh
               </Button>
             </div>
           </div>
           
           {/* Status Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <StatusCard
-              title="Active Services"
-              value={onlineServices}
-              icon={<CheckCircle2 className="h-6 w-6" />}
-              iconBg="bg-green-100"
-              iconColor="text-green-500"
-              borderColor="border-green-500"
-              trend={{
-                value: "+2",
-                label: "services",
-                timeframe: "last 24h",
-                isPositive: true
-              }}
-              isLoading={isLoadingStats}
-            />
-            
-            <StatusCard
-              title="Offline Services"
-              value={offlineServices}
-              icon={<AlertCircle className="h-6 w-6" />}
-              iconBg="bg-red-100"
-              iconColor="text-red-500"
-              borderColor="border-red-500"
-              trend={{
-                value: "+1",
-                label: "service",
-                timeframe: "last 2h",
-                isPositive: false
-              }}
-              isLoading={isLoadingStats}
-            />
-            
-            <StatusCard
-              title="Warnings"
-              value={degradedServices}
-              icon={<AlertTriangle className="h-6 w-6" />}
-              iconBg="bg-yellow-100"
-              iconColor="text-yellow-500"
-              borderColor="border-yellow-500"
-              trend={{
-                value: "-3",
-                label: "warnings",
-                timeframe: "",
-                isPositive: true
-              }}
-              isLoading={isLoadingStats}
-            />
-            
-            <StatusCard
-              title="Avg Response Time"
-              value={`${avgResponseTime}ms`}
-              icon={<Clock className="h-6 w-6" />}
-              iconBg="bg-blue-100"
-              iconColor="text-blue-500"
-              borderColor="border-blue-500"
-              trend={{
-                value: "-18ms",
-                label: "faster",
-                timeframe: "",
-                isPositive: true
-              }}
-              isLoading={isLoadingStats}
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {/* Active Services Card */}
+            <div className="glass-card hover-card-effect">
+              <div className="p-6 flex flex-col h-full relative overflow-hidden">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-full bg-green-400/20 flex items-center justify-center">
+                    <CheckCircle2 className="h-6 w-6 text-green-500" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400">Active Services</h3>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{onlineServices}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1 text-xs font-medium text-green-500 mt-auto">
+                  <span className="inline-block px-1.5 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30">
+                    +2
+                  </span>
+                  <span>services in last 24h</span>
+                </div>
+                
+                <div className="absolute -bottom-8 -right-8 w-24 h-24 bg-green-500/10 rounded-full blur-2xl"></div>
+              </div>
+            </div>
+
+            {/* Offline Services Card */}
+            <div className="glass-card hover-card-effect">
+              <div className="p-6 flex flex-col h-full relative overflow-hidden">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-full bg-red-400/20 flex items-center justify-center">
+                    <AlertCircle className="h-6 w-6 text-red-500" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400">Offline Services</h3>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{offlineServices}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1 text-xs font-medium text-red-500 mt-auto">
+                  <span className="inline-block px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30">
+                    +1
+                  </span>
+                  <span>service in last 2h</span>
+                </div>
+                
+                <div className="absolute -bottom-8 -right-8 w-24 h-24 bg-red-500/10 rounded-full blur-2xl"></div>
+              </div>
+            </div>
+
+            {/* Warnings Card */}
+            <div className="glass-card hover-card-effect">
+              <div className="p-6 flex flex-col h-full relative overflow-hidden">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-full bg-amber-400/20 flex items-center justify-center">
+                    <AlertTriangle className="h-6 w-6 text-amber-500" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400">Warnings</h3>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{degradedServices}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1 text-xs font-medium text-green-500 mt-auto">
+                  <span className="inline-block px-1.5 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30">
+                    -3
+                  </span>
+                  <span>warnings resolved</span>
+                </div>
+                
+                <div className="absolute -bottom-8 -right-8 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl"></div>
+              </div>
+            </div>
+
+            {/* Response Time Card */}
+            <div className="glass-card hover-card-effect">
+              <div className="p-6 flex flex-col h-full relative overflow-hidden">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-full bg-blue-400/20 flex items-center justify-center">
+                    <Clock className="h-6 w-6 text-blue-500" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400">Avg Response</h3>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{avgResponseTime}ms</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1 text-xs font-medium text-green-500 mt-auto">
+                  <span className="inline-block px-1.5 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30">
+                    -18ms
+                  </span>
+                  <span>faster than before</span>
+                </div>
+                
+                <div className="absolute -bottom-8 -right-8 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl"></div>
+              </div>
+            </div>
           </div>
           
-          {/* Service Canvas */}
-          <ServiceCanvas 
-            services={filteredServices} 
-            connections={connections}
-            isLoading={isLoadingServices || isLoadingConnections}
-            onAddService={() => setIsAddServiceModalOpen(true)}
-          />
+          {/* Service Canvas with Glassmorphism */}
+          <div className="glass-card mb-8 p-1">
+            <div className="rounded-lg overflow-hidden">
+              <ServiceCanvas 
+                services={filteredServices} 
+                connections={connections}
+                isLoading={isLoadingServices || isLoadingConnections}
+                onAddService={() => setIsAddServiceModalOpen(true)}
+              />
+            </div>
+          </div>
           
-          {/* Recent Alerts and Stats */}
-          <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="lg:col-span-2">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-base font-medium">Recent Alerts</CardTitle>
-                <Button variant="link" className="text-sm p-0">View All</Button>
-              </CardHeader>
-              <CardContent className="divide-y divide-gray-200">
-                {isLoadingAlerts ? (
-                  <div className="py-6 text-center text-gray-500">Loading alerts...</div>
-                ) : recentAlerts.length > 0 ? (
-                  recentAlerts.map(alert => (
-                    <AlertItem 
-                      key={alert.id}
-                      alert={alert}
-                      service={services.find(s => s.id === alert.serviceId)}
-                    />
-                  ))
-                ) : (
-                  <div className="py-6 text-center text-gray-500">No alerts found</div>
-                )}
-              </CardContent>
-            </Card>
+          {/* Recent Alerts and Stats with Glassmorphism */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="glass-card hover-card-effect lg:col-span-2">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Activity className="h-5 w-5 text-indigo-500" />
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Recent Alerts</h3>
+                  </div>
+                  <Button variant="ghost" className="text-sm p-2 rounded-lg hover:bg-white/20 dark:hover:bg-slate-800/40">
+                    View All
+                  </Button>
+                </div>
+                
+                <div className="space-y-4">
+                  {isLoadingAlerts ? (
+                    <div className="py-10 text-center text-slate-500 dark:text-slate-400">
+                      <div className="animate-spin inline-block w-6 h-6 border-2 border-current border-t-transparent rounded-full mb-2"></div>
+                      <p>Loading alerts...</p>
+                    </div>
+                  ) : recentAlerts.length > 0 ? (
+                    recentAlerts.map(alert => (
+                      <AlertItem 
+                        key={alert.id}
+                        alert={alert}
+                        service={services.find(s => s.id === alert.serviceId)}
+                      />
+                    ))
+                  ) : (
+                    <div className="py-10 text-center text-slate-500 dark:text-slate-400">
+                      <AlertCircle className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                      <p>No alerts found</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
             
-            <StatsPanel 
-              services={services}
-              isLoading={isLoadingServices}
-            />
+            <div className="glass-card hover-card-effect">
+              <div className="p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Network className="h-5 w-5 text-indigo-500" />
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Service Stats</h3>
+                </div>
+                <StatsPanel 
+                  services={services}
+                  isLoading={isLoadingServices}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </main>
