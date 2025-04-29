@@ -1,0 +1,11 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: patrold
+Source: https://example.com/patrold
+
+Files: *
+Copyright: 2025 Service Monitor Team <admin@example.com>
+License: Proprietary
+ This software is proprietary and confidential.
+ Unauthorized copying of this file, via any medium is strictly prohibited.
+ Proprietary and confidential.
+ Written by Service Monitor Team, April 2025.

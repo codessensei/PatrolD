@@ -1,15 +1,39 @@
 #!/bin/bash
 set -e
 
+# Ask for API key and URL if not already configured
+if [ -z "$API_KEY" ]; then
+  echo -n "Enter your Patrol Agent API key: "
+  read API_KEY
+fi
+
+if [ -z "$API_BASE_URL" ]; then
+  echo -n "Enter the Service Monitor URL (e.g., https://your-monitor.example.com): "
+  read API_BASE_URL
+fi
+
+# Update config
+CONFIG_FILE="/etc/patrold/config.json"
+sed -i "s|{{API_KEY}}|$API_KEY|g" "$CONFIG_FILE"
+sed -i "s|{{API_BASE_URL}}|$API_BASE_URL|g" "$CONFIG_FILE"
+
+# Update agent script
+AGENT_SCRIPT="/usr/local/bin/patrold"
+sed -i "s|{{API_KEY}}|$API_KEY|g" "$AGENT_SCRIPT"
+sed -i "s|{{API_BASE_URL}}|$API_BASE_URL|g" "$AGENT_SCRIPT"
+
 # Enable and start the service
 systemctl daemon-reload
 systemctl enable patrold.service
 systemctl start patrold.service
 
 # Print success message
+echo "=============================================="
 echo "Patrol Agent has been installed and started."
-echo "To check the status, run: systemctl status patrold.service"
-echo "To view logs, run: journalctl -u patrold.service"
+echo "Configuration stored in: $CONFIG_FILE"
+echo "To check the status: systemctl status patrold.service"
+echo "To view logs: journalctl -u patrold.service -f"
+echo "=============================================="
 
 # Exit with success
 exit 0

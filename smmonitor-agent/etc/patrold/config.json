@@ -1,0 +1,8 @@
+{
+  "api_key": "{{API_KEY}}",
+  "api_base_url": "{{API_BASE_URL}}",
+  "check_interval": 1,
+  "heartbeat_interval": 1,
+  "timeout": 3,
+  "log_level": "info"
+}
