@@ -486,6 +486,101 @@ export default function ServiceCanvas({
           );
         })}
 
+        {/* Agent Nodes */}
+        {agents.map(agent => {
+          const position = agentPositions[agent.id] || { x: 100, y: 100 };
+          
+          // Find services monitored by this agent
+          const agentServices = services.filter(s => s.agentId === agent.id && s.monitorType === "agent");
+          
+          return (
+            <div
+              key={`agent-${agent.id}`}
+              className="agent-node absolute bg-card dark:bg-card rounded-xl shadow-lg border-2 overflow-hidden transition-all duration-200 hover:shadow-xl"
+              style={{
+                width: "200px",
+                left: `${position.x}px`,
+                top: `${position.y}px`,
+                zIndex: draggingAgent === agent.id ? 100 : 10,
+                cursor: draggingAgent === agent.id ? "grabbing" : "grab",
+                borderColor: agent.status === "active" ? "rgb(16, 185, 129)" : 
+                            agent.status === "inactive" ? "rgb(156, 163, 175)" : 
+                            "rgb(245, 158, 11)"
+              }}
+              onMouseDown={(e) => handleAgentDragStart(e, agent.id)}
+            >
+              <div className={cn(
+                "px-4 py-3 flex items-center justify-between",
+                agent.status === "active" ? "bg-gradient-to-r from-indigo-500 via-blue-500 to-indigo-600" : 
+                agent.status === "inactive" ? "bg-gradient-to-r from-gray-500 to-gray-600" : 
+                "bg-gradient-to-r from-yellow-500 to-yellow-600"
+              )}>
+                <div className="flex items-center gap-2">
+                  <Cpu className="h-5 w-5 text-white" />
+                  <span className="text-white font-medium truncate">Agent</span>
+                </div>
+                <span className={cn(
+                  "w-3 h-3 rounded-full",
+                  agent.status === "active" ? "bg-green-300 animate-pulse" : 
+                  agent.status === "inactive" ? "bg-gray-300" : 
+                  "bg-yellow-300"
+                )}></span>
+              </div>
+              
+              <div className="p-4 pb-3">
+                <div className="mb-3">
+                  <h3 className="text-sm font-bold text-foreground">{agent.name}</h3>
+                  <p className="text-xs text-muted-foreground mt-1 flex items-center">
+                    <span className={cn(
+                      "inline-block w-2 h-2 rounded-full mr-1",
+                      agent.status === "active" ? "bg-green-500" : 
+                      agent.status === "inactive" ? "bg-gray-500" : 
+                      "bg-yellow-500"
+                    )}></span>
+                    {agent.status === "active" ? "Active" : 
+                     agent.status === "inactive" ? "Inactive" : 
+                     "Connecting"}
+                  </p>
+                </div>
+                
+                <div className="mt-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-500 dark:text-slate-400">Monitoring:</span>
+                    <span className="text-xs font-medium">{agentServices.length} services</span>
+                  </div>
+                  
+                  {agent.status === "active" && agent.lastSeen && (
+                    <div className="text-xs mt-1 text-slate-500 dark:text-slate-400">
+                      Last seen: {new Date(agent.lastSeen).toLocaleTimeString()}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Agent service connections */}
+              {agentServices.map(service => {
+                const servicePos = servicePositions[service.id];
+                if (!servicePos) return null;
+                
+                // Draw dashed line from agent to services it monitors
+                return (
+                  <svg key={`agent-service-${agent.id}-${service.id}`} className="absolute top-0 left-0 w-full h-full pointer-events-none">
+                    <line 
+                      x1={position.x + 100} 
+                      y1={position.y + 60} 
+                      x2={servicePos.x + 90} 
+                      y2={servicePos.y + 50}
+                      stroke={agent.status === "active" ? getConnectionColor(service.status) : "#9CA3AF"}
+                      strokeWidth={1.5}
+                      strokeDasharray="4 2"
+                    />
+                  </svg>
+                );
+              })}
+            </div>
+          );
+        })}
+
         {/* Add New Service Button */}
         <div 
           className="service-node absolute bg-card dark:bg-card rounded-xl border-2 border-dashed border-primary p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-accent transition-all duration-200 shadow-md hover:shadow-lg"
