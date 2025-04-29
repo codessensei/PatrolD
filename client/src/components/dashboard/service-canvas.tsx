@@ -519,12 +519,19 @@ export default function ServiceCanvas({
                   <Cpu className="h-5 w-5 text-white" />
                   <span className="text-white font-medium truncate">Agent</span>
                 </div>
-                <span className={cn(
-                  "w-3 h-3 rounded-full",
-                  agent.status === "active" ? "bg-green-300 animate-pulse" : 
-                  agent.status === "inactive" ? "bg-gray-300" : 
-                  "bg-yellow-300"
-                )}></span>
+                <div className="flex items-center">
+                  <span className="text-xs text-white/80 mr-2">
+                    {agent.status === "active" ? "Online" : 
+                    agent.status === "inactive" ? "Offline" : 
+                    "Connecting"}
+                  </span>
+                  <span className={cn(
+                    "w-3 h-3 rounded-full flex-shrink-0",
+                    agent.status === "active" ? "bg-green-300 animate-pulse" : 
+                    agent.status === "inactive" ? "bg-gray-300" : 
+                    "bg-yellow-300"
+                  )}></span>
+                </div>
               </div>
               
               <div className="p-4 pb-3">

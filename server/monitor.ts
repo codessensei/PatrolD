@@ -131,8 +131,17 @@ async function checkService(storage: IStorage, service: Service) {
           for (const linkedService of linkedServices) {
             if (linkedService.status !== "unknown") {
               console.log(`Service ${linkedService.id} (${linkedService.name}) marked as unknown because agent ${agent.id} is inactive`);
+              
+              // Servis durumu null olabilir, bu durumda "unknown" varsayalım
+              const currentStatus = linkedService.status || "unknown";
+              
+              // Önce durumu güncelleyelim
               await storage.updateServiceStatus(linkedService.id, "unknown");
-              await createStatusChangeAlert(storage, linkedService, linkedService.status, "unknown");
+              
+              // Sonra alert oluşturalım
+              if (currentStatus !== "unknown") {
+                await createStatusChangeAlert(storage, linkedService, currentStatus, "unknown");
+              }
             }
           }
         }
