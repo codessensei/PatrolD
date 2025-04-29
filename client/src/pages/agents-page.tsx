@@ -11,7 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Download, Upload, Cpu, Server, RefreshCw, Copy, Globe } from "lucide-react";
+import { Download, Upload, Cpu, Server, RefreshCw, Copy, Globe, Trash2, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -33,6 +33,7 @@ export default function AgentsPage() {
   const { user } = useAuth();
   const [openCreateDialog, setOpenCreateDialog] = useState(false);
   const [openScriptDialog, setOpenScriptDialog] = useState(false);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [copiedApiKey, setCopiedApiKey] = useState<string | null>(null);
   const [scriptType, setScriptType] = useState<'python' | 'bash' | 'node'>('python');
@@ -79,6 +80,20 @@ export default function AgentsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/agents"] });
+    },
+  });
+  
+  // Mutation to delete an agent
+  const deleteAgentMutation = useMutation({
+    mutationFn: async (agentId: number) => {
+      await apiRequest("DELETE", `/api/agents/${agentId}`);
+      return agentId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/agents"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/services"] });
+      setOpenDeleteDialog(false);
+      setSelectedAgent(null);
     },
   });
 
@@ -1088,15 +1103,29 @@ process.on('SIGINT', () => {
                     )}
                   </CardContent>
                   <CardFooter className="flex justify-between">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="text-xs"
-                      onClick={() => openScriptDialogHandler(agent)}
-                    >
-                      <Download className="h-3 w-3 mr-1" />
-                      Download Script
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="text-xs"
+                        onClick={() => openScriptDialogHandler(agent)}
+                      >
+                        <Download className="h-3 w-3 mr-1" />
+                        Script
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        className="text-xs"
+                        onClick={() => {
+                          setSelectedAgent(agent);
+                          setOpenDeleteDialog(true);
+                        }}
+                      >
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        Sil
+                      </Button>
+                    </div>
                     <Button 
                       variant="ghost" 
                       size="sm" 
@@ -1129,6 +1158,54 @@ process.on('SIGINT', () => {
           )}
         </main>
       </div>
+      
+      {/* Agent Silme Dialog */}
+      <Dialog open={openDeleteDialog} onOpenChange={setOpenDeleteDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-500">
+              <AlertTriangle className="h-5 w-5" />
+              Agent'ı Sil
+            </DialogTitle>
+            <DialogDescription>
+              Bu agent'ı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz ve agent'a bağlı tüm servisler doğrudan izleme moduna geçirilecektir.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedAgent && (
+            <div className="p-3 border rounded-md mt-2 bg-slate-50 dark:bg-slate-900">
+              <div className="flex flex-col space-y-1">
+                <div className="font-medium">{selectedAgent.name}</div>
+                <div className="text-sm text-muted-foreground">
+                  Status: <span className={selectedAgent.status === "active" ? "text-green-500" : "text-gray-500"}>{selectedAgent.status}</span>
+                </div>
+                {selectedAgent.description && (
+                  <div className="text-sm text-muted-foreground">{selectedAgent.description}</div>
+                )}
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setOpenDeleteDialog(false)}
+            >
+              İptal
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => selectedAgent && deleteAgentMutation.mutate(selectedAgent.id)}
+              disabled={deleteAgentMutation.isPending}
+            >
+              {deleteAgentMutation.isPending && (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              )}
+              Evet, Sil
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       {/* Script Type Selection Dialog */}
       <Dialog open={openScriptDialog} onOpenChange={setOpenScriptDialog}>
