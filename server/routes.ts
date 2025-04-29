@@ -218,6 +218,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(200).json(agent);
   });
   
+  // Agent silme endpoint'i
+  app.delete("/api/agents/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const agentId = parseInt(req.params.id);
+    if (isNaN(agentId)) {
+      return res.status(400).json({ error: "Invalid agent ID" });
+    }
+    
+    const agent = await storage.getAgentById(agentId);
+    if (!agent || agent.userId !== req.user!.id) {
+      return res.status(404).json({ error: "Agent not found" });
+    }
+    
+    try {
+      // Bu agent'a bağlı tüm servisleri güncelle
+      const services = await storage.getServicesByUserId(req.user!.id);
+      const linkedServices = services.filter(s => s.agentId === agentId);
+      
+      // Bağlı servislerin agent'ını kaldır ve durumunu unknown olarak işaretle
+      for (const service of linkedServices) {
+        const currentStatus = service.status || "unknown";
+        
+        // Servisi direk monitörleme moduna geçir
+        await storage.updateService({
+          ...service,
+          agentId: null,
+          monitorType: "direct"
+        });
+        
+        // Durumu unknown olarak güncelle
+        await storage.updateServiceStatus(service.id, "unknown");
+        
+        // Bildirim gönder
+        if (currentStatus !== "unknown") {
+          const alert = await storage.createAlert({
+            userId: req.user!.id,
+            serviceId: service.id,
+            type: "status_change",
+            message: `Service ${service.name} is no longer monitored by agent (agent deleted)`,
+            timestamp: new Date()
+          });
+        }
+      }
+      
+      // Agent'ı sil
+      await storage.deleteAgent(agentId);
+      
+      res.status(200).json({ success: true, message: "Agent deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting agent:", error);
+      res.status(500).json({ error: "Failed to delete agent" });
+    }
+  });
+  
   // Endpoint to serve agent script templates
   app.get("/api/agents/:id/script/:type", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
@@ -283,22 +338,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/agents/:id", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    
-    const agentId = parseInt(req.params.id);
-    if (isNaN(agentId)) {
-      return res.status(400).json({ error: "Invalid agent ID" });
-    }
-    
-    const agent = await storage.getAgentById(agentId);
-    if (!agent || agent.userId !== req.user!.id) {
-      return res.status(404).json({ error: "Agent not found" });
-    }
-    
-    await storage.deleteAgent(agentId);
-    res.status(204).send();
-  });
+
 
   app.post("/api/agents/heartbeat", async (req, res) => {
     const { apiKey, serverInfo } = req.body;

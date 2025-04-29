@@ -85,14 +85,14 @@ async function checkAgentStatus(storage: IStorage) {
         if (!agent) continue;
         
         // Ajanın son görülme zamanını kontrol et
-        const agentTimeout = 30 * 1000; // 30 saniye timeout
+        const agentTimeout = 3 * 1000; // 3 saniye timeout (çok daha sıkı)
         const agentInactive = 
           !agent.lastSeen || 
           (Date.now() - agent.lastSeen.getTime() > agentTimeout);
         
         // Eğer ajan aktif olarak işaretlenmişse fakat timeout süresini aştıysa inactive yap
         if (agent.status === "active" && agentInactive) {
-          console.log(`Agent ${agent.id} (${agent.name}) marked as inactive - has not reported in over 30 seconds`);
+          console.log(`Agent ${agent.id} (${agent.name}) marked as inactive - has not reported in over 3 seconds`);
           await storage.updateAgentStatus(agent.id, "inactive");
           
           // Bu ajana bağlı tüm servisleri unknown olarak işaretle
@@ -174,8 +174,8 @@ async function checkService(storage: IStorage, service: Service) {
       const agent = await storage.getAgentById(service.agentId);
       
       // Agent durumunu çok daha sıkı kontrol ediyoruz
-      // Artık 30 saniye içinde heartbeat göndermeyen agentları inactive olarak işaretle
-      const agentTimeout = 30 * 1000; // 30 saniye timeout (çok daha sıkı)
+      // Artık 3 saniye içinde heartbeat göndermeyen agentları inactive olarak işaretle
+      const agentTimeout = 3 * 1000; // 3 saniye timeout (çok daha sıkı)
       
       // Agent inaktif mi kontrol et
       const agentInactive = 
@@ -187,7 +187,7 @@ async function checkService(storage: IStorage, service: Service) {
       if (agentInactive) {
         // Agent inactive olarak işaretle
         if (agent && agent.status !== "inactive") {
-          console.log(`Agent ${agent.id} (${agent.name}) marked as inactive - has not reported in over 30 seconds`);
+          console.log(`Agent ${agent.id} (${agent.name}) marked as inactive - has not reported in over 3 seconds`);
           await storage.updateAgentStatus(agent.id, "inactive");
           
           // Agent inactive olduğunda bağlı tüm servisleri de unknown olarak işaretle
