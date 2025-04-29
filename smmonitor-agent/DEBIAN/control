@@ -3,7 +3,7 @@ Version: 1.0.0
 Section: net
 Priority: optional
 Architecture: all
-Depends: python3 (>= 3.6)
+Depends: python3 (>= 3.6), jq
 Maintainer: Service Monitor Team <admin@example.com>
 Description: Patrol Monitoring Agent
  Real-time service monitoring agent for Service Monitor platform.
