@@ -13,7 +13,7 @@ type TelegramMessage = {
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 export class TelegramService {
-  private bot: TelegramBot | null = null;
+  private bot: any | null = null;
   private storage: IStorage;
   private chatIdsToNotify: Set<string> = new Set();
 
