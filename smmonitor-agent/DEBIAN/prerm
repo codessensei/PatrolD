@@ -1,0 +1,9 @@
+#!/bin/bash
+set -e
+
+# Stop and disable the service
+systemctl stop smmonitor-agent.service || true
+systemctl disable smmonitor-agent.service || true
+
+# Exit with success
+exit 0

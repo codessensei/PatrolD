@@ -409,12 +409,53 @@ if (SERVICES.length === 0) {
   console.warn('Warning: No services configured for monitoring');
 }
 
+/**
+ * Split monitoring functions into separate tasks
+ */
+function runServiceChecks() {
+  if (SERVICES.length === 0) {
+    console.log('No services to check');
+    return;
+  }
+  
+  console.log(`Checking ${SERVICES.length} services...`);
+  
+  // Check each service
+  (async () => {
+    for (const service of SERVICES) {
+      try {
+        const result = await checkService(service);
+        await reportServiceStatus(result);
+      } catch (e) {
+        console.error(`Error checking service ${service.host}:${service.port}:`, e.message);
+      }
+    }
+  })();
+}
+
+function runHeartbeat() {
+  console.log('Sending heartbeat...');
+  
+  // Send heartbeat to the API
+  (async () => {
+    try {
+      await sendHeartbeat();
+    } catch (e) {
+      console.error('Error sending heartbeat:', e.message);
+    }
+  })();
+}
+
 // Start the monitoring process
 console.log('Starting Service Monitor Agent...');
-console.log(`Monitoring ${SERVICES.length} services, checking every ${CHECK_INTERVAL / 1000} seconds`);
+console.log(`Heartbeat interval: ${HEARTBEAT_INTERVAL / 1000} seconds`);
+console.log(`Service check interval: ${CHECK_INTERVAL / 1000} seconds`);
 
-// Run immediately
-runMonitoring();
+// Run heartbeat immediately
+runHeartbeat();
 
-// Then run on interval
-setInterval(runMonitoring, CHECK_INTERVAL);
+// Send heartbeats more frequently
+setInterval(runHeartbeat, HEARTBEAT_INTERVAL);
+
+// Run service checks on a separate interval
+setInterval(runServiceChecks, CHECK_INTERVAL);

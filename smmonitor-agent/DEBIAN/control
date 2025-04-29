@@ -1,0 +1,11 @@
+Package: patrold
+Version: 1.0.0
+Section: net
+Priority: optional
+Architecture: all
+Depends: python3 (>= 3.6)
+Maintainer: Service Monitor Team <admin@example.com>
+Description: Patrol Monitoring Agent
+ Real-time service monitoring agent for Service Monitor platform.
+ Monitors services and sends heartbeat every second.
+ Supports automatic service detection and reporting.

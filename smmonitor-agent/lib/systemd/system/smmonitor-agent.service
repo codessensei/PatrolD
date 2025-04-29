@@ -1,0 +1,15 @@
+[Unit]
+Description=Service Monitor Agent
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/local/bin/smmonitor-agent
+Restart=always
+RestartSec=5
+StartLimitBurst=10
+StartLimitInterval=60
+
+[Install]
+WantedBy=multi-user.target
