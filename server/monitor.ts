@@ -53,8 +53,74 @@ async function startMonitoring(storage: IStorage) {
     await checkServices(storage);
   }, 30000); // Check every 30 seconds
   
-  // Initial check
+  // Özel olarak ajanların durumunu daha sık kontrol et (10 saniye)
+  setInterval(async () => {
+    await checkAgentStatus(storage);
+  }, 10000); // Her 10 saniyede bir ajan durumunu kontrol et
+  
+  // Initial checks
   await checkServices(storage);
+  await checkAgentStatus(storage);
+}
+
+// Agent durumlarını özel olarak kontrol eden fonksiyon
+async function checkAgentStatus(storage: IStorage) {
+  try {
+    console.log("Running agent status check...");
+    
+    // Tüm kullanıcılardan tüm ajanları al
+    const agents = [];
+    
+    if ((storage as any).users && typeof (storage as any).users.values === 'function') {
+      const allUsersAgents = await Promise.all(
+        Array.from((storage as any).users.values()).map((user: any) => 
+          storage.getAgentsByUserId(user.id)
+        )
+      );
+      
+      const allAgents = allUsersAgents.flat();
+      
+      // Her bir ajanın durumunu kontrol et
+      for (const agent of allAgents) {
+        if (!agent) continue;
+        
+        // Ajanın son görülme zamanını kontrol et
+        const agentTimeout = 30 * 1000; // 30 saniye timeout
+        const agentInactive = 
+          !agent.lastSeen || 
+          (Date.now() - agent.lastSeen.getTime() > agentTimeout);
+        
+        // Eğer ajan aktif olarak işaretlenmişse fakat timeout süresini aştıysa inactive yap
+        if (agent.status === "active" && agentInactive) {
+          console.log(`Agent ${agent.id} (${agent.name}) marked as inactive - has not reported in over 30 seconds`);
+          await storage.updateAgentStatus(agent.id, "inactive");
+          
+          // Bu ajana bağlı tüm servisleri unknown olarak işaretle
+          const services = await storage.getServicesByUserId(agent.userId);
+          const linkedServices = services.filter(s => s.agentId === agent.id && s.monitorType === "agent");
+          
+          for (const service of linkedServices) {
+            if (service.status !== "unknown") {
+              console.log(`Service ${service.id} (${service.name}) marked as unknown because agent ${agent.id} is inactive`);
+              
+              // Servis durumu null olabilir, bu durumda "unknown" varsayalım
+              const currentStatus = service.status || "unknown";
+              
+              // Durumu güncelle
+              await storage.updateServiceStatus(service.id, "unknown");
+              
+              // Alert oluştur
+              if (currentStatus !== "unknown") {
+                await createStatusChangeAlert(storage, service, currentStatus, "unknown");
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error checking agent status:", error);
+  }
 }
 
 async function checkServices(storage: IStorage) {
