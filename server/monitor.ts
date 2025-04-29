@@ -84,8 +84,8 @@ async function checkAgentStatus(storage: IStorage) {
       for (const agent of allAgents) {
         if (!agent) continue;
         
-        // Ajanın son görülme zamanını kontrol et - Zabbix tarzı daha uzun timeout
-        const agentTimeout = 30 * 1000; // 30 saniye timeout (Zabbix tarzı)
+        // Daha hızlı bir timeout ile gerçek zamanlı izleme
+        const agentTimeout = 3 * 1000; // 3 saniye timeout (hızlı tepki için)
         const agentInactive = 
           !agent.lastSeen || 
           (Date.now() - agent.lastSeen.getTime() > agentTimeout);
@@ -173,9 +173,9 @@ async function checkService(storage: IStorage, service: Service) {
       // We only check if the agent itself is active
       const agent = await storage.getAgentById(service.agentId);
       
-      // Zabbix tarzı heartbeat kontrolü yapıyoruz
-      // Artık 30 saniye içinde heartbeat göndermeyen agentları inactive olarak işaretle
-      const agentTimeout = 30 * 1000; // 30 saniye timeout (Zabbix tarzı)
+      // Daha hızlı bir timeout ile gerçek zamanlı izleme
+      // Artık 3 saniye içinde heartbeat göndermeyen agentları inactive olarak işaretle
+      const agentTimeout = 3 * 1000; // 3 saniye timeout (hızlı tepki için)
       
       // Agent inaktif mi kontrol et
       const agentInactive = 

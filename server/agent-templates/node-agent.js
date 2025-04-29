@@ -23,11 +23,14 @@ const API_BASE_URL = '{{API_BASE_URL}}'; // Replace with your Service Monitor UR
 // You can add additional custom services here if needed
 let SERVICES = [];
 
-// Monitoring interval in milliseconds (default: 60 seconds)
-const CHECK_INTERVAL = 60 * 1000; 
+// Service check interval in milliseconds (5 seconds)
+const CHECK_INTERVAL = 5 * 1000;
 
-// Timeout for service checks in milliseconds
-const REQUEST_TIMEOUT = 5000;
+// Heartbeat interval in milliseconds (1 second for frequent heartbeats)
+const HEARTBEAT_INTERVAL = 1 * 1000;
+
+// Timeout for service checks in milliseconds (3 seconds)
+const REQUEST_TIMEOUT = 3000;
 
 /**
  * Check if a service is online by attempting either a TCP socket connection

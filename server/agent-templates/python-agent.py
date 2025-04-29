@@ -31,11 +31,14 @@ API_BASE_URL = "{{API_BASE_URL}}"  # Replace with your Service Monitor URL (e.g.
 # You can add additional custom services here if needed
 SERVICES = []
 
-# Monitoring interval in seconds (default: 60 seconds)
-CHECK_INTERVAL = 60
+# Monitoring interval in seconds - set to 1 for very frequent checks
+CHECK_INTERVAL = 1
+
+# Heartbeat interval in seconds - sends heartbeat every second
+HEARTBEAT_INTERVAL = 1
 
 # Timeout for service checks in seconds
-REQUEST_TIMEOUT = 5
+REQUEST_TIMEOUT = 3
 
 def get_server_info():
     """Collect information about the server this agent is running on"""
@@ -206,12 +209,9 @@ def report_service_status(result):
         print(f"Error reporting service status: {e}")
         return False
 
-def run_monitoring():
-    """Main monitoring function"""
+def run_service_checks():
+    """Check all services and report their status"""
     try:
-        # Send heartbeat
-        send_heartbeat()
-        
         # Check each service
         for service in SERVICES:
             try:
@@ -219,9 +219,15 @@ def run_monitoring():
                 report_service_status(result)
             except Exception as e:
                 print(f"Error in service check loop: {e}")
-                
     except Exception as e:
-        print(f"Error in monitoring routine: {e}")
+        print(f"Error in service check routine: {e}")
+
+def run_heartbeat():
+    """Send a heartbeat to the API"""
+    try:
+        send_heartbeat()
+    except Exception as e:
+        print(f"Error sending heartbeat: {e}")
 
 def main():
     """Main entry point for the agent"""
@@ -233,21 +239,39 @@ def main():
     if API_BASE_URL == "{{API_BASE_URL}}":
         print("Error: Please replace {{API_BASE_URL}} with your actual Service Monitor URL")
         return 1
-        
-    if not SERVICES:
-        print("Warning: No services configured for monitoring")
     
     print("Starting Service Monitor Agent...")
-    print(f"Monitoring {len(SERVICES)} services, checking every {CHECK_INTERVAL} seconds")
+    print(f"Heartbeat interval: {HEARTBEAT_INTERVAL} second(s)")
+    print(f"Service check interval: {CHECK_INTERVAL} second(s)")
+    
+    # Initialize by sending the first heartbeat
+    send_heartbeat()
+    
+    # Keep track of the last time we ran service checks
+    last_service_check = time.time()
+    last_heartbeat = time.time()
     
     # Run the monitoring loop
     while True:
         try:
-            run_monitoring()
+            current_time = time.time()
+            
+            # Send heartbeat at regular intervals
+            if current_time - last_heartbeat >= HEARTBEAT_INTERVAL:
+                run_heartbeat()
+                last_heartbeat = current_time
+            
+            # Run service checks at specified interval
+            if current_time - last_service_check >= CHECK_INTERVAL:
+                run_service_checks()
+                last_service_check = current_time
+                
+            # Small sleep to prevent CPU hogging
+            time.sleep(0.1)
+            
         except Exception as e:
             print(f"Unexpected error in monitoring loop: {e}")
-            
-        time.sleep(CHECK_INTERVAL)
+            time.sleep(1)  # Sleep on error to prevent rapid spinning
         
 if __name__ == "__main__":
     main()
