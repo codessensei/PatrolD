@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { Service, Connection } from "@shared/schema";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Service, Connection, Agent } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,7 +13,9 @@ import {
   RefreshCw, 
   Maximize, 
   Plus,
-  Server 
+  Server,
+  Cpu,
+  PlusCircle
 } from "lucide-react";
 
 interface ServiceCanvasProps {
@@ -41,6 +43,13 @@ export default function ServiceCanvas({
   const [draggingService, setDraggingService] = useState<number | null>(null);
   const [dragOffset, setDragOffset] = useState<Position>({ x: 0, y: 0 });
   const [servicePositions, setServicePositions] = useState<Record<number, Position>>({});
+  const [agentPositions, setAgentPositions] = useState<Record<number, Position>>({});
+  const [draggingAgent, setDraggingAgent] = useState<number | null>(null);
+  
+  // Query agents
+  const { data: agents = [] } = useQuery<Agent[]>({
+    queryKey: ["/api/agents"],
+  });
 
   // Initialize service positions based on their stored positions
   useEffect(() => {
@@ -69,6 +78,28 @@ export default function ServiceCanvas({
     },
   });
 
+  // Initialize agent positions with default values
+  useEffect(() => {
+    // Only initialize positions for agents that don't already have positions
+    const positions: Record<number, Position> = { ...agentPositions };
+    let updated = false;
+    
+    agents.forEach((agent, index) => {
+      if (!positions[agent.id]) {
+        // Arrange agents in a grid layout if no position is provided
+        positions[agent.id] = { 
+          x: 50 + (index % 3) * 220, 
+          y: 50 + Math.floor(index / 3) * 200 
+        };
+        updated = true;
+      }
+    });
+    
+    if (updated) {
+      setAgentPositions(positions);
+    }
+  }, [agents, agentPositions]);
+
   // Handle service drag start
   const handleDragStart = (
     e: React.MouseEvent<HTMLDivElement>,
@@ -89,10 +120,33 @@ export default function ServiceCanvas({
     // Prevent text selection during drag
     e.preventDefault();
   };
+  
+  // Handle agent drag start
+  const handleAgentDragStart = (
+    e: React.MouseEvent<HTMLDivElement>,
+    agentId: number
+  ) => {
+    if (!canvasRef.current) return;
+    
+    const canvasRect = canvasRef.current.getBoundingClientRect();
+    const agentPosition = agentPositions[agentId] || { x: 0, y: 0 };
+    
+    // Calculate offset from the mouse position to the agent's origin
+    const offsetX = e.clientX - canvasRect.left - agentPosition.x;
+    const offsetY = e.clientY - canvasRect.top - agentPosition.y;
+    
+    setDragOffset({ x: offsetX, y: offsetY });
+    setDraggingAgent(agentId);
+    
+    // Prevent text selection during drag
+    e.preventDefault();
+  };
 
-  // Handle service drag
+  // Handle drag (for both services and agents)
   const handleDrag = useCallback((e: MouseEvent) => {
-    if (draggingService === null || !canvasRef.current) return;
+    if (!canvasRef.current) return;
+    
+    if (draggingService === null && draggingAgent === null) return;
     
     const canvasRect = canvasRef.current.getBoundingClientRect();
     
@@ -100,19 +154,26 @@ export default function ServiceCanvas({
     let newX = e.clientX - canvasRect.left - dragOffset.x;
     let newY = e.clientY - canvasRect.top - dragOffset.y;
     
-    // Ensure service stays within canvas bounds
-    newX = Math.max(0, Math.min(newX, canvasRect.width - 160)); // Assuming service width is 160px
-    newY = Math.max(0, Math.min(newY, canvasRect.height - 120)); // Assuming service height is ~120px
+    // Ensure element stays within canvas bounds
+    newX = Math.max(0, Math.min(newX, canvasRect.width - 180)); // Width of 180px
+    newY = Math.max(0, Math.min(newY, canvasRect.height - 160)); // Height ~160px
     
-    // Update position state
-    setServicePositions(prev => ({
-      ...prev,
-      [draggingService]: { x: newX, y: newY }
-    }));
+    // Update position state based on what's being dragged
+    if (draggingService !== null) {
+      setServicePositions(prev => ({
+        ...prev,
+        [draggingService]: { x: newX, y: newY }
+      }));
+    } else if (draggingAgent !== null) {
+      setAgentPositions(prev => ({
+        ...prev,
+        [draggingAgent]: { x: newX, y: newY }
+      }));
+    }
     
-  }, [draggingService, dragOffset]);
+  }, [draggingService, draggingAgent, dragOffset]);
 
-  // Handle service drag end
+  // Handle drag end
   const handleDragEnd = useCallback(() => {
     if (draggingService !== null) {
       const position = servicePositions[draggingService];
@@ -126,7 +187,13 @@ export default function ServiceCanvas({
       }
       setDraggingService(null);
     }
-  }, [draggingService, servicePositions, updateServicePosition]);
+    
+    if (draggingAgent !== null) {
+      // In a real app, you might save agent positions too
+      // For now, just clear the dragging state
+      setDraggingAgent(null);
+    }
+  }, [draggingService, draggingAgent, servicePositions, updateServicePosition]);
 
   // Set up global event listeners for drag
   useEffect(() => {
@@ -267,17 +334,89 @@ export default function ServiceCanvas({
             const targetX = target.x + 80;
             const targetY = target.y + 60;
             
+            // Calculate line length for animation
+            const dx = targetX - sourceX;
+            const dy = targetY - sourceY;
+            const lineLength = Math.sqrt(dx * dx + dy * dy);
+            
+            // Generate unique ID for this connection
+            const connectionColor = getConnectionColor(connection.status);
+            const animationId = `flow-${connection.id}`;
+            
             return (
-              <line 
-                key={connection.id}
-                x1={sourceX} 
-                y1={sourceY} 
-                x2={targetX} 
-                y2={targetY}
-                className="connection-line" 
-                stroke={getConnectionColor(connection.status)}
-                strokeWidth={2}
-              />
+              <g key={connection.id}>
+                {/* Defs for the animated flow effect */}
+                <defs>
+                  <linearGradient id={animationId}>
+                    <stop offset="0%" stopColor="rgba(255, 255, 255, 0)" />
+                    <stop offset="50%" stopColor={connectionColor} />
+                    <stop offset="100%" stopColor="rgba(255, 255, 255, 0)" />
+                  </linearGradient>
+                  
+                  {/* Animation for the flow */}
+                  <mask id={`mask-${animationId}`}>
+                    <rect x="0" y="0" width="100%" height="100%" fill="white" />
+                    
+                    {/* Animated dots */}
+                    {connection.status === "online" && Array.from({ length: 3 }).map((_, i) => (
+                      <circle 
+                        key={i} 
+                        r="4"
+                        fill="black">
+                        <animateMotion
+                          path={`M${sourceX},${sourceY} L${targetX},${targetY}`}
+                          dur={`${3 + i * 0.7}s`}
+                          repeatCount="indefinite"
+                          rotate="auto"
+                        />
+                      </circle>
+                    ))}
+                  </mask>
+                </defs>
+                
+                {/* Base connection line */}
+                <line 
+                  x1={sourceX} 
+                  y1={sourceY} 
+                  x2={targetX} 
+                  y2={targetY}
+                  className="connection-line" 
+                  stroke={connectionColor}
+                  strokeWidth={connection.status === "online" ? 3 : 2}
+                  strokeOpacity={connection.status === "online" ? 0.6 : 0.4}
+                />
+                
+                {/* Add animated effect for online connections */}
+                {connection.status === "online" && (
+                  <line 
+                    x1={sourceX} 
+                    y1={sourceY} 
+                    x2={targetX} 
+                    y2={targetY}
+                    stroke={`url(#${animationId})`}
+                    strokeWidth={4}
+                    strokeLinecap="round"
+                    mask={`url(#mask-${animationId})`}
+                    className="connection-flow-line"
+                  >
+                    <animate
+                      attributeName="strokeDashoffset"
+                      from={lineLength}
+                      to="0"
+                      dur="2s"
+                      repeatCount="indefinite"
+                    />
+                  </line>
+                )}
+                
+                {/* Direction indicator */}
+                <polygon 
+                  points="0,-4 8,0 0,4" 
+                  fill={connectionColor} 
+                  transform={`translate(${targetX - dx * 0.1}, ${targetY - dy * 0.1}) rotate(${Math.atan2(dy, dx) * 180 / Math.PI})`}
+                  opacity={0.8}
+                />
+              </g>
             );
           })}
         </svg>

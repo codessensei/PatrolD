@@ -43,7 +43,7 @@ export default function DashboardPage() {
   const onlineServices = services.filter(s => s.status === "online").length;
   const offlineServices = services.filter(s => s.status === "offline").length;
   const degradedServices = services.filter(s => s.status === "degraded").length;
-  const avgResponseTime = stats && 'avgResponseTime' in stats ? stats.avgResponseTime : 0;
+  const avgResponseTime = stats && typeof stats === 'object' && 'avgResponseTime' in stats ? stats.avgResponseTime : 0;
 
   // Search filter
   const filteredServices = searchQuery
