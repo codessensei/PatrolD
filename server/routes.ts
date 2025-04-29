@@ -384,7 +384,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     try {
+      // Ajanın durumunu her kalp atışında güncelle
+      // Bu, aktif olduğunu belirtir
+      console.log(`Received heartbeat from agent ${agent.id} (${agent.name}), marking as active`);
       const updatedAgent = await storage.updateAgentStatus(agent.id, "active", serverInfo);
+      
+      // Eğer ajan inactive durumdayken tekrar active olursa
+      // ve buna bağlı servisler unknown durumdaysa onları yeniden kontrol et
+      if (agent.status === "inactive") {
+        console.log(`Agent ${agent.id} is now active after being inactive`);
+        
+        // Bu ajana bağlı tüm servisleri bul
+        const services = await storage.getServicesByUserId(agent.userId);
+        const linkedServices = services.filter(s => s.agentId === agent.id && s.monitorType === "agent" && s.status === "unknown");
+        
+        // Unknown olan servislerin durumunu tekrar kontrol etmek üzere işaretle
+        if (linkedServices.length > 0) {
+          console.log(`Resetting status of ${linkedServices.length} services associated with now-active agent`);
+          
+          for (const service of linkedServices) {
+            // Geçici olarak durumu "checking" olarak işaretle
+            // Diğer kontroller gerçek durumu belirleyecek
+            console.log(`Marking service ${service.id} (${service.name}) for re-check`);
+            await storage.updateServiceStatus(service.id, "checking");
+          }
+        }
+      }
       
       // Get services assigned to this agent
       const services = await storage.getServicesByUserId(agent.userId);
@@ -406,6 +431,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         services: serviceList 
       });
     } catch (error) {
+      console.error("Failed to update agent status:", error);
       res.status(500).json({ error: "Failed to update agent status" });
     }
   });

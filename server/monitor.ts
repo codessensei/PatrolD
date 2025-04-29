@@ -274,7 +274,7 @@ async function checkService(storage: IStorage, service: Service) {
 }
 
 // Servis durum değişikliği için uyarı oluştur ve bildirim gönder
-async function createStatusChangeAlert(storage: IStorage, service: Service, oldStatus: string, newStatus: string) {
+export async function createStatusChangeAlert(storage: IStorage, service: Service, oldStatus: string, newStatus: string) {
   try {
     // Duruma göre alert tipini belirle
     let alertType = 'status_change';
