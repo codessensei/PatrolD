@@ -350,7 +350,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Replace placeholders with actual values
       script = script.replace(/["']?{{API_KEY}}["']?/g, `"${agent.apiKey}"`);
-      script = script.replace(/["']?{{API_BASE_URL}}["']?/g, `"${baseUrl}"`);
+      
+      // Python script'inde hata vermesin diye tek tırnak kullanıyoruz
+      if (scriptType === 'python') {
+        script = script.replace(/["']?{{API_BASE_URL}}["']?/g, `'${baseUrl}'`);
+      } else {
+        script = script.replace(/["']?{{API_BASE_URL}}["']?/g, `"${baseUrl}"`);
+      }
       
       // Double check that the API_KEY is actually replaced
       if (script.includes("{{API_KEY}}")) {
