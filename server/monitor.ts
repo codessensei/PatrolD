@@ -108,8 +108,8 @@ async function checkService(storage: IStorage, service: Service) {
       const agent = await storage.getAgentById(service.agentId);
       
       // Agent durumunu çok daha sıkı kontrol ediyoruz
-      // Artık 2 dakika içinde heartbeat göndermeyen agentları inactive olarak işaretle
-      const agentTimeout = 2 * 60 * 1000; // 2 dakika timeout (daha sıkı)
+      // Artık 30 saniye içinde heartbeat göndermeyen agentları inactive olarak işaretle
+      const agentTimeout = 30 * 1000; // 30 saniye timeout (çok daha sıkı)
       
       // Agent inaktif mi kontrol et
       const agentInactive = 
@@ -121,7 +121,7 @@ async function checkService(storage: IStorage, service: Service) {
       if (agentInactive) {
         // Agent inactive olarak işaretle
         if (agent && agent.status !== "inactive") {
-          console.log(`Agent ${agent.id} (${agent.name}) marked as inactive - has not reported in over 2 minutes`);
+          console.log(`Agent ${agent.id} (${agent.name}) marked as inactive - has not reported in over 30 seconds`);
           await storage.updateAgentStatus(agent.id, "inactive");
           
           // Agent inactive olduğunda bağlı tüm servisleri de unknown olarak işaretle
