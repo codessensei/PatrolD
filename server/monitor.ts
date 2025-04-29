@@ -1,6 +1,10 @@
 import axios from "axios";
 import { IStorage } from "./storage";
-import { Service, Connection } from "@shared/schema";
+import { Service, Connection, Alert } from "@shared/schema";
+import TelegramService from "./telegram-service";
+
+// Telegram servisini tanımla
+let telegramService: TelegramService | null = null;
 
 // Helper function to get all services from all users
 async function getAllServices(storage: IStorage): Promise<Service[]> {
@@ -28,8 +32,17 @@ async function getAllServices(storage: IStorage): Promise<Service[]> {
 const REQUEST_TIMEOUT = 5000;
 
 export function setupMonitoring(storage: IStorage) {
+  // Telegram servisi oluştur
+  telegramService = new TelegramService(storage);
+  console.log("Telegram notification service initialized");
+  
   // Start monitoring process
   startMonitoring(storage);
+}
+
+// Telegram servisine erişim için dışa aktarılmış fonksiyon
+export function getTelegramService(): TelegramService | null {
+  return telegramService;
 }
 
 async function startMonitoring(storage: IStorage) {
@@ -84,6 +97,9 @@ async function checkServices(storage: IStorage) {
 
 async function checkService(storage: IStorage, service: Service) {
   try {
+    // Önceki durumu sakla
+    const previousStatus = service.status || 'unknown';
+    
     // Check if this service is monitored by an agent
     if (service.monitorType === "agent" && service.agentId) {
       // For agent-monitored services, we don't actively check
@@ -96,6 +112,11 @@ async function checkService(storage: IStorage, service: Service) {
           (Date.now() - agent.lastSeen.getTime() > 5 * 60 * 1000)) { // 5 minutes timeout
         // Agent is inactive or hasn't been seen recently
         await storage.updateServiceStatus(service.id, "unknown");
+        
+        // Durum "unknown" olarak değiştiyse bildirim gönder
+        if (previousStatus !== "unknown") {
+          await createStatusChangeAlert(storage, service, previousStatus, "unknown");
+        }
       }
       
       return;
@@ -121,14 +142,85 @@ async function checkService(storage: IStorage, service: Service) {
         status = "degraded";
       }
       
+      // Durumu güncelle
       await storage.updateServiceStatus(service.id, status, responseTime);
+      
+      // Durum değiştiyse bildirim gönder
+      if (previousStatus !== status) {
+        await createStatusChangeAlert(storage, service, previousStatus, status);
+      }
       
     } catch (error) {
       // Request failed or timed out
-      await storage.updateServiceStatus(service.id, "offline");
+      const newStatus = "offline";
+      await storage.updateServiceStatus(service.id, newStatus);
+      
+      // Durum "offline" olarak değiştiyse bildirim gönder
+      if (previousStatus !== newStatus) {
+        await createStatusChangeAlert(storage, service, previousStatus, newStatus);
+      }
     }
   } catch (error) {
     console.error(`Error checking service ${service.id}:`, error);
+  }
+}
+
+// Servis durum değişikliği için uyarı oluştur ve bildirim gönder
+async function createStatusChangeAlert(storage: IStorage, service: Service, oldStatus: string, newStatus: string) {
+  try {
+    // Duruma göre alert tipini belirle
+    let alertType = 'status_change';
+    let message = `Service ${service.name} changed status from ${oldStatus} to ${newStatus}`;
+    
+    if (newStatus === 'offline') {
+      alertType = 'outage';
+      message = `Service ${service.name} is down`;
+    } else if (newStatus === 'online' && (oldStatus === 'offline' || oldStatus === 'unknown')) {
+      alertType = 'recovery';
+      message = `Service ${service.name} is back online`;
+    } else if (newStatus === 'degraded') {
+      alertType = 'degraded';
+      message = `Service ${service.name} is experiencing performance issues`;
+    }
+    
+    // Alert oluştur
+    const alert = await storage.createAlert({
+      userId: service.userId,
+      serviceId: service.id,
+      type: alertType,
+      message: message,
+      timestamp: new Date()
+    });
+    
+    // Telegram üzerinden bildirim gönder
+    if (telegramService) {
+      try {
+        const statusEmoji = 
+          newStatus === 'online' ? '✅' : 
+          newStatus === 'offline' ? '❌' : 
+          newStatus === 'degraded' ? '⚠️' : '❓';
+          
+        const oldStatusEmoji = 
+          oldStatus === 'online' ? '✅' : 
+          oldStatus === 'offline' ? '❌' : 
+          oldStatus === 'degraded' ? '⚠️' : '❓';
+          
+        const message = 
+          `${statusEmoji} SERVİS DURUM DEĞİŞİKLİĞİ\n\n` +
+          `${service.name} (${service.host}:${service.port})\n` +
+          `${oldStatusEmoji} ${oldStatus.toUpperCase()} → ${statusEmoji} ${newStatus.toUpperCase()}\n\n` +
+          `Zaman: ${new Date().toLocaleString()}`;
+        
+        await telegramService.sendNotification(service.userId, message);
+      } catch (error) {
+        console.error(`Error sending Telegram notification for service ${service.id}:`, error);
+      }
+    }
+    
+    return alert;
+  } catch (error) {
+    console.error(`Error creating status change alert for service ${service.id}:`, error);
+    return null;
   }
 }
 
