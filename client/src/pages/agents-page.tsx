@@ -74,7 +74,7 @@ export default function AgentsPage() {
   // Mutation to refresh an agent's status
   const refreshAgentMutation = useMutation({
     mutationFn: async (agentId: number) => {
-      const res = await apiRequest("PUT", `/api/agents/${agentId}/refresh`);
+      const res = await apiRequest("PUT", `/api/agents/${agentId}/refresh`, { forceInactive: true });
       const updatedAgent = await res.json();
       return updatedAgent as Agent;
     },
@@ -163,7 +163,7 @@ import ssl
 
 # Agent configuration
 API_KEY = "${agent.apiKey}"
-MONITOR_URL = "${window.location.origin}" 
+MONITOR_URL = '${window.location.origin}'
 HEARTBEAT_INTERVAL = 30  # seconds
 DEBUG = True  # Set to False to reduce console output
 

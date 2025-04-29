@@ -213,8 +213,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!agent || agent.userId !== req.user!.id) {
       return res.status(404).json({ error: "Agent not found" });
     }
+
+    // Check if forceInactive flag is set
+    const { forceInactive } = req.body;
     
-    // Just return the current agent without changes
+    if (forceInactive && agent.status === "active") {
+      // Force agent to inactive status when requested by UI refresh button
+      const updatedAgent = await storage.updateAgentStatus(agent.id, "inactive");
+      
+      // Update any services monitored by this agent
+      const services = await storage.getServicesByUserId(agent.userId);
+      const linkedServices = services.filter(s => s.agentId === agent.id && s.monitorType === "agent");
+      
+      for (const service of linkedServices) {
+        if (service.status !== "unknown") {
+          console.log(`Service ${service.id} (${service.name}) marked as unknown because agent was force-refreshed`);
+          
+          // Servis durumu null olabilir, bu durumda "unknown" varsayalım
+          const currentStatus = service.status || "unknown";
+          
+          // Durumu güncelle
+          await storage.updateServiceStatus(service.id, "unknown");
+          
+          // Alert oluştur
+          if (currentStatus !== "unknown") {
+            await createStatusChangeAlert(storage, service, currentStatus, "unknown");
+          }
+        }
+      }
+      
+      return res.status(200).json(updatedAgent);
+    }
+    
+    // If not forcing inactive, just return the current agent
     res.status(200).json(agent);
   });
   
