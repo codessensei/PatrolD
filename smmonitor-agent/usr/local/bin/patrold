@@ -1,40 +1,73 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Patrol Monitoring Agent (patrold)
 
-This agent monitors specified services and reports their status back to the
-Service Monitor API. It sends heartbeats every second for real-time monitoring.
+This script monitors specified services and reports their status back to the 
+Service Monitor API. It runs as a system service and provides real-time 
+monitoring with 1-second heartbeat intervals.
 
-Author: Service Monitor Team
-License: Proprietary
+Version: 1.0.0
 """
 
-import os
-import sys
 import json
 import time
 import socket
 import platform
+import urllib.request
+import urllib.error
+import ssl
+import os
 import datetime
 import http.client
 from urllib.parse import urlparse
 
-# Configuration
-API_KEY = "{{API_KEY}}"  # Will be replaced during installation
-API_BASE_URL = "{{API_BASE_URL}}"  # Will be replaced during installation
+# Load configuration from file
+CONFIG_FILE = "/etc/patrold/config.json"
+
+def load_config():
+    """Load configuration from file"""
+    try:
+        with open(CONFIG_FILE, 'r') as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"Error loading config: {e}")
+        # Default configuration
+        return {
+            "api_url": "https://example.com/api",
+            "api_key": "placeholder-api-key",
+            "check_interval": 1,
+            "heartbeat_interval": 1,
+            "debug": False,
+            "server_info": {
+                "hostname": "auto",
+                "location": "unspecified",
+                "notes": ""
+            }
+        }
+
+# Load the configuration
+config = load_config()
+
+# Configuration from config file
+API_KEY = config["api_key"]
+API_BASE_URL = config["api_url"]
+CHECK_INTERVAL = config["check_interval"]
+HEARTBEAT_INTERVAL = config["heartbeat_interval"]
+DEBUG = config["debug"]
 
 # Services to monitor - this will be populated from the server response
 SERVICES = []
 
-# Monitoring interval in seconds - set to 1 for very frequent checks
-CHECK_INTERVAL = 1
-
-# Heartbeat interval in seconds - sends heartbeat every second
-HEARTBEAT_INTERVAL = 1
-
 # Timeout for service checks in seconds
 REQUEST_TIMEOUT = 3
+
+def log(message):
+    """Log messages if debug mode is enabled"""
+    if DEBUG:
+        timestamp = datetime.datetime.now().isoformat()
+        print(f"[{timestamp}] {message}")
+    else:
+        print(message)
 
 def get_server_info():
     """Collect information about the server this agent is running on"""
@@ -48,8 +81,13 @@ def get_server_info():
                 mem_total = int(parts[1])
                 mem_free = int(parts[3])
         
-        return {
-            "hostname": socket.gethostname(),
+        # Use configured hostname if specified
+        hostname = socket.gethostname()
+        if config["server_info"]["hostname"] and config["server_info"]["hostname"] != "auto":
+            hostname = config["server_info"]["hostname"]
+            
+        server_info = {
+            "hostname": hostname,
             "platform": platform.system(),
             "platform_version": platform.version(),
             "architecture": platform.machine(),
@@ -61,8 +99,18 @@ def get_server_info():
             },
             "timestamp": datetime.datetime.now().isoformat()
         }
+        
+        # Add location and notes if specified
+        if config["server_info"]["location"]:
+            server_info["location"] = config["server_info"]["location"]
+            
+        if config["server_info"]["notes"]:
+            server_info["notes"] = config["server_info"]["notes"]
+            
+        return server_info
+        
     except Exception as e:
-        print(f"Error collecting server info: {e}")
+        log(f"Error collecting server info: {e}")
         return {
             "hostname": socket.gethostname(),
             "platform": platform.system(),
@@ -106,7 +154,7 @@ def check_service(service):
             "responseTime": None
         }
     except Exception as e:
-        print(f"Error checking {host}:{port}: {e}")
+        log(f"Error checking {host}:{port}: {e}")
         return {
             "host": host,
             "port": port,
@@ -145,11 +193,11 @@ def send_api_request(endpoint, data):
         if response.status == 200:
             return json.loads(response_data)
         else:
-            print(f"API error: {response.status} - {response_data}")
+            log(f"API error: {response.status} - {response_data}")
             return None
             
     except Exception as e:
-        print(f"Error sending API request to {endpoint}: {e}")
+        log(f"Error sending API request to {endpoint}: {e}")
         return None
     finally:
         if 'conn' in locals():
@@ -168,20 +216,23 @@ def send_heartbeat():
         result = send_api_request('/api/agents/heartbeat', data)
         
         if result and 'agentId' in result:
-            print(f"Heartbeat sent successfully, agent ID: {result['agentId']}")
+            log(f"Heartbeat sent successfully, agent ID: {result['agentId']}")
             
             # Update services from response
             if 'services' in result and isinstance(result['services'], list):
                 SERVICES = result['services']
-                print(f"Received {len(SERVICES)} services to monitor from server")
+                log(f"Received {len(SERVICES)} services to monitor from server")
+                if DEBUG:
+                    for service in SERVICES:
+                        log(f"- {service['name']} ({service['host']}:{service['port']})")
             else:
-                print("No services received from server")
+                log("No services received from server")
             
             return True
         return False
         
     except Exception as e:
-        print(f"Error sending heartbeat: {e}")
+        log(f"Error sending heartbeat: {e}")
         return False
 
 def report_service_status(result):
@@ -195,12 +246,12 @@ def report_service_status(result):
         api_result = send_api_request('/api/agents/service-check', data)
         
         if api_result:
-            print(f"Service status reported for {result['host']}:{result['port']} - {result['status']}")
+            log(f"Service status reported for {result['host']}:{result['port']} - {result['status']}")
             return True
         return False
         
     except Exception as e:
-        print(f"Error reporting service status: {e}")
+        log(f"Error reporting service status: {e}")
         return False
 
 def run_service_checks():
@@ -212,31 +263,29 @@ def run_service_checks():
                 result = check_service(service)
                 report_service_status(result)
             except Exception as e:
-                print(f"Error in service check loop: {e}")
+                log(f"Error in service check loop: {e}")
     except Exception as e:
-        print(f"Error in service check routine: {e}")
+        log(f"Error in service check routine: {e}")
 
 def run_heartbeat():
     """Send a heartbeat to the API"""
     try:
         send_heartbeat()
     except Exception as e:
-        print(f"Error sending heartbeat: {e}")
+        log(f"Error sending heartbeat: {e}")
 
 def main():
     """Main entry point for the agent"""
     # Validate configuration
-    if API_KEY == "{{API_KEY}}":
-        print("Error: Please replace {{API_KEY}} with your actual agent API key")
-        return 1
+    if API_KEY == "placeholder-api-key":
+        log("Warning: Using placeholder API key. Please update config.json with your actual agent API key")
         
-    if API_BASE_URL == "{{API_BASE_URL}}":
-        print("Error: Please replace {{API_BASE_URL}} with your actual Service Monitor URL")
-        return 1
+    if API_BASE_URL == "https://example.com/api":
+        log("Warning: Using example API URL. Please update config.json with your actual Service Monitor URL")
     
-    print("Starting Patrol Monitoring Agent (patrold)...")
-    print(f"Heartbeat interval: {HEARTBEAT_INTERVAL} second(s)")
-    print(f"Service check interval: {CHECK_INTERVAL} second(s)")
+    log("Starting Patrol Monitoring Agent (patrold)...")
+    log(f"Heartbeat interval: {HEARTBEAT_INTERVAL} second(s)")
+    log(f"Service check interval: {CHECK_INTERVAL} second(s)")
     
     # Initialize by sending the first heartbeat
     send_heartbeat()
@@ -264,8 +313,8 @@ def main():
             time.sleep(0.1)
             
         except Exception as e:
-            print(f"Unexpected error in monitoring loop: {e}")
+            log(f"Unexpected error in monitoring loop: {e}")
             time.sleep(1)  # Sleep on error to prevent rapid spinning
         
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

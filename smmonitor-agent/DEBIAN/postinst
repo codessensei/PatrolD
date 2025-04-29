@@ -2,25 +2,21 @@
 set -e
 
 # Ask for API key and URL if not already configured
-if [ -z "$API_KEY" ]; then
-  echo -n "Enter your Patrol Agent API key: "
-  read API_KEY
-fi
+echo -n "Enter your Patrol Agent API key: "
+read API_KEY
 
-if [ -z "$API_BASE_URL" ]; then
-  echo -n "Enter the Service Monitor URL (e.g., https://your-monitor.example.com): "
-  read API_BASE_URL
-fi
+echo -n "Enter the Service Monitor URL (e.g., https://your-monitor.example.com): "
+read API_BASE_URL
 
-# Update config
+# Update config with user input
 CONFIG_FILE="/etc/patrold/config.json"
-sed -i "s|{{API_KEY}}|$API_KEY|g" "$CONFIG_FILE"
-sed -i "s|{{API_BASE_URL}}|$API_BASE_URL|g" "$CONFIG_FILE"
+TMP_CONFIG=$(mktemp)
+cat $CONFIG_FILE | jq ".api_key = \"$API_KEY\" | .api_url = \"$API_BASE_URL\"" > $TMP_CONFIG
+cat $TMP_CONFIG > $CONFIG_FILE
+rm $TMP_CONFIG
 
-# Update agent script
-AGENT_SCRIPT="/usr/local/bin/patrold"
-sed -i "s|{{API_KEY}}|$API_KEY|g" "$AGENT_SCRIPT"
-sed -i "s|{{API_BASE_URL}}|$API_BASE_URL|g" "$AGENT_SCRIPT"
+# Fix permissions
+chmod 644 $CONFIG_FILE
 
 # Enable and start the service
 systemctl daemon-reload
