@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, json } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, json, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -118,3 +118,29 @@ export const insertUserSettingsSchema = createInsertSchema(userSettings).omit({
 
 export type InsertUserSettings = z.infer<typeof insertUserSettingsSchema>;
 export type UserSettings = typeof userSettings.$inferSelect;
+
+// PatrolD Paylaşılabilir haritalar
+export const sharedMaps = pgTable("shared_maps", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  isPublished: boolean("is_published").default(false),
+  isPasswordProtected: boolean("is_password_protected").default(false),
+  password: text("password"), // Şifrelenmiş parola (korumalıysa)
+  shareKey: text("share_key").notNull().unique(), // URL için benzersiz anahtar
+  viewCount: integer("view_count").default(0),
+  mapData: jsonb("map_data").notNull(), // Servisler, bağlantılar ve pozisyonlar
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertSharedMapSchema = createInsertSchema(sharedMaps).omit({
+  id: true,
+  viewCount: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSharedMap = z.infer<typeof insertSharedMapSchema>;
+export type SharedMap = typeof sharedMaps.$inferSelect;

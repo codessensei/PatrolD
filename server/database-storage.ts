@@ -4,7 +4,8 @@ import {
   Connection, InsertConnection, connections,
   Alert, InsertAlert, alerts,
   Agent, InsertAgent, agents,
-  UserSettings, InsertUserSettings, userSettings
+  UserSettings, InsertUserSettings, userSettings,
+  SharedMap, InsertSharedMap, sharedMaps
 } from "@shared/schema";
 import { IStorage } from "./storage";
 import { db, pool } from "./db";
@@ -224,5 +225,56 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return newSettings;
     }
+  }
+
+  // Shared Maps methods
+  async getSharedMapById(id: number): Promise<SharedMap | undefined> {
+    const [map] = await db.select().from(sharedMaps).where(eq(sharedMaps.id, id));
+    return map;
+  }
+
+  async getSharedMapByShareKey(shareKey: string): Promise<SharedMap | undefined> {
+    const [map] = await db.select().from(sharedMaps).where(eq(sharedMaps.shareKey, shareKey));
+    return map;
+  }
+
+  async getSharedMapsByUserId(userId: number): Promise<SharedMap[]> {
+    return await db.select().from(sharedMaps).where(eq(sharedMaps.userId, userId));
+  }
+
+  async getPublishedSharedMaps(): Promise<SharedMap[]> {
+    return await db.select().from(sharedMaps).where(eq(sharedMaps.isPublished, true));
+  }
+
+  async createSharedMap(map: InsertSharedMap): Promise<SharedMap> {
+    const [createdMap] = await db.insert(sharedMaps).values(map).returning();
+    return createdMap;
+  }
+
+  async updateSharedMap(id: number, data: Partial<SharedMap>): Promise<SharedMap> {
+    const [updatedMap] = await db
+      .update(sharedMaps)
+      .set({
+        ...data,
+        updatedAt: new Date()
+      })
+      .where(eq(sharedMaps.id, id))
+      .returning();
+    return updatedMap;
+  }
+
+  async deleteSharedMap(id: number): Promise<void> {
+    await db.delete(sharedMaps).where(eq(sharedMaps.id, id));
+  }
+
+  async incrementSharedMapViewCount(id: number): Promise<SharedMap> {
+    const [map] = await db
+      .update(sharedMaps)
+      .set({
+        viewCount: (currentMap: any) => `${currentMap.view_count} + 1`
+      })
+      .where(eq(sharedMaps.id, id))
+      .returning();
+    return map;
   }
 }
