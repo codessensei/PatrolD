@@ -555,130 +555,8 @@ export default function ServiceCanvas({
                 </g>
               );
             })}
-            
-            {/* Agent-Service Connections */}
-            {agents.map(agent => {
-              const position = agentPositions[agent.id] || { x: 100, y: 100 };
-              const agentServices = services.filter(s => s.agentId === agent.id && s.monitorType === "agent");
-              
-              return (
-                <g key={`agent-connections-${agent.id}`}>
-                  {agentServices.map(service => {
-                    const servicePos = servicePositions[service.id];
-                    if (!servicePos) return null;
-                    
-                    // Calculate positions for curved path
-                    const x1 = position.x + 100;
-                    const y1 = position.y + 60;
-                    const x2 = servicePos.x + 90;
-                    const y2 = servicePos.y + 50;
-                    
-                    // Calculate control points for bezier curve
-                    const dx = x2 - x1;
-                    const dy = y2 - y1;
-                    const midX = (x1 + x2) / 2;
-                    const midY = (y1 + y2) / 2;
-                    
-                    // Offset control point to create a nice curve
-                    const offsetX = -dy * 0.2; // Perpendicular to the line
-                    const offsetY = dx * 0.2;
-                    
-                    // Create the path for a bezier curve
-                    const path = `M${x1},${y1} Q${midX + offsetX},${midY + offsetY} ${x2},${y2}`;
-                    
-                    // Dynamic color based on agent and service status
-                    const connectionColor = agent.status === "active" ? getConnectionColor(service.status) : "#9CA3AF";
-                    
-                    // Unique ID for this connection's animation
-                    const animationId = `agent-service-${agent.id}-${service.id}`;
-                    
-                    return (
-                      <g key={`agent-service-${agent.id}-${service.id}`}>
-                        <defs>
-                          <linearGradient id={`agent-pulse-${animationId}`}>
-                            <stop offset="0%" stopColor={connectionColor}>
-                              <animate 
-                                attributeName="offset" 
-                                values="0;1" 
-                                dur="3s" 
-                                repeatCount="indefinite" 
-                              />
-                            </stop>
-                            <stop offset="25%" stopColor="white">
-                              <animate 
-                                attributeName="offset" 
-                                values="0;1" 
-                                dur="3s" 
-                                repeatCount="indefinite" 
-                              />
-                            </stop>
-                            <stop offset="50%" stopColor={connectionColor}>
-                              <animate 
-                                attributeName="offset" 
-                                values="0;1" 
-                                dur="3s" 
-                                repeatCount="indefinite" 
-                              />
-                            </stop>
-                          </linearGradient>
-                        </defs>
-                        
-                        {/* Base curve path */}
-                        <path 
-                          d={path}
-                          fill="none"
-                          stroke={connectionColor}
-                          strokeWidth={1.5}
-                          strokeDasharray="4 2"
-                          opacity={0.8}
-                        />
-                        
-                        {/* Animated overlay for active agents */}
-                        {agent.status === "active" && (
-                          <>
-                            {/* Flowing dots */}
-                            {Array.from({ length: 3 }).map((_, i) => (
-                              <circle 
-                                key={i} 
-                                r={1.5}
-                                fill={connectionColor}
-                                opacity={0.8}>
-                                <animateMotion
-                                  path={path}
-                                  dur={`${3 + i * 0.8}s`}
-                                  repeatCount="indefinite"
-                                  rotate="auto"
-                                />
-                              </circle>
-                            ))}
-                            
-                            {/* Pulsing line effect */}
-                            <path 
-                              d={path}
-                              fill="none"
-                              stroke={`url(#agent-pulse-${animationId})`}
-                              strokeWidth={2}
-                              strokeDasharray="3 5"
-                              opacity={0.6}
-                            />
-                          </>
-                        )}
-                        
-                        {/* Direction indicator */}
-                        <polygon 
-                          points="0,-3 6,0 0,3" 
-                          fill={connectionColor} 
-                          opacity={0.8}
-                          transform={`translate(${x2 - dx * 0.05}, ${y2 - dy * 0.05}) rotate(${Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI})`}
-                        />
-                      </g>
-                    );
-                  })}
-                </g>
-              );
-            })}
           </svg>
-
+          
           {/* Service Nodes */}
           {services.map(service => {
             const position = servicePositions[service.id] || { x: 0, y: 0 };
@@ -704,211 +582,123 @@ export default function ServiceCanvas({
                   "px-4 py-2 flex items-center justify-between",
                   service.status === "online" ? "bg-gradient-to-r from-green-500 to-green-600" : 
                   service.status === "offline" ? "bg-gradient-to-r from-red-500 to-red-600" : 
-                  service.status === "degraded" ? "bg-gradient-to-r from-yellow-500 to-yellow-600" : 
+                  service.status === "degraded" ? "bg-gradient-to-r from-yellow-500 to-yellow-600" :
                   "bg-gradient-to-r from-gray-500 to-gray-600"
                 )}>
-                  <span className="text-white font-medium truncate">{service.type}</span>
-                  <span className={cn(
+                  <h3 className="font-medium text-white truncate">{service.name}</h3>
+                  <div className={cn(
                     "w-3 h-3 rounded-full",
-                    service.status === "online" ? "bg-green-300" : 
-                    service.status === "offline" ? "bg-red-300" : 
-                    service.status === "degraded" ? "bg-yellow-300" : "bg-gray-300"
-                  )}></span>
+                    getStatusIndicatorClass(service.status)
+                  )} />
                 </div>
-                <div className="p-4 relative overflow-hidden">
-                  {/* Background glow effect based on status */}
-                  {service.status === "online" && (
-                    <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-green-500/10 rounded-full blur-2xl"></div>
-                  )}
-                  {service.status === "degraded" && (
-                    <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-yellow-500/10 rounded-full blur-2xl"></div>
-                  )}
-                  {service.status === "offline" && (
-                    <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-red-500/10 rounded-full blur-2xl"></div>
-                  )}
+                
+                <div className="p-3 text-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-muted-foreground text-xs">Type:</span>
+                    <span className="font-medium">{service.type === "http" ? "HTTP" : service.type === "tcp" ? "TCP" : service.type}</span>
+                  </div>
                   
-                  <div className="mb-3 relative">
-                    <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
-                      {service.name}
-                      {service.status === "online" && (
-                        <span className="relative flex h-2 w-2">
-                          <span className="absolute animate-ping h-full w-full rounded-full bg-green-400 opacity-50"></span>
-                          <span className="relative rounded-full h-2 w-2 bg-green-500"></span>
-                        </span>
-                      )}
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground/70">
-                        <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
-                        <path d="M21 3v5h-5" />
-                      </svg>
-                      {service.host}:{service.port}
-                    </p>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-muted-foreground text-xs">Host:</span>
+                    <span className="font-mono text-xs truncate max-w-[100px]">{service.host}</span>
                   </div>
-                  <div className="flex items-center justify-between mt-2">
-                    <span className={cn(
-                      "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
-                      service.status === "online" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100" : 
-                      service.status === "offline" ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100" : 
-                      service.status === "degraded" ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100" : 
-                      "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300"
-                    )}>
-                      {service.status === "online" ? "Online" : 
-                       service.status === "offline" ? "Offline" : 
-                       service.status === "degraded" ? "Degraded" : "Unknown"}
-                    </span>
-                    
-                    <span className={cn(
-                      "text-xs font-mono px-2 py-1 rounded flex items-center gap-1",
-                      service.status === "online" ? "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-200" : 
-                      service.status === "offline" ? "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-200" : 
-                      "bg-muted"
-                    )}>
-                      {service.status === "online" && (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-500">
-                          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-                        </svg>
-                      )}
-                      {service.responseTime 
-                        ? `${service.responseTime}ms` 
-                        : service.status === "offline" 
-                          ? "Timeout" 
-                          : "-"}
-                    </span>
+                  
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-muted-foreground text-xs">Port:</span>
+                    <span className="font-mono">{service.port}</span>
                   </div>
+                  
+                  {service.responseTime !== null && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground text-xs">Response:</span>
+                      <span className={cn(
+                        "font-mono text-xs",
+                        service.responseTime > 500 ? "text-amber-500" : 
+                        service.responseTime > 1000 ? "text-red-500" : 
+                        "text-green-500"
+                      )}>
+                        {service.responseTime}ms
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             );
           })}
-
+          
           {/* Agent Nodes */}
           {agents.map(agent => {
-            const position = agentPositions[agent.id] || { x: 100, y: 100 };
-            
-            // Find services monitored by this agent
-            const agentServices = services.filter(s => s.agentId === agent.id && s.monitorType === "agent");
+            const position = agentPositions[agent.id] || { x: 0, y: 0 };
             
             return (
               <div
-                key={`agent-${agent.id}`}
-                className="agent-node absolute bg-card dark:bg-card rounded-xl shadow-lg border-2 overflow-hidden transition-all duration-200 hover:shadow-xl"
+                key={agent.id}
+                className="agent-node absolute bg-slate-800 dark:bg-slate-900 rounded-xl shadow-lg border-2 border-slate-600 overflow-hidden transition-all duration-200 hover:shadow-xl"
                 style={{
                   width: "200px",
                   left: `${position.x}px`,
                   top: `${position.y}px`,
-                  zIndex: draggingAgent === agent.id ? 100 : 30,
-                  cursor: draggingAgent === agent.id ? "grabbing" : "grab",
-                  borderColor: agent.status === "active" ? "rgb(59, 130, 246)" : 
-                              agent.status === "inactive" ? "rgb(156, 163, 175)" : 
-                              "rgb(245, 158, 11)",
-                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)"
+                  zIndex: draggingAgent === agent.id ? 100 : 20,
+                  cursor: draggingAgent === agent.id ? "grabbing" : "grab"
                 }}
                 onMouseDown={(e) => handleAgentDragStart(e, agent.id)}
               >
-                <div className={cn(
-                  "px-4 py-3 flex items-center justify-between",
-                  agent.status === "active" ? "bg-gradient-to-r from-indigo-500 via-blue-500 to-indigo-600" : 
-                  agent.status === "inactive" ? "bg-gradient-to-r from-gray-500 to-gray-600" : 
-                  "bg-gradient-to-r from-yellow-500 to-yellow-600"
-                )}>
-                  <div className="flex items-center gap-2">
-                    <Cpu className="h-5 w-5 text-white" />
-                    <span className="text-white font-medium truncate">Agent</span>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-xs text-white/80 mr-2">
-                      {agent.status === "active" ? "Online" : 
-                      agent.status === "inactive" ? "Offline" : 
-                      "Connecting"}
-                    </span>
-                    <span className={cn(
-                      "w-3 h-3 rounded-full flex-shrink-0",
-                      agent.status === "active" ? "bg-green-300 animate-pulse" : 
-                      agent.status === "inactive" ? "bg-gray-300" : 
-                      "bg-yellow-300"
-                    )}></span>
-                  </div>
+                <div className="bg-gradient-to-r from-slate-700 to-slate-800 px-4 py-2 flex items-center justify-between">
+                  <h3 className="font-medium text-white truncate flex items-center gap-2">
+                    <Server className="h-4 w-4" />
+                    {agent.name}
+                  </h3>
+                  <div className={cn(
+                    "w-3 h-3 rounded-full",
+                    agent.status === "active" ? "bg-green-500" : "bg-red-500"
+                  )} />
                 </div>
                 
-                <div className="p-4 pb-3 relative overflow-hidden">
-                  {/* Background glow effect for active agents */}
-                  {agent.status === "active" && (
-                    <div className="absolute -top-6 -right-6 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl"></div>
-                  )}
+                <div className="p-3 text-sm text-white">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-slate-400 text-xs">Status:</span>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded-full text-xs",
+                      agent.status === "active" ? "bg-green-900/50 text-green-500" : "bg-red-900/50 text-red-400"
+                    )}>
+                      {agent.status === "active" ? "Active" : "Offline"}
+                    </span>
+                  </div>
                   
-                  <div className="mb-3 relative">
-                    <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
-                      {agent.name}
-                      {agent.status === "active" && (
-                        <span className="relative flex h-2 w-2">
-                          <span className="absolute animate-ping h-full w-full rounded-full bg-blue-400 opacity-50"></span>
-                          <span className="relative rounded-full h-2 w-2 bg-blue-500"></span>
+                  {agent.serverInfo && (
+                    <>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-slate-400 text-xs">Host:</span>
+                        <span className="font-mono text-xs truncate max-w-[110px]">
+                          {typeof agent.serverInfo === 'object' && agent.serverInfo !== null && 'hostname' in agent.serverInfo
+                            ? (agent.serverInfo as any).hostname
+                            : 'Unknown'}
                         </span>
-                      )}
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground/70">
-                        <path d="M9 2 L15 2 L 12 6 Z" />
-                        <path d="M12 6 L12 14" />
-                        <circle cx="12" cy="18" r="4" />
-                      </svg>
-                      {agent.status === "active" ? "Active" : 
-                       agent.status === "inactive" ? "Inactive" : 
-                       "Connecting"}
-                    </p>
-                  </div>
-                  
-                  <div className="mt-3 pt-2 border-t border-border">
-                    <div className="flex items-center justify-between">
-                      <span className={cn(
-                        "text-xs inline-flex items-center gap-1",
-                        agent.status === "active" ? "text-blue-600 dark:text-blue-400" : "text-slate-500 dark:text-slate-400"
-                      )}>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70">
-                          <path d="M2 12C2 12 5 5 12 5C19 5 22 12 22 12C22 12 19 19 12 19C5 19 2 12 2 12Z" />
-                          <circle cx="12" cy="12" r="3" />
-                        </svg>
-                        Monitoring:
-                      </span>
-                      <span className={cn(
-                        "text-xs font-medium px-1.5 py-0.5 rounded-md bg-muted",
-                        agent.status === "active" ? "text-blue-600 dark:text-blue-400" : ""
-                      )}>
-                        {agentServices.length} services
-                      </span>
-                    </div>
-                    
-                    {agent.status === "active" && agent.lastSeen && (
-                      <div className="text-xs mt-1.5 flex items-center gap-1 text-slate-500 dark:text-slate-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70">
-                          <circle cx="12" cy="12" r="10" />
-                          <polyline points="12 6 12 12 16 14" />
-                        </svg>
-                        Last seen: {new Date(agent.lastSeen).toLocaleTimeString()}
                       </div>
-                    )}
-                  </div>
+                      
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-slate-400 text-xs">OS:</span>
+                        <span className="font-mono text-xs">
+                          {typeof agent.serverInfo === 'object' && agent.serverInfo !== null && 'platform' in agent.serverInfo
+                            ? (agent.serverInfo as any).platform
+                            : 'Unknown'}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400 text-xs">CPU Cores:</span>
+                        <span className="font-mono text-xs">
+                          {typeof agent.serverInfo === 'object' && agent.serverInfo !== null && 'cpus' in agent.serverInfo
+                            ? (agent.serverInfo as any).cpus
+                            : 'N/A'}
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             );
           })}
-
-          {/* Add New Service Button */}
-          <div 
-            className="service-node absolute bg-card dark:bg-card rounded-xl border-2 border-dashed border-primary p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-accent transition-all duration-200 shadow-md hover:shadow-lg"
-            style={{
-              width: "180px",
-              left: "380px",
-              top: "520px",
-              zIndex: 5
-            }}
-            onClick={onAddService}
-          >
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-              <Plus className="h-6 w-6 text-primary" />
-            </div>
-            <p className="text-sm font-medium text-primary">Add New Service</p>
-          </div>
         </div>
       </div>
     </Card>
