@@ -12,7 +12,8 @@ import {
   Cpu,
   Zap,
   Menu,
-  X
+  X,
+  Share2
 } from "lucide-react";
 import { useState } from "react";
 
@@ -22,6 +23,7 @@ const navItems = [
   { label: "Alerts", icon: <AlertTriangle className="h-5 w-5" />, href: "/alerts" },
   { label: "Agents", icon: <Cpu className="h-5 w-5" />, href: "/agents" },
   { label: "History", icon: <History className="h-5 w-5" />, href: "/history" },
+  { label: "Shared Maps", icon: <Share2 className="h-5 w-5" />, href: "/shared-maps" },
   { label: "Settings", icon: <Settings className="h-5 w-5" />, href: "/settings" },
 ];
 
@@ -73,7 +75,7 @@ export default function Sidebar() {
                 </div>
                 <div>
                   <span className="font-bold text-lg bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-indigo-600 dark:from-blue-400 dark:to-indigo-500">
-                    UptimeMonitor
+                    PatrolD
                   </span>
                 </div>
               </Link>
