@@ -693,11 +693,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         passwordHash = scryptSync(req.body.password, salt, 64).toString('hex') + '.' + salt;
       }
       
+      // Generate a unique shareKey for the map
+      const { randomBytes } = await import('crypto');
+      const shareKey = randomBytes(8).toString('hex');
+      
       const data = {
         ...req.body,
         userId: req.user!.id,
         password: passwordHash,
-        isPasswordProtected: !!req.body.password
+        isPasswordProtected: !!req.body.password,
+        shareKey // Add the required shareKey field
       };
       
       // Validate required fields with Zod schema
