@@ -884,7 +884,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Verify password
-      const { scryptSync } = require('crypto');
+      const { scryptSync } = await import('crypto');
       const [hashedPassword, salt] = map.password!.split('.');
       const providedHash = scryptSync(password, salt, 64).toString('hex');
       
@@ -893,6 +893,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Return access token for the client to use
+      const { randomBytes } = await import('crypto');
       const accessToken = randomBytes(32).toString('hex');
       
       res.status(200).json({
