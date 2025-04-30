@@ -688,7 +688,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let passwordHash = null;
       if (req.body.password) {
         // Simple hash for password (for real-world use scrypt would be better)
-        const { scryptSync, randomBytes } = require('crypto');
+        const { scryptSync, randomBytes } = await import('crypto');
         const salt = randomBytes(16).toString('hex');
         passwordHash = scryptSync(req.body.password, salt, 64).toString('hex') + '.' + salt;
       }
@@ -732,7 +732,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let passwordHash = map.password;
       if (req.body.password) {
         // Simple hash for password (for real-world use scrypt would be better)
-        const { scryptSync, randomBytes } = require('crypto');
+        const { scryptSync, randomBytes } = await import('crypto');
         const salt = randomBytes(16).toString('hex');
         passwordHash = scryptSync(req.body.password, salt, 64).toString('hex') + '.' + salt;
       }

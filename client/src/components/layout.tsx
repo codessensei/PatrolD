@@ -4,6 +4,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { 
   LayoutDashboard, Server, AlertTriangle, History, Settings, 
   LogOut, Cpu, Zap, Menu, X, Share2 
@@ -125,11 +126,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               {navItems.find(item => item.path === location)?.label || "Dashboard"}
             </h1>
             <div className="flex items-center gap-2">
-              {/* Import and add ThemeToggle here */}
-              {React.createElement(
-                // Dynamically import to avoid direct import issues
-                require("@/components/theme-toggle").ThemeToggle
-              )}
+              <ThemeToggle />
             </div>
           </div>
         </header>
