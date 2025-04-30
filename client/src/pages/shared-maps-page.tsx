@@ -357,7 +357,7 @@ const SharedMapsPage = ({ viewMode = false }: { viewMode?: boolean } = {}) => {
 
       {/* Create Map Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="w-[90vw] max-w-[450px] max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create New Map</DialogTitle>
             <DialogDescription>
@@ -443,7 +443,7 @@ const SharedMapsPage = ({ viewMode = false }: { viewMode?: boolean } = {}) => {
       
       {/* Share Dialog */}
       <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="w-[90vw] max-w-[450px] max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Share Map</DialogTitle>
             <DialogDescription>

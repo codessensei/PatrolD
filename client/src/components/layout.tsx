@@ -34,12 +34,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   ];
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
+    <div className="flex h-screen w-screen bg-background overflow-hidden">
+      {/* Mobile overlay - only shown when sidebar is open on mobile */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-30 md:hidden" 
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+      
       {/* Sidebar */}
       <aside 
         className={cn(
-          "fixed md:h-full z-40 transition-transform md:relative",
-          "w-72 md:w-64 lg:w-72 bg-card border-r border-border/40",
+          "fixed md:static md:h-full z-40 transition-all duration-300 md:transition-none",
+          "w-[85vw] sm:w-72 md:w-64 lg:w-72 bg-card border-r border-border/40",
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
       >
@@ -111,18 +119,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </aside>
       
       {/* Main Content */}
-      <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex flex-col flex-1 overflow-hidden w-full">
         {/* Header */}
-        <header className="h-16 border-b border-border/40 bg-card/80 backdrop-blur-sm flex items-center px-4">
+        <header className="h-16 border-b border-border/40 bg-card/80 backdrop-blur-sm flex items-center px-2 sm:px-4">
           <button
-            className="md:hidden mr-4"
+            className="md:hidden mr-2 sm:mr-4"
             onClick={() => setIsMobileMenuOpen(true)}
           >
             <Menu className="h-5 w-5" />
           </button>
           
           <div className="flex-1 flex items-center justify-between">
-            <h1 className="text-lg font-semibold">
+            <h1 className="text-base sm:text-lg font-semibold truncate">
               {navItems.find(item => item.path === location)?.label || "Dashboard"}
             </h1>
             <div className="flex items-center gap-2">
@@ -132,9 +140,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </header>
         
         {/* Page Content */}
-        <ScrollArea className="flex-1 p-2 md:p-4">
-          <main className="w-full max-w-full mx-auto px-2 md:px-4">{children}</main>
-        </ScrollArea>
+        <div className="flex-1 overflow-auto">
+          <main className="w-full h-full max-w-full px-2 py-2 sm:p-4">{children}</main>
+        </div>
       </div>
     </div>
   );
