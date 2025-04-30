@@ -36,7 +36,9 @@ export default function ServiceCanvas({
   services, 
   connections,
   isLoading = false,
-  onAddService 
+  onAddService,
+  readonly = false,
+  className = ""
 }: ServiceCanvasProps) {
   const { toast } = useToast();
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -145,7 +147,7 @@ export default function ServiceCanvas({
     e: React.MouseEvent<HTMLDivElement>,
     serviceId: number
   ) => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current || readonly) return;
     
     const canvasRect = canvasRef.current.getBoundingClientRect();
     const servicePosition = servicePositions[serviceId] || { x: 0, y: 0 };
@@ -166,7 +168,7 @@ export default function ServiceCanvas({
     e: React.MouseEvent<HTMLDivElement>,
     agentId: number
   ) => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current || readonly) return;
     
     const canvasRect = canvasRef.current.getBoundingClientRect();
     const agentPosition = agentPositions[agentId] || { x: 0, y: 0 };
@@ -394,14 +396,16 @@ export default function ServiceCanvas({
           </div>
         )}
         
-        {/* Add Service Button (Fixed Position) */}
-        <button
-          onClick={onAddService}
-          className="absolute right-4 top-4 z-30 flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors px-3 py-2 rounded-md shadow-md"
-        >
-          <PlusCircle className="h-4 w-4" />
-          <span className="font-medium text-sm">Add Service</span>
-        </button>
+        {/* Add Service Button (Fixed Position) - only shown when not in readonly mode */}
+        {!readonly && onAddService && (
+          <button
+            onClick={onAddService}
+            className="absolute right-4 top-4 z-30 flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors px-3 py-2 rounded-md shadow-md"
+          >
+            <PlusCircle className="h-4 w-4" />
+            <span className="font-medium text-sm">Add Service</span>
+          </button>
+        )}
         
         <div 
           ref={canvasRef}
