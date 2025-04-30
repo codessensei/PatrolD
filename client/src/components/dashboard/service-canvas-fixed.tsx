@@ -403,7 +403,7 @@ export default function ServiceCanvas({
         
         <div 
           ref={canvasRef}
-          className="relative h-full w-full overflow-auto canvas-grid p-8"
+          className="relative overflow-auto canvas-grid p-8"
           style={{
             backgroundSize: `${20 * zoom}px ${20 * zoom}px`,
             backgroundImage: `
@@ -411,7 +411,11 @@ export default function ServiceCanvas({
               linear-gradient(to bottom, rgba(203, 213, 225, 0.1) 1px, transparent 1px)
             `,
             transform: `scale(${zoom})`,
-            transformOrigin: "top left"
+            transformOrigin: "top left",
+            height: "3000px", // Çok daha büyük alan "sonsuz" canvas için
+            width: "3000px",  // Çok daha büyük alan "sonsuz" canvas için
+            minHeight: "2000px",
+            minWidth: "100%"
           }}
         >
           {/* SVG for Service-to-Service Connection Lines with Animation */}
