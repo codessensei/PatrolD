@@ -38,7 +38,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <aside 
         className={cn(
           "fixed md:h-full z-40 transition-transform md:relative",
-          "w-72 md:w-64 bg-card border-r border-border/40",
+          "w-72 md:w-64 lg:w-72 bg-card border-r border-border/40",
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
       >
@@ -135,8 +135,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </header>
         
         {/* Page Content */}
-        <ScrollArea className="flex-1 p-4">
-          <main className="container mx-auto">{children}</main>
+        <ScrollArea className="flex-1 p-2 md:p-4">
+          <main className="w-full max-w-full mx-auto px-2 md:px-4">{children}</main>
         </ScrollArea>
       </div>
     </div>
