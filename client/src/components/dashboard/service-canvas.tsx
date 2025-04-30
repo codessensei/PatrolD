@@ -916,10 +916,10 @@ export default function ServiceCanvas({
               }}
               onClick={onAddService}
             >
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                <Plus className="h-6 w-6 text-primary" />
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-2">
+                <Plus className="h-5 w-5 text-primary" />
               </div>
-              <p className="text-sm font-medium text-primary">Add New Service</p>
+              <p className="text-xs font-medium text-primary">Add Service</p>
             </div>
           )}
         </div>
