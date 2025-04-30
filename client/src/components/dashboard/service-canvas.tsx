@@ -22,7 +22,9 @@ interface ServiceCanvasProps {
   services: Service[];
   connections: Connection[];
   isLoading?: boolean;
-  onAddService: () => void;
+  onAddService?: () => void;
+  readonly?: boolean;
+  className?: string;
 }
 
 interface Position {

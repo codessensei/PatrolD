@@ -13,6 +13,7 @@ import { useParams, useLocation } from "wouter";
 import { ThemeToggleProvider, ThemeProvider } from "@/components/theme-provider";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import ServiceCanvas from "@/components/dashboard/service-canvas";
 
 interface SharedMap {
   id: number;
@@ -171,13 +172,12 @@ const ViewSharedMapPage = () => {
 
             {map.mapData ? (
               <div className="bg-card border rounded-lg shadow-md p-4 flex-1 min-h-[500px]">
-                {/* Here we would render the actual service map visualization */}
-                <div className="text-center p-8 border-2 border-dashed border-border/50 rounded-lg">
-                  <p className="text-xl font-medium mb-2">Map Visualization</p>
-                  <p className="text-muted-foreground">
-                    Service map visualization would be rendered here, based on the map data.
-                  </p>
-                </div>
+                <ServiceCanvas 
+                  services={map.mapData.services || []}
+                  connections={map.mapData.connections || []}
+                  readonly={true}
+                  className="min-h-[500px] w-full"
+                />
               </div>
             ) : (
               <Card>
