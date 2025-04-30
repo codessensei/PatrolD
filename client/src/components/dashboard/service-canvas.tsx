@@ -204,8 +204,12 @@ export default function ServiceCanvas({
     const canvasWidth = canvasRect.width / zoom;
     const canvasHeight = canvasRect.height / zoom;
     
-    newX = Math.max(0, Math.min(newX, canvasWidth - 180)); // Width of 180px
-    newY = Math.max(0, Math.min(newY, canvasHeight - 160)); // Height ~160px
+    // Use smaller widths based on what's being dragged
+    const widthConstraint = draggingService !== null ? 150 : 170; // Service: 150px, Agent: 170px
+    const heightConstraint = 130; // Reduced height constraint
+    
+    newX = Math.max(0, Math.min(newX, canvasWidth - widthConstraint)); 
+    newY = Math.max(0, Math.min(newY, canvasHeight - heightConstraint));
     
     // Update position state based on what's being dragged
     if (draggingService !== null) {
@@ -721,7 +725,7 @@ export default function ServiceCanvas({
                     service.status === "degraded" ? "bg-yellow-300" : "bg-gray-300"
                   )}></span>
                 </div>
-                <div className="p-4 relative overflow-hidden">
+                <div className="px-3 py-2 relative overflow-hidden">
                   {/* Background glow effect based on status */}
                   {service.status === "online" && (
                     <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-green-500/10 rounded-full blur-2xl"></div>
@@ -836,7 +840,7 @@ export default function ServiceCanvas({
                   </div>
                 </div>
                 
-                <div className="p-4 pb-3 relative overflow-hidden">
+                <div className="px-3 py-2 relative overflow-hidden">
                   {/* Background glow effect for active agents */}
                   {agent.status === "active" && (
                     <div className="absolute -top-6 -right-6 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl"></div>
@@ -904,9 +908,9 @@ export default function ServiceCanvas({
             <div 
               className="service-node absolute bg-card dark:bg-card rounded-xl border-2 border-dashed border-primary p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-accent transition-all duration-200 shadow-md hover:shadow-lg"
               style={{
-                width: "150px",
-                left: "380px",
-                top: "520px",
+                width: "130px",
+                left: "20px",
+                top: "400px",
                 zIndex: 5
               }}
               onClick={onAddService}
