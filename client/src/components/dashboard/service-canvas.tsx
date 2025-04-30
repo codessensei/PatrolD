@@ -413,9 +413,9 @@ export default function ServiceCanvas({
         
         <div 
           ref={canvasRef}
-          className="relative h-full w-full overflow-auto canvas-grid p-2 sm:p-4"
+          className="relative h-full w-full overflow-auto canvas-grid p-1 sm:p-2"
           style={{
-            maxWidth: "calc(100vw - 65px)",
+            maxWidth: "calc(100vw - 90px)",
             backgroundSize: `${20 * zoom}px ${20 * zoom}px`,
             backgroundImage: `
               linear-gradient(to right, rgba(203, 213, 225, 0.1) 1px, transparent 1px),
@@ -699,7 +699,7 @@ export default function ServiceCanvas({
                 key={service.id}
                 className="service-node absolute bg-card dark:bg-card rounded-xl shadow-lg border-2 overflow-hidden transition-all duration-200 hover:shadow-xl"
                 style={{
-                  width: "140px",
+                  width: "130px",
                   left: `${position.x}px`,
                   top: `${position.y}px`,
                   zIndex: draggingService === service.id ? 100 : 20,
@@ -726,16 +726,16 @@ export default function ServiceCanvas({
                     service.status === "degraded" ? "bg-yellow-300" : "bg-gray-300"
                   )}></span>
                 </div>
-                <div className="px-3 py-2 relative overflow-hidden">
+                <div className="px-2 py-1.5 relative overflow-hidden">
                   {/* Background glow effect based on status */}
                   {service.status === "online" && (
-                    <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-green-500/10 rounded-full blur-2xl"></div>
+                    <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-green-500/10 rounded-full blur-2xl"></div>
                   )}
                   {service.status === "degraded" && (
-                    <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-yellow-500/10 rounded-full blur-2xl"></div>
+                    <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-yellow-500/10 rounded-full blur-2xl"></div>
                   )}
                   {service.status === "offline" && (
-                    <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-red-500/10 rounded-full blur-2xl"></div>
+                    <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-red-500/10 rounded-full blur-2xl"></div>
                   )}
                   
                   <div className="mb-3 relative">
@@ -804,7 +804,7 @@ export default function ServiceCanvas({
                 key={`agent-${agent.id}`}
                 className="agent-node absolute bg-card dark:bg-card rounded-xl shadow-lg border-2 overflow-hidden transition-all duration-200 hover:shadow-xl"
                 style={{
-                  width: "160px",
+                  width: "150px",
                   left: `${position.x}px`,
                   top: `${position.y}px`,
                   zIndex: draggingAgent === agent.id ? 100 : 30,
@@ -841,10 +841,10 @@ export default function ServiceCanvas({
                   </div>
                 </div>
                 
-                <div className="px-3 py-2 relative overflow-hidden">
+                <div className="px-2 py-1.5 relative overflow-hidden">
                   {/* Background glow effect for active agents */}
                   {agent.status === "active" && (
-                    <div className="absolute -top-6 -right-6 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl"></div>
+                    <div className="absolute -top-6 -right-6 w-20 h-20 bg-blue-500/10 rounded-full blur-2xl"></div>
                   )}
                   
                   <div className="mb-3 relative">
@@ -909,7 +909,7 @@ export default function ServiceCanvas({
             <div 
               className="service-node absolute bg-card dark:bg-card rounded-xl border-2 border-dashed border-primary p-3 flex flex-col items-center justify-center cursor-pointer hover:bg-accent transition-all duration-200 shadow-md hover:shadow-lg"
               style={{
-                width: "120px",
+                width: "110px",
                 left: "20px",
                 top: "400px",
                 zIndex: 5
