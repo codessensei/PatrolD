@@ -119,6 +119,64 @@ export const insertUserSettingsSchema = createInsertSchema(userSettings).omit({
 export type InsertUserSettings = z.infer<typeof insertUserSettingsSchema>;
 export type UserSettings = typeof userSettings.$inferSelect;
 
+// Kullanıcının kendi proje/servis haritaları
+export const serviceMaps = pgTable("service_maps", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  isDefault: boolean("is_default").default(false),
+  icon: text("icon").default("map"),
+  color: text("color").default("#4f46e5"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertServiceMapSchema = createInsertSchema(serviceMaps).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertServiceMap = z.infer<typeof insertServiceMapSchema>;
+export type ServiceMap = typeof serviceMaps.$inferSelect;
+
+// Harita içindeki servisler
+export const serviceMapItems = pgTable("service_map_items", {
+  id: serial("id").primaryKey(),
+  mapId: integer("map_id").notNull().references(() => serviceMaps.id),
+  serviceId: integer("service_id").notNull().references(() => services.id),
+  positionX: integer("position_x").default(0),
+  positionY: integer("position_y").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertServiceMapItemSchema = createInsertSchema(serviceMapItems).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertServiceMapItem = z.infer<typeof insertServiceMapItemSchema>;
+export type ServiceMapItem = typeof serviceMapItems.$inferSelect;
+
+// Harita içindeki ajanlar
+export const agentMapItems = pgTable("agent_map_items", {
+  id: serial("id").primaryKey(),
+  mapId: integer("map_id").notNull().references(() => serviceMaps.id),
+  agentId: integer("agent_id").notNull().references(() => agents.id),
+  positionX: integer("position_x").default(0),
+  positionY: integer("position_y").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertAgentMapItemSchema = createInsertSchema(agentMapItems).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAgentMapItem = z.infer<typeof insertAgentMapItemSchema>;
+export type AgentMapItem = typeof agentMapItems.$inferSelect;
+
 // PatrolD Paylaşılabilir haritalar
 export const sharedMaps = pgTable("shared_maps", {
   id: serial("id").primaryKey(),

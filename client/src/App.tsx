@@ -13,6 +13,8 @@ import SettingsPage from "@/pages/settings-page";
 import AgentsPage from "@/pages/agents-page";
 import SharedMapsPage from "@/pages/shared-maps-page";
 import ViewMapPage from "@/pages/view-map-page";
+import ServiceMapsPage from "@/pages/service-maps-page";
+import ServiceMapDetailPage from "@/pages/service-map-detail-page";
 import { ProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
 import { ThemeProvider, ThemeToggleProvider } from "@/components/theme-provider";
