@@ -502,46 +502,95 @@ export default function ServiceCanvas({
                     </linearGradient>
                   </defs>
                   
-                  {/* Base connection curve with subtle glow effect */}
+                  {/* Base connection curve with enhanced glow effect */}
                   <path 
                     d={path}
                     fill="none"
                     stroke={connectionColor}
                     strokeWidth={connection.status === "online" ? 3 : 2}
-                    strokeOpacity={connection.status === "online" ? 0.8 : 0.5}
+                    strokeOpacity={connection.status === "online" ? 0.9 : 0.6}
                     filter={connection.status === "online" ? "url(#glow)" : ""}
                   />
                   
-                  {/* Add animated flow effect for online connections */}
+                  {/* Add enhanced flow effect for online connections */}
                   {connection.status === "online" && (
                     <>
-                      {/* Data flow dots animation */}
+                      {/* Data flow dots animation with improved visuals */}
                       {Array.from({ length: 5 }).map((_, i) => (
                         <circle 
                           key={i} 
                           r={2.5}
                           fill={connectionColor}
-                          filter="url(#glow)">
+                          filter="url(#glow)"
+                          opacity={0.9}>
                           <animateMotion
                             path={path}
                             dur={`${2 + i * 0.5}s`}
                             repeatCount="indefinite"
                             rotate="auto"
+                          >
+                            <mpath xlinkHref={`#path-${connection.id}`} />
+                          </animateMotion>
+                          <animate
+                            attributeName="r"
+                            values="2;3;2"
+                            dur="3s"
+                            repeatCount="indefinite"
                           />
                         </circle>
                       ))}
                       
+                      {/* Glowing overlay for the path */}
+                      <path 
+                        d={path}
+                        fill="none"
+                        stroke={connectionColor}
+                        strokeWidth={5}
+                        strokeOpacity={0.2}
+                        filter="url(#glow)"
+                      />
+                      
                       {/* Dynamic pulse effect along the curve */}
                       <path 
                         d={path}
+                        id={`path-${connection.id}`}
                         fill="none"
                         stroke={`url(#pulse-${animationId})`}
                         strokeWidth={2}
                         strokeDasharray="3 3"
                         strokeLinecap="round"
-                        opacity={0.7}
-                      />
+                        opacity={0.8}
+                      >
+                        <animate 
+                          attributeName="stroke-dashoffset" 
+                          from="0" 
+                          to={-lineLength} 
+                          dur="10s" 
+                          repeatCount="indefinite"
+                        />
+                      </path>
                     </>
+                  )}
+                  
+                  {/* Flow effect for degraded connections */}
+                  {connection.status === "degraded" && (
+                    <path 
+                      d={path}
+                      fill="none"
+                      stroke={connectionColor}
+                      strokeWidth={2}
+                      strokeDasharray="5 3"
+                      strokeLinecap="round"
+                      opacity={0.7}
+                    >
+                      <animate 
+                        attributeName="stroke-dashoffset" 
+                        from="0" 
+                        to={-lineLength} 
+                        dur="15s" 
+                        repeatCount="indefinite"
+                      />
+                    </path>
                   )}
                   
                   {/* Elegant direction indicator */}
