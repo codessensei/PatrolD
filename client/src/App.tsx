@@ -29,6 +29,8 @@ function Router() {
       <ProtectedRoute path="/history" component={HistoryPage} />
       <ProtectedRoute path="/settings" component={SettingsPage} />
       <ProtectedRoute path="/shared-maps" component={SharedMapsPage} />
+      <ProtectedRoute path="/service-maps" component={ServiceMapsPage} />
+      <ProtectedRoute path="/service-maps/:id" component={ServiceMapDetailPage} />
       <Route path="/view-map/:shareKey" component={ViewMapPage} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />

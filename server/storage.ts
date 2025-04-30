@@ -68,6 +68,26 @@ export interface IStorage {
   deleteSharedMap(id: number): Promise<void>;
   incrementSharedMapViewCount(id: number): Promise<SharedMap>;
   
+  // Service Maps (Different project topologies)
+  getServiceMapById(id: number): Promise<ServiceMap | undefined>;
+  getServiceMapsByUserId(userId: number): Promise<ServiceMap[]>;
+  getDefaultServiceMap(userId: number): Promise<ServiceMap | undefined>;
+  createServiceMap(map: InsertServiceMap): Promise<ServiceMap>;
+  updateServiceMap(id: number, data: Partial<ServiceMap>): Promise<ServiceMap>;
+  deleteServiceMap(id: number): Promise<void>;
+  setDefaultServiceMap(id: number): Promise<ServiceMap>;
+  
+  // Service Map Items
+  getServiceMapItems(mapId: number): Promise<ServiceMapItem[]>;
+  addServiceToMap(mapId: number, serviceId: number, position?: { x: number, y: number }): Promise<ServiceMapItem>;
+  removeServiceFromMap(mapId: number, serviceId: number): Promise<void>;
+  updateServiceMapItemPosition(id: number, position: { x: number, y: number }): Promise<ServiceMapItem>;
+  
+  // Agent Map Items
+  getAgentMapItems(mapId: number): Promise<AgentMapItem[]>;
+  addAgentToMap(mapId: number, agentId: number, position?: { x: number, y: number }): Promise<AgentMapItem>;
+  removeAgentFromMap(mapId: number, agentId: number): Promise<void>;
+  
   // Session store
   sessionStore: SessionStore;
   
@@ -396,6 +416,14 @@ export class MemStorage implements IStorage {
   private sharedMaps: Map<number, SharedMap> = new Map();
   private sharedMapId: number = 1;
   
+  // Service Maps (Different project topologies)
+  private serviceMaps: Map<number, ServiceMap> = new Map();
+  private serviceMapId: number = 1;
+  private serviceMapItems: Map<number, ServiceMapItem> = new Map();
+  private serviceMapItemId: number = 1;
+  private agentMapItems: Map<number, AgentMapItem> = new Map();
+  private agentMapItemId: number = 1;
+  
   async getSharedMapById(id: number): Promise<SharedMap | undefined> {
     return this.sharedMaps.get(id);
   }
@@ -465,6 +493,209 @@ export class MemStorage implements IStorage {
     
     this.sharedMaps.set(id, updatedMap);
     return updatedMap;
+  }
+
+  // Service Maps methods
+  async getServiceMapById(id: number): Promise<ServiceMap | undefined> {
+    return this.serviceMaps.get(id);
+  }
+
+  async getServiceMapsByUserId(userId: number): Promise<ServiceMap[]> {
+    return Array.from(this.serviceMaps.values()).filter(
+      map => map.userId === userId
+    );
+  }
+
+  async getDefaultServiceMap(userId: number): Promise<ServiceMap | undefined> {
+    return Array.from(this.serviceMaps.values()).find(
+      map => map.userId === userId && map.isDefault
+    );
+  }
+
+  async createServiceMap(insertMap: InsertServiceMap): Promise<ServiceMap> {
+    const id = this.serviceMapId++;
+    
+    // Check if this is the first map for this user
+    const userMaps = await this.getServiceMapsByUserId(insertMap.userId);
+    const isFirst = userMaps.length === 0;
+    
+    const map: ServiceMap = {
+      ...insertMap,
+      id,
+      // If this is the first map or explicitly set as default
+      isDefault: isFirst || insertMap.isDefault || false,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    // If this map is default, make sure no other maps are default
+    if (map.isDefault) {
+      for (const existingMap of userMaps) {
+        if (existingMap.isDefault) {
+          existingMap.isDefault = false;
+          this.serviceMaps.set(existingMap.id, existingMap);
+        }
+      }
+    }
+    
+    this.serviceMaps.set(id, map);
+    return map;
+  }
+
+  async updateServiceMap(id: number, data: Partial<ServiceMap>): Promise<ServiceMap> {
+    const map = await this.getServiceMapById(id);
+    if (!map) throw new Error(`Service map with id ${id} not found`);
+    
+    const updatedMap: ServiceMap = {
+      ...map,
+      ...data,
+      updatedAt: new Date()
+    };
+    
+    this.serviceMaps.set(id, updatedMap);
+    return updatedMap;
+  }
+
+  async deleteServiceMap(id: number): Promise<void> {
+    const map = await this.getServiceMapById(id);
+    if (!map) return;
+    
+    // If this was the default map, set another map as default if available
+    if (map.isDefault) {
+      const userMaps = await this.getServiceMapsByUserId(map.userId);
+      const otherMap = userMaps.find(m => m.id !== id);
+      if (otherMap) {
+        otherMap.isDefault = true;
+        this.serviceMaps.set(otherMap.id, otherMap);
+      }
+    }
+    
+    // Delete all map items
+    const serviceItems = await this.getServiceMapItems(id);
+    for (const item of serviceItems) {
+      this.serviceMapItems.delete(item.id);
+    }
+    
+    const agentItems = await this.getAgentMapItems(id);
+    for (const item of agentItems) {
+      this.agentMapItems.delete(item.id);
+    }
+    
+    // Delete the map
+    this.serviceMaps.delete(id);
+  }
+
+  async setDefaultServiceMap(id: number): Promise<ServiceMap> {
+    const map = await this.getServiceMapById(id);
+    if (!map) throw new Error(`Service map with id ${id} not found`);
+    
+    // Get all maps for this user and unset default
+    const userMaps = await this.getServiceMapsByUserId(map.userId);
+    for (const existingMap of userMaps) {
+      if (existingMap.id !== id && existingMap.isDefault) {
+        existingMap.isDefault = false;
+        this.serviceMaps.set(existingMap.id, existingMap);
+      }
+    }
+    
+    // Set this map as default
+    map.isDefault = true;
+    this.serviceMaps.set(id, map);
+    return map;
+  }
+
+  // Service Map Items methods
+  async getServiceMapItems(mapId: number): Promise<ServiceMapItem[]> {
+    return Array.from(this.serviceMapItems.values()).filter(
+      item => item.mapId === mapId
+    );
+  }
+
+  async addServiceToMap(mapId: number, serviceId: number, position?: { x: number, y: number }): Promise<ServiceMapItem> {
+    // Check if service already exists in this map
+    const existing = Array.from(this.serviceMapItems.values()).find(
+      item => item.mapId === mapId && item.serviceId === serviceId
+    );
+    
+    if (existing) {
+      return existing;
+    }
+    
+    const id = this.serviceMapItemId++;
+    const item: ServiceMapItem = {
+      id,
+      mapId,
+      serviceId,
+      positionX: position?.x || 0,
+      positionY: position?.y || 0,
+      createdAt: new Date()
+    };
+    
+    this.serviceMapItems.set(id, item);
+    return item;
+  }
+
+  async removeServiceFromMap(mapId: number, serviceId: number): Promise<void> {
+    const items = Array.from(this.serviceMapItems.values());
+    const item = items.find(i => i.mapId === mapId && i.serviceId === serviceId);
+    
+    if (item) {
+      this.serviceMapItems.delete(item.id);
+    }
+  }
+
+  async updateServiceMapItemPosition(id: number, position: { x: number, y: number }): Promise<ServiceMapItem> {
+    const item = this.serviceMapItems.get(id);
+    if (!item) throw new Error(`Service map item with id ${id} not found`);
+    
+    const updatedItem: ServiceMapItem = {
+      ...item,
+      positionX: position.x,
+      positionY: position.y
+    };
+    
+    this.serviceMapItems.set(id, updatedItem);
+    return updatedItem;
+  }
+
+  // Agent Map Items methods
+  async getAgentMapItems(mapId: number): Promise<AgentMapItem[]> {
+    return Array.from(this.agentMapItems.values()).filter(
+      item => item.mapId === mapId
+    );
+  }
+
+  async addAgentToMap(mapId: number, agentId: number, position?: { x: number, y: number }): Promise<AgentMapItem> {
+    // Check if agent already exists in this map
+    const existing = Array.from(this.agentMapItems.values()).find(
+      item => item.mapId === mapId && item.agentId === agentId
+    );
+    
+    if (existing) {
+      return existing;
+    }
+    
+    const id = this.agentMapItemId++;
+    const item: AgentMapItem = {
+      id,
+      mapId,
+      agentId,
+      positionX: position?.x || 0,
+      positionY: position?.y || 0,
+      createdAt: new Date()
+    };
+    
+    this.agentMapItems.set(id, item);
+    return item;
+  }
+
+  async removeAgentFromMap(mapId: number, agentId: number): Promise<void> {
+    const items = Array.from(this.agentMapItems.values());
+    const item = items.find(i => i.mapId === mapId && i.agentId === agentId);
+    
+    if (item) {
+      this.agentMapItems.delete(item.id);
+    }
   }
 }
 
