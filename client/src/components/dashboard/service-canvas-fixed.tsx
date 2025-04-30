@@ -414,17 +414,11 @@ export default function ServiceCanvas({
             transformOrigin: "top left"
           }}
         >
-          {/* SVG for Connection Lines with Animation */}
+          {/* SVG for Service-to-Service Connection Lines with Animation */}
           <svg ref={svgRef} className="absolute top-0 left-0 w-full h-full pointer-events-none" style={{ zIndex: 15 }}>
-            {/* Background gradient for connections */}
-            <defs>
-              <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
-                <feGaussianBlur stdDeviation="4" result="blur" />
-                <feComposite in="SourceGraphic" in2="blur" operator="over" />
-              </filter>
-            </defs>
-            
+            {/* First render regular service-to-service connections */}
             {connections.map(connection => {
+              // Check if both source and target are services without agent monitoring
               const source = servicePositions[connection.sourceId];
               const target = servicePositions[connection.targetId];
               
@@ -439,18 +433,18 @@ export default function ServiceCanvas({
               // Calculate line length for animation
               const dx = targetX - sourceX;
               const dy = targetY - sourceY;
-              const lineLength = Math.sqrt(dx * dx + dy * dy);
               
-              // Generate unique ID for this connection
-              const connectionColor = getConnectionColor(connection.status);
-              const glowColor = connection.status === "online" ? 
-                               "rgba(16, 185, 129, 0.5)" : 
-                               connection.status === "offline" ? 
-                               "rgba(239, 68, 68, 0.5)" : 
-                               connection.status === "degraded" ? 
-                               "rgba(245, 158, 11, 0.5)" : 
-                               "rgba(156, 163, 175, 0.3)";
-              const animationId = `flow-${connection.id}`;
+              // Get color based on status
+              let connectionColor;
+              if (connection.status === "online") {
+                connectionColor = "#10b981"; // Green
+              } else if (connection.status === "offline") {
+                connectionColor = "#ef4444"; // Red
+              } else if (connection.status === "degraded") {
+                connectionColor = "#f59e0b"; // Amber
+              } else {
+                connectionColor = "#9ca3af"; // Gray
+              }
               
               // Use a nice curved path instead of a straight line
               const midX = (sourceX + targetX) / 2;
@@ -465,141 +459,186 @@ export default function ServiceCanvas({
               
               return (
                 <g key={connection.id}>
-                  {/* Defs for the animated flow effect */}
-                  <defs>
-                    <linearGradient id={animationId} gradientUnits="userSpaceOnUse" x1={sourceX} y1={sourceY} x2={targetX} y2={targetY}>
-                      <stop offset="0%" stopColor="rgba(255, 255, 255, 0)" />
-                      <stop offset="50%" stopColor={connectionColor} />
-                      <stop offset="100%" stopColor="rgba(255, 255, 255, 0)" />
-                    </linearGradient>
-                    
-                    {/* Dash array animation definition */}
-                    <linearGradient id={`pulse-${animationId}`}>
-                      <stop offset="0%" stopColor={connectionColor}>
-                        <animate 
-                          attributeName="offset" 
-                          values="0;1" 
-                          dur="4s" 
-                          repeatCount="indefinite" 
-                        />
-                      </stop>
-                      <stop offset="50%" stopColor="white">
-                        <animate 
-                          attributeName="offset" 
-                          values="0;1" 
-                          dur="4s" 
-                          repeatCount="indefinite" 
-                        />
-                      </stop>
-                      <stop offset="100%" stopColor={connectionColor}>
-                        <animate 
-                          attributeName="offset" 
-                          values="0;1" 
-                          dur="4s" 
-                          repeatCount="indefinite" 
-                        />
-                      </stop>
-                    </linearGradient>
-                  </defs>
-                  
-                  {/* Base connection curve with enhanced glow effect */}
+                  {/* Base connection line */}
                   <path 
                     d={path}
                     fill="none"
                     stroke={connectionColor}
                     strokeWidth={connection.status === "online" ? 3 : 2}
-                    strokeOpacity={connection.status === "online" ? 0.9 : 0.6}
-                    filter={connection.status === "online" ? "url(#glow)" : ""}
+                    opacity={connection.status === "online" ? 0.8 : 0.5}
                   />
                   
-                  {/* Add enhanced flow effect for online connections */}
+                  {/* Online connection animations - Floating dots */}
                   {connection.status === "online" && (
                     <>
-                      {/* Data flow dots animation with improved visuals */}
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <circle 
-                          key={i} 
-                          r={2.5}
-                          fill={connectionColor}
-                          filter="url(#glow)"
-                          opacity={0.9}>
-                          <animateMotion
-                            path={path}
-                            dur={`${2 + i * 0.5}s`}
-                            repeatCount="indefinite"
-                            rotate="auto"
-                          >
-                            <mpath xlinkHref={`#path-${connection.id}`} />
-                          </animateMotion>
-                          <animate
-                            attributeName="r"
-                            values="2;3;2"
-                            dur="3s"
-                            repeatCount="indefinite"
-                          />
-                        </circle>
-                      ))}
-                      
-                      {/* Glowing overlay for the path */}
+                      {/* Special animated line for online connections */}
                       <path 
                         d={path}
                         fill="none"
                         stroke={connectionColor}
-                        strokeWidth={5}
-                        strokeOpacity={0.2}
-                        filter="url(#glow)"
-                      />
-                      
-                      {/* Dynamic pulse effect along the curve */}
-                      <path 
-                        d={path}
-                        id={`path-${connection.id}`}
-                        fill="none"
-                        stroke={`url(#pulse-${animationId})`}
                         strokeWidth={2}
-                        strokeDasharray="3 3"
-                        strokeLinecap="round"
-                        opacity={0.8}
+                        strokeDasharray="5,5"
+                        opacity={0.7}
                       >
                         <animate 
                           attributeName="stroke-dashoffset" 
                           from="0" 
-                          to={-lineLength} 
-                          dur="10s" 
-                          repeatCount="indefinite"
+                          to="10" 
+                          dur="1s"
+                          repeatCount="indefinite" 
                         />
                       </path>
+                      
+                      {/* Animated circle flowing along the path */}
+                      <circle r="3" fill={connectionColor}>
+                        <animateMotion
+                          path={path}
+                          dur="3s"
+                          repeatCount="indefinite"
+                        />
+                      </circle>
+                      
+                      <circle r="2" fill={connectionColor}>
+                        <animateMotion
+                          path={path}
+                          dur="4s"
+                          repeatCount="indefinite"
+                        />
+                      </circle>
                     </>
                   )}
                   
-                  {/* Flow effect for degraded connections */}
+                  {/* Degraded connection animations */}
                   {connection.status === "degraded" && (
                     <path 
                       d={path}
                       fill="none"
                       stroke={connectionColor}
                       strokeWidth={2}
-                      strokeDasharray="5 3"
-                      strokeLinecap="round"
+                      strokeDasharray="3,6"
                       opacity={0.7}
                     >
                       <animate 
                         attributeName="stroke-dashoffset" 
                         from="0" 
-                        to={-lineLength} 
-                        dur="15s" 
-                        repeatCount="indefinite"
+                        to="9" 
+                        dur="2s"
+                        repeatCount="indefinite" 
                       />
                     </path>
                   )}
                   
-                  {/* Elegant direction indicator */}
+                  {/* Direction indicator (arrow) */}
                   <polygon 
                     points="0,-5 10,0 0,5" 
                     fill={connectionColor} 
                     transform={`translate(${targetX - dx * 0.1}, ${targetY - dy * 0.1}) rotate(${Math.atan2(dy, dx) * 180 / Math.PI})`}
-                    opacity={0.9}
-                    filter={connection.status === "online" ? "url(#glow)" : ""}
+                    opacity={0.8}
+                  />
+                </g>
+              );
+            })}
+            
+            {/* Then render connections from Agent to monitored services */}
+            {services.map(service => {
+              // Skip services that don't have an agent assigned
+              if (!service.agentId) return null;
+              
+              const agent = agents.find(a => a.id === service.agentId);
+              if (!agent) return null;
+              
+              const sourcePos = agentPositions[agent.id];
+              const targetPos = servicePositions[service.id];
+              
+              if (!sourcePos || !targetPos) return null;
+              
+              // Calculate center positions
+              const sourceX = sourcePos.x + 100; // Half of agent width
+              const sourceY = sourcePos.y + 60;  // Half of agent height
+              const targetX = targetPos.x + 90;  // Half of service width
+              const targetY = targetPos.y + 60;  // Half of service height
+              
+              // Create curved path
+              const midX = (sourceX + targetX) / 2;
+              const midY = (sourceY + targetY) / 2;
+              const offsetX = (targetY - sourceY) * 0.1;
+              const offsetY = (sourceX - targetX) * 0.1;
+              const path = `M${sourceX},${sourceY} Q${midX + offsetX},${midY + offsetY} ${targetX},${targetY}`;
+              
+              // Determine color based on agent and service status
+              let connectionColor;
+              if (agent.status === "active") {
+                if (service.status === "online") {
+                  connectionColor = "#3b82f6"; // blue
+                } else if (service.status === "degraded") {
+                  connectionColor = "#f59e0b"; // amber
+                } else if (service.status === "offline") {
+                  connectionColor = "#ef4444"; // red
+                } else {
+                  connectionColor = "#9ca3af"; // gray
+                }
+              } else {
+                connectionColor = "#9ca3af"; // gray for inactive agent
+              }
+              
+              return (
+                <g key={`agent-${agent.id}-service-${service.id}`}>
+                  {/* Base connection line */}
+                  <path 
+                    d={path}
+                    fill="none"
+                    stroke={connectionColor}
+                    strokeWidth={2}
+                    strokeDasharray={agent.status === "active" ? "2,2" : "4,3"}
+                    opacity={agent.status === "active" ? 0.8 : 0.5}
+                  />
+                  
+                  {/* Active agent animations */}
+                  {agent.status === "active" && (
+                    <>
+                      {/* Special animated line for active agents */}
+                      <path 
+                        d={path}
+                        fill="none"
+                        stroke={connectionColor}
+                        strokeWidth={1.5}
+                        strokeDasharray="4,4"
+                        opacity={0.7}
+                      >
+                        <animate 
+                          attributeName="stroke-dashoffset" 
+                          from="0" 
+                          to="8" 
+                          dur="1.5s"
+                          repeatCount="indefinite" 
+                        />
+                      </path>
+                      
+                      {/* Animated circle flowing along the path */}
+                      <circle r="2.5" fill={connectionColor}>
+                        <animateMotion
+                          path={path}
+                          dur="2.5s"
+                          repeatCount="indefinite"
+                        />
+                      </circle>
+                      
+                      <circle r="2" fill={connectionColor}>
+                        <animateMotion
+                          path={path}
+                          dur="3.5s"
+                          repeatCount="indefinite"
+                        />
+                      </circle>
+                    </>
+                  )}
+                  
+                  {/* Direction indicator */}
+                  <polygon 
+                    points="0,-4 8,0 0,4" 
+                    fill={connectionColor} 
+                    transform={`translate(${targetX - (targetX - sourceX) * 0.05}, ${targetY - (targetY - sourceY) * 0.05}) rotate(${Math.atan2(targetY - sourceY, targetX - sourceX) * 180 / Math.PI})`}
+                    opacity={0.8}
                   />
                 </g>
               );
