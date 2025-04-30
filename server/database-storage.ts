@@ -5,7 +5,8 @@ import {
   Alert, InsertAlert, alerts,
   Agent, InsertAgent, agents,
   UserSettings, InsertUserSettings, userSettings,
-  SharedMap, InsertSharedMap, sharedMaps
+  SharedMap, InsertSharedMap, sharedMaps,
+  ServiceMetrics, InsertServiceMetrics, serviceMetrics
 } from "@shared/schema";
 import { IStorage } from "./storage";
 import { db, pool } from "./db";
@@ -276,5 +277,116 @@ export class DatabaseStorage implements IStorage {
       .where(eq(sharedMaps.id, id))
       .returning();
     return map;
+  }
+
+  // Service Metrics methods
+  async getServiceMetrics(serviceId: number, timespan?: string): Promise<ServiceMetrics[]> {
+    let query = db.select().from(serviceMetrics).where(eq(serviceMetrics.serviceId, serviceId));
+    
+    if (timespan) {
+      const now = new Date();
+      let startDate: Date;
+      
+      switch (timespan) {
+        case '1h':
+          startDate = new Date(now.getTime() - 60 * 60 * 1000);
+          break;
+        case '6h':
+          startDate = new Date(now.getTime() - 6 * 60 * 60 * 1000);
+          break;
+        case '24h':
+          startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          break;
+        case '7d':
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case '30d':
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        default:
+          startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000); // Default to 24h
+      }
+      
+      query = query.where(
+        and(
+          gte(serviceMetrics.timestamp, startDate),
+          lte(serviceMetrics.timestamp, now)
+        )
+      );
+    }
+    
+    return await query.orderBy(desc(serviceMetrics.timestamp));
+  }
+
+  async addServiceMetric(metric: InsertServiceMetrics): Promise<ServiceMetrics> {
+    const [createdMetric] = await db.insert(serviceMetrics).values(metric).returning();
+    return createdMetric;
+  }
+
+  async updateServiceAggregateMetrics(serviceId: number): Promise<Service> {
+    // Get metrics from the last 24 hours
+    const now = new Date();
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    
+    const metrics = await db.select()
+      .from(serviceMetrics)
+      .where(
+        and(
+          eq(serviceMetrics.serviceId, serviceId),
+          gte(serviceMetrics.timestamp, yesterday),
+          lte(serviceMetrics.timestamp, now)
+        )
+      );
+    
+    if (!metrics.length) {
+      // No recent metrics available, just return the service unchanged
+      const [service] = await db.select().from(services).where(eq(services.id, serviceId));
+      return service;
+    }
+    
+    // Calculate aggregate metrics
+    const responseTimes = metrics.map(m => m.responseTime).filter(Boolean) as number[];
+    const latencies = metrics.map(m => m.latency).filter(Boolean) as number[];
+    const packetLosses = metrics.map(m => m.packetLoss).filter(Boolean) as number[];
+    
+    // Calculate average response time
+    const avgResponseTime = responseTimes.length 
+      ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length)
+      : null;
+    
+    // Calculate max and min response times
+    const maxResponseTime = responseTimes.length ? Math.max(...responseTimes) : null;
+    const minResponseTime = responseTimes.length ? Math.min(...responseTimes) : null;
+    
+    // Calculate average latency
+    const avgLatency = latencies.length
+      ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length)
+      : null;
+    
+    // Calculate average packet loss
+    const avgPacketLoss = packetLosses.length
+      ? Number((packetLosses.reduce((a, b) => a + b, 0) / packetLosses.length).toFixed(2))
+      : null;
+    
+    // Calculate availability (percentage of online checks)
+    const totalChecks = metrics.length;
+    const onlineChecks = metrics.filter(m => m.status === 'online').length;
+    const availability = totalChecks ? Number(((onlineChecks / totalChecks) * 100).toFixed(2)) : null;
+    
+    // Update service with aggregate metrics
+    const [updatedService] = await db
+      .update(services)
+      .set({
+        avgResponseTime24h: avgResponseTime,
+        maxResponseTime24h: maxResponseTime,
+        minResponseTime24h: minResponseTime,
+        avgLatency24h: avgLatency,
+        packetLoss24h: avgPacketLoss,
+        availability24h: availability
+      })
+      .where(eq(services.id, serviceId))
+      .returning();
+    
+    return updatedService;
   }
 }
