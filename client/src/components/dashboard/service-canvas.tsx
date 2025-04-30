@@ -81,7 +81,7 @@ export default function ServiceCanvas({
     // If services need auto layout, arrange them in a grid
     if (needsAutoLayout) {
       const canvasWidth = canvasRef.current?.clientWidth || 1000;
-      const itemsPerRow = Math.max(Math.floor(canvasWidth / 200), 4);
+      const itemsPerRow = Math.max(Math.floor(canvasWidth / 150), 4);
       
       services.forEach((service, index) => {
         const col = index % itemsPerRow;
@@ -89,8 +89,8 @@ export default function ServiceCanvas({
         
         // Distribute services in a grid with appropriate spacing - tighter for small screens
         positions[service.id] = { 
-          x: 20 + col * 180, 
-          y: 30 + row * 150 
+          x: 20 + col * 150, 
+          y: 30 + row * 120 
         };
         
         // Save the new position to the backend
@@ -385,8 +385,8 @@ export default function ServiceCanvas({
         </div>
       </CardHeader>
       
-      {/* Service Canvas Area with improved scaling */}
-      <div className="relative min-h-[400px] h-[calc(100vh-20rem)] sm:h-[calc(100vh-15rem)] overflow-hidden max-w-full">
+      {/* Service Canvas Area with improved scaling - reduced max width */}
+      <div className="relative min-h-[400px] h-[calc(100vh-20rem)] sm:h-[calc(100vh-15rem)] overflow-hidden mx-auto" style={{ maxWidth: "calc(100vw - 40px)" }}>
         {/* Zoom indicator overlay */}
         {zoom !== 1 && (
           <div className="absolute bottom-4 right-4 z-30 bg-slate-800/80 dark:bg-slate-900/80 text-white py-1 px-2 rounded-md text-xs font-mono flex items-center gap-2">
@@ -413,8 +413,9 @@ export default function ServiceCanvas({
         
         <div 
           ref={canvasRef}
-          className="relative h-full w-full overflow-auto canvas-grid p-2 sm:p-4 max-w-[calc(100vw-35px)]"
+          className="relative h-full w-full overflow-auto canvas-grid p-2 sm:p-4"
           style={{
+            maxWidth: "calc(100vw - 45px)",
             backgroundSize: `${20 * zoom}px ${20 * zoom}px`,
             backgroundImage: `
               linear-gradient(to right, rgba(203, 213, 225, 0.1) 1px, transparent 1px),
@@ -441,9 +442,9 @@ export default function ServiceCanvas({
               if (!source || !target) return null;
               
               // Calculate center positions for source and target
-              const sourceX = source.x + 75; // Half of service width (150px / 2)
+              const sourceX = source.x + 70; // Half of service width (140px / 2)
               const sourceY = source.y + 50; // Half of service height
-              const targetX = target.x + 75;
+              const targetX = target.x + 70;
               const targetY = target.y + 50;
               
               // Calculate line length for animation
@@ -578,9 +579,9 @@ export default function ServiceCanvas({
                     if (!servicePos) return null;
                     
                     // Calculate positions for curved path
-                    const x1 = position.x + 85; // Half of agent width (170px / 2)
+                    const x1 = position.x + 80; // Half of agent width (160px / 2)
                     const y1 = position.y + 50; // Half of agent height
-                    const x2 = servicePos.x + 75; // Half of service width (150px / 2)
+                    const x2 = servicePos.x + 70; // Half of service width (140px / 2)
                     const y2 = servicePos.y + 50; // Half of service height
                     
                     // Calculate control points for bezier curve
@@ -698,7 +699,7 @@ export default function ServiceCanvas({
                 key={service.id}
                 className="service-node absolute bg-card dark:bg-card rounded-xl shadow-lg border-2 overflow-hidden transition-all duration-200 hover:shadow-xl"
                 style={{
-                  width: "150px",
+                  width: "140px",
                   left: `${position.x}px`,
                   top: `${position.y}px`,
                   zIndex: draggingService === service.id ? 100 : 20,
@@ -803,7 +804,7 @@ export default function ServiceCanvas({
                 key={`agent-${agent.id}`}
                 className="agent-node absolute bg-card dark:bg-card rounded-xl shadow-lg border-2 overflow-hidden transition-all duration-200 hover:shadow-xl"
                 style={{
-                  width: "170px",
+                  width: "160px",
                   left: `${position.x}px`,
                   top: `${position.y}px`,
                   zIndex: draggingAgent === agent.id ? 100 : 30,
