@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { setupMonitoring, getTelegramService, createStatusChangeAlert } from "./monitor";
 import { z } from "zod";
-import { insertConnectionSchema, insertServiceSchema, insertAgentSchema } from "@shared/schema";
+import { insertConnectionSchema, insertServiceSchema, insertAgentSchema, insertSharedMapSchema } from "@shared/schema";
 import { randomBytes } from "crypto";
 import * as fs from 'fs';
 

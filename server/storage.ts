@@ -4,7 +4,8 @@ import {
   Connection, InsertConnection,
   Alert, InsertAlert,
   Agent, InsertAgent,
-  UserSettings, InsertUserSettings
+  UserSettings, InsertUserSettings,
+  SharedMap, InsertSharedMap
 } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
@@ -57,6 +58,16 @@ export interface IStorage {
   getUserSettings(userId: number): Promise<UserSettings | undefined>;
   updateUserSettings(settings: Partial<UserSettings> & { userId: number }): Promise<UserSettings>;
   
+  // Shared Maps
+  getSharedMapById(id: number): Promise<SharedMap | undefined>;
+  getSharedMapByShareKey(shareKey: string): Promise<SharedMap | undefined>;
+  getSharedMapsByUserId(userId: number): Promise<SharedMap[]>;
+  getPublishedSharedMaps(): Promise<SharedMap[]>;
+  createSharedMap(map: InsertSharedMap): Promise<SharedMap>;
+  updateSharedMap(id: number, data: Partial<SharedMap>): Promise<SharedMap>;
+  deleteSharedMap(id: number): Promise<void>;
+  incrementSharedMapViewCount(id: number): Promise<SharedMap>;
+  
   // Session store
   sessionStore: SessionStore;
   
@@ -71,6 +82,7 @@ export class MemStorage implements IStorage {
   private alerts: Map<number, Alert>;
   private agents: Map<number, Agent>;
   private userSettings: Map<number, UserSettings>;
+  private sharedMaps: Map<number, SharedMap>;
   
   sessionStore: SessionStore;
   private userId: number = 1;
@@ -79,6 +91,7 @@ export class MemStorage implements IStorage {
   private alertId: number = 1;
   private agentId: number = 1;
   private userSettingsId: number = 1;
+  private sharedMapId: number = 1;
 
   constructor() {
     this.users = new Map();
@@ -87,6 +100,7 @@ export class MemStorage implements IStorage {
     this.alerts = new Map();
     this.agents = new Map();
     this.userSettings = new Map();
+    this.sharedMaps = new Map();
     this.sessionStore = new MemoryStoreConstructor({
       checkPeriod: 86400000, // prune expired entries every 24h
     });
@@ -379,6 +393,79 @@ export class MemStorage implements IStorage {
       this.userSettings.set(id, newSettings);
       return newSettings;
     }
+  }
+  
+  // Shared Maps methods
+  async getSharedMapById(id: number): Promise<SharedMap | undefined> {
+    return this.sharedMaps.get(id);
+  }
+
+  async getSharedMapByShareKey(shareKey: string): Promise<SharedMap | undefined> {
+    return Array.from(this.sharedMaps.values()).find(
+      map => map.shareKey === shareKey
+    );
+  }
+
+  async getSharedMapsByUserId(userId: number): Promise<SharedMap[]> {
+    return Array.from(this.sharedMaps.values()).filter(
+      map => map.userId === userId
+    );
+  }
+
+  async getPublishedSharedMaps(): Promise<SharedMap[]> {
+    return Array.from(this.sharedMaps.values()).filter(
+      map => map.isPublished
+    );
+  }
+
+  async createSharedMap(insertMap: InsertSharedMap): Promise<SharedMap> {
+    const id = this.sharedMapId++;
+    
+    // Generate a unique share key
+    const shareKey = `map_${Math.random().toString(36).substring(2, 10)}_${new Date().getTime().toString(36)}`;
+    
+    const map: SharedMap = {
+      ...insertMap,
+      id,
+      shareKey,
+      viewCount: 0,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    this.sharedMaps.set(id, map);
+    return map;
+  }
+
+  async updateSharedMap(id: number, data: Partial<SharedMap>): Promise<SharedMap> {
+    const map = await this.getSharedMapById(id);
+    if (!map) throw new Error(`Shared map with id ${id} not found`);
+    
+    const updatedMap: SharedMap = {
+      ...map,
+      ...data,
+      updatedAt: new Date()
+    };
+    
+    this.sharedMaps.set(id, updatedMap);
+    return updatedMap;
+  }
+
+  async deleteSharedMap(id: number): Promise<void> {
+    this.sharedMaps.delete(id);
+  }
+
+  async incrementSharedMapViewCount(id: number): Promise<SharedMap> {
+    const map = await this.getSharedMapById(id);
+    if (!map) throw new Error(`Shared map with id ${id} not found`);
+    
+    const updatedMap: SharedMap = {
+      ...map,
+      viewCount: (map.viewCount || 0) + 1
+    };
+    
+    this.sharedMaps.set(id, updatedMap);
+    return updatedMap;
   }
 }
 
