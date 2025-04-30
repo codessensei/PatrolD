@@ -899,22 +899,24 @@ export default function ServiceCanvas({
             );
           })}
 
-          {/* Add New Service Button */}
-          <div 
-            className="service-node absolute bg-card dark:bg-card rounded-xl border-2 border-dashed border-primary p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-accent transition-all duration-200 shadow-md hover:shadow-lg"
-            style={{
-              width: "180px",
-              left: "380px",
-              top: "520px",
-              zIndex: 5
-            }}
-            onClick={onAddService}
-          >
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-              <Plus className="h-6 w-6 text-primary" />
+          {/* Add New Service Button - only shown when not in readonly mode */}
+          {!readonly && onAddService && (
+            <div 
+              className="service-node absolute bg-card dark:bg-card rounded-xl border-2 border-dashed border-primary p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-accent transition-all duration-200 shadow-md hover:shadow-lg"
+              style={{
+                width: "180px",
+                left: "380px",
+                top: "520px",
+                zIndex: 5
+              }}
+              onClick={onAddService}
+            >
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                <Plus className="h-6 w-6 text-primary" />
+              </div>
+              <p className="text-sm font-medium text-primary">Add New Service</p>
             </div>
-            <p className="text-sm font-medium text-primary">Add New Service</p>
-          </div>
+          )}
         </div>
       </div>
     </Card>

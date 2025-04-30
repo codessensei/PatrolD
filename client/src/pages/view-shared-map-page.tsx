@@ -176,7 +176,6 @@ const ViewSharedMapPage = () => {
                   services={map.mapData.services || []}
                   connections={map.mapData.connections || []}
                   readonly={true}
-                  className="min-h-[500px] w-full"
                 />
               </div>
             ) : (
