@@ -21,6 +21,7 @@ import {
 interface ServiceCanvasProps {
   services: Service[];
   connections: Connection[];
+  agents?: any[]; // Adding agents property
   isLoading?: boolean;
   onAddService: () => void;
 }
@@ -46,7 +47,7 @@ export default function ServiceCanvas({
   const [agentPositions, setAgentPositions] = useState<Record<number, Position>>({});
   const [draggingAgent, setDraggingAgent] = useState<number | null>(null);
   
-  // Query agents
+  // Fetch agents
   const { data: agents = [] } = useQuery<Agent[]>({
     queryKey: ["/api/agents"],
   });
