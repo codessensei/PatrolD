@@ -415,7 +415,7 @@ export default function ServiceCanvas({
           ref={canvasRef}
           className="relative h-full w-full overflow-auto canvas-grid p-1 sm:p-2"
           style={{
-            maxWidth: "calc(100vw - 90px)",
+            maxWidth: "calc(100vw - 100px)",
             backgroundSize: `${20 * zoom}px ${20 * zoom}px`,
             backgroundImage: `
               linear-gradient(to right, rgba(203, 213, 225, 0.1) 1px, transparent 1px),
@@ -699,7 +699,7 @@ export default function ServiceCanvas({
                 key={service.id}
                 className="service-node absolute bg-card dark:bg-card rounded-xl shadow-lg border-2 overflow-hidden transition-all duration-200 hover:shadow-xl"
                 style={{
-                  width: "130px",
+                  width: "120px",
                   left: `${position.x}px`,
                   top: `${position.y}px`,
                   zIndex: draggingService === service.id ? 100 : 20,
@@ -804,7 +804,7 @@ export default function ServiceCanvas({
                 key={`agent-${agent.id}`}
                 className="agent-node absolute bg-card dark:bg-card rounded-xl shadow-lg border-2 overflow-hidden transition-all duration-200 hover:shadow-xl"
                 style={{
-                  width: "150px",
+                  width: "140px",
                   left: `${position.x}px`,
                   top: `${position.y}px`,
                   zIndex: draggingAgent === agent.id ? 100 : 30,

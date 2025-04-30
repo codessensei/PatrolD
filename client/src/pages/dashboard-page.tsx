@@ -70,7 +70,7 @@ export default function DashboardPage() {
           onSearch={setSearchQuery} 
         />
         
-        <div className="p-2 md:p-3 relative max-w-[calc(100vw-85px)] mx-auto overflow-x-hidden">
+        <div className="p-2 md:p-2 relative max-w-[calc(100vw-100px)] mx-auto overflow-x-hidden">
           {/* Dashboard Header */}
           <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between">
             <div>
