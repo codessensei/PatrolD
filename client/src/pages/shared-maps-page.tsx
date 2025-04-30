@@ -46,7 +46,7 @@ const createMapSchema = z.object({
 
 type CreateMapFormData = z.infer<typeof createMapSchema>;
 
-const SharedMapsPage = () => {
+const SharedMapsPage = ({ viewMode = false }: { viewMode?: boolean } = {}) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedMap, setSelectedMap] = useState<SharedMap | null>(null);
@@ -201,7 +201,7 @@ const SharedMapsPage = () => {
     setSelectedMap(map);
     const host = window.location.host;
     const protocol = window.location.protocol;
-    setPublicShareUrl(`${protocol}//${host}/map/${map.shareKey}`);
+    setPublicShareUrl(`${protocol}//${host}/shared-map/${map.shareKey}`);
     setIsShareDialogOpen(true);
   };
   
@@ -217,7 +217,7 @@ const SharedMapsPage = () => {
   
   return (
     <Layout>
-      <div className="container mx-auto p-4">
+      <div className="w-full max-w-full p-2 md:p-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
           <div>
             <h1 className="text-2xl font-bold">PatrolD - Shared Maps</h1>
