@@ -665,13 +665,16 @@ export default function ServiceCanvas({
                     </span>
                   </div>
                   
-                  {agent.serverInfo && (
+                  {agent.serverInfo && typeof agent.serverInfo === 'object' && (
                     <>
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-slate-400 text-xs">Host:</span>
                         <span className="font-mono text-xs truncate max-w-[110px]">
-                          {typeof agent.serverInfo === 'object' && agent.serverInfo !== null && 'hostname' in agent.serverInfo
-                            ? (agent.serverInfo as any).hostname
+                          {agent.serverInfo && 
+                           typeof agent.serverInfo === 'object' && 
+                           'hostname' in agent.serverInfo && 
+                           typeof agent.serverInfo.hostname === 'string'
+                            ? agent.serverInfo.hostname
                             : 'Unknown'}
                         </span>
                       </div>
@@ -679,8 +682,11 @@ export default function ServiceCanvas({
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-slate-400 text-xs">OS:</span>
                         <span className="font-mono text-xs">
-                          {typeof agent.serverInfo === 'object' && agent.serverInfo !== null && 'platform' in agent.serverInfo
-                            ? (agent.serverInfo as any).platform
+                          {agent.serverInfo && 
+                           typeof agent.serverInfo === 'object' && 
+                           'platform' in agent.serverInfo &&
+                           typeof agent.serverInfo.platform === 'string'
+                            ? agent.serverInfo.platform
                             : 'Unknown'}
                         </span>
                       </div>
@@ -688,8 +694,11 @@ export default function ServiceCanvas({
                       <div className="flex items-center justify-between">
                         <span className="text-slate-400 text-xs">CPU Cores:</span>
                         <span className="font-mono text-xs">
-                          {typeof agent.serverInfo === 'object' && agent.serverInfo !== null && 'cpus' in agent.serverInfo
-                            ? (agent.serverInfo as any).cpus
+                          {agent.serverInfo && 
+                           typeof agent.serverInfo === 'object' && 
+                           'cpus' in agent.serverInfo &&
+                           typeof agent.serverInfo.cpus === 'number'
+                            ? String(agent.serverInfo.cpus)
                             : 'N/A'}
                         </span>
                       </div>

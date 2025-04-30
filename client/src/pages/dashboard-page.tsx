@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import Sidebar from "@/components/layout/sidebar";
 import Topbar from "@/components/layout/topbar";
 import StatusCard from "@/components/dashboard/status-card";
-import ServiceCanvas from "@/components/dashboard/service-canvas";
+import ServiceCanvas from "@/components/dashboard/service-canvas-fixed";
 import AlertItem from "@/components/dashboard/alert-item";
 import StatsPanel from "@/components/dashboard/stats-panel";
 import AddServiceModal from "@/components/modals/add-service-modal";
@@ -43,7 +43,11 @@ export default function DashboardPage() {
   const onlineServices = services.filter(s => s.status === "online").length;
   const offlineServices = services.filter(s => s.status === "offline").length;
   const degradedServices = services.filter(s => s.status === "degraded").length;
-  const avgResponseTime = stats && typeof stats === 'object' && 'avgResponseTime' in stats ? stats.avgResponseTime : 0;
+  const avgResponseTime = stats && 
+                          typeof stats === 'object' && 
+                          'avgResponseTime' in stats ? 
+                          typeof stats.avgResponseTime === 'number' ? 
+                          stats.avgResponseTime : 0 : 0;
 
   // Search filter
   const filteredServices = searchQuery
