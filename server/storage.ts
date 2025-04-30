@@ -30,6 +30,11 @@ export interface IStorage {
   updateService(service: Service): Promise<Service>;
   deleteService(id: number): Promise<void>;
   updateServiceStatus(id: number, status: string, responseTime?: number): Promise<Service>;
+  
+  // Service Metrics
+  getServiceMetrics(serviceId: number, timespan?: string): Promise<ServiceMetrics[]>;
+  addServiceMetric(metric: InsertServiceMetrics): Promise<ServiceMetrics>;
+  updateServiceAggregateMetrics(serviceId: number): Promise<Service>;
 
   // Connection
   getConnectionById(id: number): Promise<Connection | undefined>;

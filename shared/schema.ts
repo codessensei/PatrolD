@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, json, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, json, jsonb, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -33,6 +33,34 @@ export const services = pgTable("services", {
   lastChecked: timestamp("last_checked"),
   agentId: integer("agent_id"),
   monitorType: text("monitor_type").default("direct"),
+  
+  // Advanced monitoring settings and thresholds
+  responseTimeThreshold: integer("response_time_threshold"), // in ms
+  latencyThreshold: integer("latency_threshold"), // in ms
+  packetLossThreshold: numeric("packet_loss_threshold"), // percentage
+  availabilityThreshold: numeric("availability_threshold"), // percentage
+  enableAdvancedMonitoring: boolean("enable_advanced_monitoring").default(false),
+  
+  // Current metrics (for quick access)
+  avgResponseTime24h: integer("avg_response_time_24h"), 
+  maxResponseTime24h: integer("max_response_time_24h"),
+  minResponseTime24h: integer("min_response_time_24h"),
+  avgLatency24h: integer("avg_latency_24h"),
+  packetLoss24h: numeric("packet_loss_24h"),
+  availability24h: numeric("availability_24h"), // percentage uptime
+  
+  // HTTP specific config
+  httpMethod: text("http_method").default("GET"),
+  httpHeaders: jsonb("http_headers"),
+  httpBody: text("http_body"),
+  expectedHttpStatus: integer("expected_http_status"),
+  
+  // TCP/UDP specific config
+  socketTimeoutMs: integer("socket_timeout_ms"),
+  
+  // SSL/TLS monitoring
+  monitorCertificate: boolean("monitor_certificate").default(false),
+  certExpiryThreshold: integer("cert_expiry_threshold"), // days
 });
 
 export const insertServiceSchema = createInsertSchema(services).omit({
@@ -144,3 +172,30 @@ export const insertSharedMapSchema = createInsertSchema(sharedMaps).omit({
 
 export type InsertSharedMap = z.infer<typeof insertSharedMapSchema>;
 export type SharedMap = typeof sharedMaps.$inferSelect;
+
+// Advanced monitoring metrics
+export const serviceMetrics = pgTable("service_metrics", {
+  id: serial("id").primaryKey(),
+  serviceId: integer("service_id").notNull().references(() => services.id),
+  timestamp: timestamp("timestamp").defaultNow(),
+  responseTime: integer("response_time"), // in milliseconds
+  latency: integer("latency"), // in milliseconds
+  packetLoss: numeric("packet_loss"), // percentage (0-100)
+  jitter: numeric("jitter"), // in milliseconds
+  availability: numeric("availability"), // percentage (0-100)
+  status: text("status").notNull(),
+  bandwidth: numeric("bandwidth"), // in Mbps if applicable
+  errorRate: numeric("error_rate"), // percentage (0-100)
+  ttl: integer("ttl"), // Time To Live for ICMP
+  dnsResolutionTime: integer("dns_resolution_time"), // in milliseconds
+  tlsHandshakeTime: integer("tls_handshake_time"), // in milliseconds for HTTPS
+  httpStatusCode: integer("http_status_code"), // for HTTP/HTTPS
+  certificateExpiryDays: integer("certificate_expiry_days"), // days until TLS cert expiry
+});
+
+export const insertServiceMetricsSchema = createInsertSchema(serviceMetrics).omit({
+  id: true,
+});
+
+export type InsertServiceMetrics = z.infer<typeof insertServiceMetricsSchema>;
+export type ServiceMetrics = typeof serviceMetrics.$inferSelect;
