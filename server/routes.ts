@@ -1085,7 +1085,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // This needs to come AFTER all other defined API routes
   app.get('/view-map/*', (req, res) => {
     // For any client-side route like /view-map/:shareKey, serve the index.html
-    res.sendFile(path.resolve(__dirname, '../client/index.html'));
+    res.sendFile(path.resolve(process.cwd(), './client/index.html'));
   });
   
   const httpServer = createServer(app);

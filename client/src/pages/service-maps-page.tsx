@@ -250,7 +250,7 @@ export default function ServiceMapsPage() {
                     <Map size={14} />
                     View
                   </Button>
-                  {!map.isDefault && (
+                  {map.isDefault === false && (
                     <Button
                       size="sm"
                       variant="ghost"
