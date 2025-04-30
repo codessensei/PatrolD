@@ -4,6 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "../lib/queryClient";
+import { ServiceMap, InsertServiceMap } from "@shared/schema";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,19 +17,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useLocation } from "wouter";
-
-// ServiceMap türünü tanımlayalım
-type ServiceMap = {
-  id: number;
-  userId: number;
-  name: string;
-  description: string | null;
-  isDefault: boolean;
-  icon: string;
-  color: string;
-  createdAt: string;
-  updatedAt: string;
-};
 
 export default function ServiceMapsPage() {
   const { user } = useAuth();
@@ -49,9 +37,9 @@ export default function ServiceMapsPage() {
     enabled: !!user,
   });
 
-  // Yeni harita oluştur
+  // Create new service map
   const createMapMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Partial<InsertServiceMap>) => {
       const response = await apiRequest("POST", "/api/service-maps", data);
       return await response.json();
     },
@@ -212,7 +200,7 @@ export default function ServiceMapsPage() {
             <Card key={map.id} className="overflow-hidden group">
               <CardHeader className={`relative pb-4`} style={{ background: `${map.color}10` }}>
                 <div className="absolute top-3 right-3 flex gap-1">
-                  {map.isDefault && (
+                  {!!map.isDefault && (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -229,7 +217,7 @@ export default function ServiceMapsPage() {
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center`} style={{ background: map.color }}>
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center`} style={{ background: map.color || "#4f46e5" }}>
                     <Map className="h-5 w-5 text-white" />
                   </div>
                   <div>
@@ -247,7 +235,7 @@ export default function ServiceMapsPage() {
                     <span className="text-xs">Creator</span>
                   </Badge>
                   <span className="text-xs text-muted-foreground">
-                    Created {new Date(map.createdAt).toLocaleDateString()}
+                    Created {new Date(map.createdAt || new Date()).toLocaleDateString()}
                   </span>
                 </div>
               </CardContent>
@@ -279,7 +267,7 @@ export default function ServiceMapsPage() {
                   variant="destructive"
                   className="gap-1 h-8"
                   onClick={() => deleteMapMutation.mutate(map.id)}
-                  disabled={map.isDefault}
+                  disabled={!!map.isDefault}
                 >
                   <Trash2 size={14} />
                   Delete
