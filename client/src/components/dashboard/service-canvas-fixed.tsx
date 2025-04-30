@@ -569,7 +569,7 @@ export default function ServiceCanvas({
               let connectionColor;
               if (agent.status === "active") {
                 if (service.status === "online") {
-                  connectionColor = "#3b82f6"; // blue
+                  connectionColor = "#10b981"; // green for online services
                 } else if (service.status === "degraded") {
                   connectionColor = "#f59e0b"; // amber
                 } else if (service.status === "offline") {
