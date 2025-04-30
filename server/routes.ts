@@ -646,6 +646,265 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Shared Maps API - Private routes (requires authentication)
+  app.get("/api/shared-maps", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const maps = await storage.getSharedMapsByUserId(req.user!.id);
+      res.status(200).json(maps);
+    } catch (error) {
+      console.error("Error getting shared maps:", error);
+      res.status(500).json({ error: "Failed to get shared maps" });
+    }
+  });
+
+  app.get("/api/shared-maps/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const mapId = parseInt(req.params.id);
+    if (isNaN(mapId)) {
+      return res.status(400).json({ error: "Invalid map ID" });
+    }
+    
+    try {
+      const map = await storage.getSharedMapById(mapId);
+      if (!map || map.userId !== req.user!.id) {
+        return res.status(404).json({ error: "Shared map not found" });
+      }
+      
+      res.status(200).json(map);
+    } catch (error) {
+      console.error("Error getting shared map:", error);
+      res.status(500).json({ error: "Failed to get shared map" });
+    }
+  });
+
+  app.post("/api/shared-maps", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      // Generate a password hash if a password is provided
+      let passwordHash = null;
+      if (req.body.password) {
+        // Simple hash for password (for real-world use scrypt would be better)
+        const { scryptSync, randomBytes } = require('crypto');
+        const salt = randomBytes(16).toString('hex');
+        passwordHash = scryptSync(req.body.password, salt, 64).toString('hex') + '.' + salt;
+      }
+      
+      const data = {
+        ...req.body,
+        userId: req.user!.id,
+        password: passwordHash,
+        isPasswordProtected: !!req.body.password
+      };
+      
+      // Validate required fields with Zod schema
+      const validData = insertSharedMapSchema.parse(data);
+      
+      const sharedMap = await storage.createSharedMap(validData);
+      res.status(201).json(sharedMap);
+    } catch (error) {
+      console.error("Error creating shared map:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create shared map" });
+    }
+  });
+
+  app.put("/api/shared-maps/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const mapId = parseInt(req.params.id);
+    if (isNaN(mapId)) {
+      return res.status(400).json({ error: "Invalid map ID" });
+    }
+    
+    try {
+      const map = await storage.getSharedMapById(mapId);
+      if (!map || map.userId !== req.user!.id) {
+        return res.status(404).json({ error: "Shared map not found" });
+      }
+      
+      // Handle password changes
+      let passwordHash = map.password;
+      if (req.body.password) {
+        // Simple hash for password (for real-world use scrypt would be better)
+        const { scryptSync, randomBytes } = require('crypto');
+        const salt = randomBytes(16).toString('hex');
+        passwordHash = scryptSync(req.body.password, salt, 64).toString('hex') + '.' + salt;
+      }
+      
+      const updateData = {
+        ...req.body,
+        password: passwordHash,
+        isPasswordProtected: req.body.password ? true : map.isPasswordProtected
+      };
+      
+      const updatedMap = await storage.updateSharedMap(mapId, updateData);
+      res.status(200).json(updatedMap);
+    } catch (error) {
+      console.error("Error updating shared map:", error);
+      res.status(500).json({ error: "Failed to update shared map" });
+    }
+  });
+
+  app.delete("/api/shared-maps/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const mapId = parseInt(req.params.id);
+    if (isNaN(mapId)) {
+      return res.status(400).json({ error: "Invalid map ID" });
+    }
+    
+    try {
+      const map = await storage.getSharedMapById(mapId);
+      if (!map || map.userId !== req.user!.id) {
+        return res.status(404).json({ error: "Shared map not found" });
+      }
+      
+      await storage.deleteSharedMap(mapId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting shared map:", error);
+      res.status(500).json({ error: "Failed to delete shared map" });
+    }
+  });
+
+  app.put("/api/shared-maps/:id/publish", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const mapId = parseInt(req.params.id);
+    if (isNaN(mapId)) {
+      return res.status(400).json({ error: "Invalid map ID" });
+    }
+    
+    try {
+      const map = await storage.getSharedMapById(mapId);
+      if (!map || map.userId !== req.user!.id) {
+        return res.status(404).json({ error: "Shared map not found" });
+      }
+      
+      const updatedMap = await storage.updateSharedMap(mapId, { 
+        isPublished: req.body.publish === false ? false : true 
+      });
+      
+      res.status(200).json(updatedMap);
+    } catch (error) {
+      console.error("Error publishing shared map:", error);
+      res.status(500).json({ error: "Failed to publish shared map" });
+    }
+  });
+
+  // Public shared map routes (no authentication required)
+  app.get("/api/public/shared-maps", async (req, res) => {
+    try {
+      const maps = await storage.getPublishedSharedMaps();
+      
+      // Remove sensitive data from public response
+      const sanitizedMaps = maps.map(map => ({
+        id: map.id,
+        title: map.title,
+        description: map.description,
+        isPasswordProtected: map.isPasswordProtected,
+        shareKey: map.shareKey,
+        viewCount: map.viewCount,
+        createdAt: map.createdAt,
+        updatedAt: map.updatedAt
+      }));
+      
+      res.status(200).json(sanitizedMaps);
+    } catch (error) {
+      console.error("Error getting public shared maps:", error);
+      res.status(500).json({ error: "Failed to get public shared maps" });
+    }
+  });
+
+  app.get("/api/public/shared-maps/:shareKey", async (req, res) => {
+    const { shareKey } = req.params;
+    
+    try {
+      const map = await storage.getSharedMapByShareKey(shareKey);
+      if (!map || !map.isPublished) {
+        return res.status(404).json({ error: "Shared map not found or not published" });
+      }
+      
+      // Check if the map is password protected
+      if (map.isPasswordProtected && !req.query.passwordVerified) {
+        return res.status(200).json({ 
+          id: map.id,
+          title: map.title,
+          description: map.description,
+          isPasswordProtected: true,
+          requiresPassword: true,
+          shareKey: map.shareKey
+        });
+      }
+      
+      // Increment view count
+      await storage.incrementSharedMapViewCount(map.id);
+      
+      // Return map data
+      const sanitizedMap = {
+        id: map.id,
+        title: map.title,
+        description: map.description,
+        shareKey: map.shareKey,
+        viewCount: map.viewCount,
+        mapData: map.mapData,
+        createdAt: map.createdAt,
+        updatedAt: map.updatedAt
+      };
+      
+      res.status(200).json(sanitizedMap);
+    } catch (error) {
+      console.error("Error getting public shared map:", error);
+      res.status(500).json({ error: "Failed to get public shared map" });
+    }
+  });
+
+  app.post("/api/public/shared-maps/:shareKey/verify-password", async (req, res) => {
+    const { shareKey } = req.params;
+    const { password } = req.body;
+    
+    if (!password) {
+      return res.status(400).json({ error: "Password is required" });
+    }
+    
+    try {
+      const map = await storage.getSharedMapByShareKey(shareKey);
+      if (!map || !map.isPublished) {
+        return res.status(404).json({ error: "Shared map not found or not published" });
+      }
+      
+      if (!map.isPasswordProtected) {
+        return res.status(400).json({ error: "This map is not password protected" });
+      }
+      
+      // Verify password
+      const { scryptSync } = require('crypto');
+      const [hashedPassword, salt] = map.password!.split('.');
+      const providedHash = scryptSync(password, salt, 64).toString('hex');
+      
+      if (hashedPassword !== providedHash) {
+        return res.status(401).json({ error: "Invalid password" });
+      }
+      
+      // Return access token for the client to use
+      const accessToken = randomBytes(32).toString('hex');
+      
+      res.status(200).json({
+        verified: true,
+        accessToken
+      });
+    } catch (error) {
+      console.error("Error verifying password:", error);
+      res.status(500).json({ error: "Failed to verify password" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
