@@ -174,6 +174,10 @@ export default function SharedMapsPage() {
       description: "Share link copied to clipboard",
     });
   };
+  
+  const openMapInNewTab = (shareKey: string) => {
+    window.open(`/view-map/${shareKey}`, '_blank');
+  };
 
   return (
     <div className="container py-8 space-y-8 animate-fadeIn">
@@ -472,7 +476,7 @@ export default function SharedMapsPage() {
                       size="sm"
                       variant="default"
                       className="w-full gap-1 h-8"
-                      onClick={() => window.open(`/view-map/${map.shareKey}`, '_blank')}
+                      onClick={() => openMapInNewTab(map.shareKey)}
                     >
                       <ExternalLink size={14} />
                       Open in New Tab
