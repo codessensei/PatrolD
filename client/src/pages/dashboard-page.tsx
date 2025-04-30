@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import Sidebar from "@/components/layout/sidebar";
 import Topbar from "@/components/layout/topbar";
 import StatusCard from "@/components/dashboard/status-card";
-import ServiceCanvas from "@/components/dashboard/service-canvas-fixed";
+import ServiceCanvas from "@/components/dashboard/service-canvas";
 import AlertItem from "@/components/dashboard/alert-item";
 import StatsPanel from "@/components/dashboard/stats-panel";
 import AddServiceModal from "@/components/modals/add-service-modal";
@@ -43,11 +43,7 @@ export default function DashboardPage() {
   const onlineServices = services.filter(s => s.status === "online").length;
   const offlineServices = services.filter(s => s.status === "offline").length;
   const degradedServices = services.filter(s => s.status === "degraded").length;
-  const avgResponseTime = stats && 
-                          typeof stats === 'object' && 
-                          'avgResponseTime' in stats ? 
-                          typeof stats.avgResponseTime === 'number' ? 
-                          stats.avgResponseTime : 0 : 0;
+  const avgResponseTime = stats && typeof stats === 'object' && 'avgResponseTime' in stats ? stats.avgResponseTime : 0;
 
   // Search filter
   const filteredServices = searchQuery
@@ -70,7 +66,7 @@ export default function DashboardPage() {
           onSearch={setSearchQuery} 
         />
         
-        <div className="p-2 md:p-2 relative max-w-[calc(100vw-100px)] mx-auto overflow-x-hidden">
+        <div className="p-4 md:p-8 relative">
           {/* Dashboard Header */}
           <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between">
             <div>
@@ -110,13 +106,13 @@ export default function DashboardPage() {
           </div>
           
           {/* Status Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {/* Active Services Card */}
             <div className="glass-card hover-card-effect">
-              <div className="p-4 flex flex-col h-full relative overflow-hidden">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-10 h-10 rounded-full bg-green-400/20 flex items-center justify-center">
-                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+              <div className="p-6 flex flex-col h-full relative overflow-hidden">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-full bg-green-400/20 flex items-center justify-center">
+                    <CheckCircle2 className="h-6 w-6 text-green-500" />
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400">Active Services</h3>
@@ -137,10 +133,10 @@ export default function DashboardPage() {
 
             {/* Offline Services Card */}
             <div className="glass-card hover-card-effect">
-              <div className="p-4 flex flex-col h-full relative overflow-hidden">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-10 h-10 rounded-full bg-red-400/20 flex items-center justify-center">
-                    <AlertCircle className="h-5 w-5 text-red-500" />
+              <div className="p-6 flex flex-col h-full relative overflow-hidden">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-full bg-red-400/20 flex items-center justify-center">
+                    <AlertCircle className="h-6 w-6 text-red-500" />
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400">Offline Services</h3>
@@ -161,10 +157,10 @@ export default function DashboardPage() {
 
             {/* Warnings Card */}
             <div className="glass-card hover-card-effect">
-              <div className="p-4 flex flex-col h-full relative overflow-hidden">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-10 h-10 rounded-full bg-amber-400/20 flex items-center justify-center">
-                    <AlertTriangle className="h-5 w-5 text-amber-500" />
+              <div className="p-6 flex flex-col h-full relative overflow-hidden">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-full bg-amber-400/20 flex items-center justify-center">
+                    <AlertTriangle className="h-6 w-6 text-amber-500" />
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400">Warnings</h3>
@@ -185,10 +181,10 @@ export default function DashboardPage() {
 
             {/* Response Time Card */}
             <div className="glass-card hover-card-effect">
-              <div className="p-4 flex flex-col h-full relative overflow-hidden">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-10 h-10 rounded-full bg-blue-400/20 flex items-center justify-center">
-                    <Clock className="h-5 w-5 text-blue-500" />
+              <div className="p-6 flex flex-col h-full relative overflow-hidden">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-full bg-blue-400/20 flex items-center justify-center">
+                    <Clock className="h-6 w-6 text-blue-500" />
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400">Avg Response</h3>
@@ -221,10 +217,10 @@ export default function DashboardPage() {
           </div>
           
           {/* Recent Alerts and Stats with Glassmorphism */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="glass-card hover-card-effect lg:col-span-2">
-              <div className="p-4">
-                <div className="flex items-center justify-between mb-3">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <Activity className="h-5 w-5 text-indigo-500" />
                     <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Recent Alerts</h3>
@@ -259,8 +255,8 @@ export default function DashboardPage() {
             </div>
             
             <div className="glass-card hover-card-effect">
-              <div className="p-4">
-                <div className="flex items-center gap-2 mb-3">
+              <div className="p-6">
+                <div className="flex items-center gap-2 mb-4">
                   <Network className="h-5 w-5 text-indigo-500" />
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Service Stats</h3>
                 </div>

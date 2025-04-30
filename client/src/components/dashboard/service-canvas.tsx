@@ -22,9 +22,7 @@ interface ServiceCanvasProps {
   services: Service[];
   connections: Connection[];
   isLoading?: boolean;
-  onAddService?: () => void;
-  readonly?: boolean;
-  className?: string;
+  onAddService: () => void;
 }
 
 interface Position {
@@ -36,9 +34,7 @@ export default function ServiceCanvas({
   services, 
   connections,
   isLoading = false,
-  onAddService,
-  readonly = false,
-  className = ""
+  onAddService 
 }: ServiceCanvasProps) {
   const { toast } = useToast();
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -58,50 +54,12 @@ export default function ServiceCanvas({
   // Initialize service positions based on their stored positions
   useEffect(() => {
     const positions: Record<number, Position> = {};
-    let needsAutoLayout = false;
-    
     services.forEach(service => {
-      // Check if service has valid position or if multiple services are at the same position
-      if (service.positionX === 0 && service.positionY === 0) {
-        needsAutoLayout = true;
-      } else if (services.some(s => 
-        s.id !== service.id && 
-        Math.abs(s.positionX - service.positionX) < 50 && 
-        Math.abs(s.positionY - service.positionY) < 50
-      )) {
-        needsAutoLayout = true;
-      }
-      
       positions[service.id] = { 
         x: service.positionX, 
         y: service.positionY 
       };
     });
-    
-    // If services need auto layout, arrange them in a grid
-    if (needsAutoLayout) {
-      const canvasWidth = canvasRef.current?.clientWidth || 1000;
-      const itemsPerRow = Math.max(Math.floor(canvasWidth / 150), 4);
-      
-      services.forEach((service, index) => {
-        const col = index % itemsPerRow;
-        const row = Math.floor(index / itemsPerRow);
-        
-        // Distribute services in a grid with appropriate spacing - tighter for small screens
-        positions[service.id] = { 
-          x: 20 + col * 150, 
-          y: 30 + row * 120 
-        };
-        
-        // Save the new position to the backend
-        updateServicePosition.mutate({
-          id: service.id,
-          x: positions[service.id].x,
-          y: positions[service.id].y
-        });
-      });
-    }
-    
     setServicePositions(positions);
   }, [services]);
 
@@ -130,8 +88,8 @@ export default function ServiceCanvas({
       if (!positions[agent.id]) {
         // Arrange agents in a grid layout if no position is provided
         positions[agent.id] = { 
-          x: 30 + (index % 5) * 160, 
-          y: 250 + Math.floor(index / 5) * 140 
+          x: 50 + (index % 3) * 220, 
+          y: 50 + Math.floor(index / 3) * 200 
         };
         updated = true;
       }
@@ -147,7 +105,7 @@ export default function ServiceCanvas({
     e: React.MouseEvent<HTMLDivElement>,
     serviceId: number
   ) => {
-    if (!canvasRef.current || readonly) return;
+    if (!canvasRef.current) return;
     
     const canvasRect = canvasRef.current.getBoundingClientRect();
     const servicePosition = servicePositions[serviceId] || { x: 0, y: 0 };
@@ -168,7 +126,7 @@ export default function ServiceCanvas({
     e: React.MouseEvent<HTMLDivElement>,
     agentId: number
   ) => {
-    if (!canvasRef.current || readonly) return;
+    if (!canvasRef.current) return;
     
     const canvasRect = canvasRef.current.getBoundingClientRect();
     const agentPosition = agentPositions[agentId] || { x: 0, y: 0 };
@@ -204,12 +162,8 @@ export default function ServiceCanvas({
     const canvasWidth = canvasRect.width / zoom;
     const canvasHeight = canvasRect.height / zoom;
     
-    // Use smaller widths based on what's being dragged
-    const widthConstraint = draggingService !== null ? 140 : 160; // Service: 140px, Agent: 160px
-    const heightConstraint = 120; // Reduced height constraint
-    
-    newX = Math.max(0, Math.min(newX, canvasWidth - widthConstraint)); 
-    newY = Math.max(0, Math.min(newY, canvasHeight - heightConstraint));
+    newX = Math.max(0, Math.min(newX, canvasWidth - 180)); // Width of 180px
+    newY = Math.max(0, Math.min(newY, canvasHeight - 160)); // Height ~160px
     
     // Update position state based on what's being dragged
     if (draggingService !== null) {
@@ -354,39 +308,39 @@ export default function ServiceCanvas({
   }
 
   return (
-    <Card className="overflow-hidden w-full max-w-full">
-      <CardHeader className="flex flex-row items-center justify-between py-2 px-2 sm:px-3 sm:py-3">
-        <div className="flex items-center gap-1 sm:gap-3">
-          <CardTitle className="text-sm sm:text-base font-medium">Service Map</CardTitle>
-          <span className="text-[10px] sm:text-xs bg-muted px-1 sm:px-2 py-0.5 sm:py-1 rounded-md font-mono hidden sm:inline-block">
+    <Card className="overflow-hidden">
+      <CardHeader className="flex flex-row items-center justify-between py-4">
+        <div className="flex items-center gap-3">
+          <CardTitle className="text-base font-medium">Service Map</CardTitle>
+          <span className="text-xs bg-muted px-2 py-1 rounded-md font-mono">
             Zoom: {Math.round(zoom * 100)}%
           </span>
         </div>
         
-        <div className="flex items-center space-x-1 sm:space-x-2">
-          <Button variant="ghost" size="icon" onClick={handleZoomIn} title="Zoom In" className="h-7 w-7 p-0">
-            <ZoomIn className="h-4 w-4" />
+        <div className="flex items-center space-x-2">
+          <Button variant="ghost" size="icon" onClick={handleZoomIn} title="Zoom In">
+            <ZoomIn className="h-5 w-5" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={handleZoomOut} title="Zoom Out" className="h-7 w-7 p-0">
-            <ZoomOut className="h-4 w-4" />
+          <Button variant="ghost" size="icon" onClick={handleZoomOut} title="Zoom Out">
+            <ZoomOut className="h-5 w-5" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={handleResetZoom} title="Reset Zoom" className="h-7 w-7 p-0">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <Button variant="ghost" size="icon" onClick={handleResetZoom} title="Reset Zoom">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" />
               <path d="M12 12h.01" />
             </svg>
           </Button>
-          <Button variant="ghost" size="icon" onClick={handleRefresh} title="Refresh Map" className="h-7 w-7 p-0">
-            <RefreshCw className="h-4 w-4" />
+          <Button variant="ghost" size="icon" onClick={handleRefresh} title="Refresh Map">
+            <RefreshCw className="h-5 w-5" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={handleFullscreen} title="Fullscreen" className="h-7 w-7 p-0">
-            <Maximize className="h-4 w-4" />
+          <Button variant="ghost" size="icon" onClick={handleFullscreen} title="Fullscreen">
+            <Maximize className="h-5 w-5" />
           </Button>
         </div>
       </CardHeader>
       
-      {/* Service Canvas Area with improved scaling - reduced max width */}
-      <div className="relative min-h-[400px] h-[calc(100vh-20rem)] sm:h-[calc(100vh-15rem)] overflow-hidden mx-auto" style={{ maxWidth: "calc(100vw - 60px)" }}>
+      {/* Service Canvas Area with improved scaling */}
+      <div className="relative h-[600px] overflow-hidden">
         {/* Zoom indicator overlay */}
         {zoom !== 1 && (
           <div className="absolute bottom-4 right-4 z-30 bg-slate-800/80 dark:bg-slate-900/80 text-white py-1 px-2 rounded-md text-xs font-mono flex items-center gap-2">
@@ -400,22 +354,10 @@ export default function ServiceCanvas({
           </div>
         )}
         
-        {/* Add Service Button (Fixed Position) - only shown when not in readonly mode */}
-        {!readonly && onAddService && (
-          <button
-            onClick={onAddService}
-            className="absolute right-4 top-4 z-30 flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors px-2 py-1 sm:px-3 sm:py-2 rounded-md shadow-md"
-          >
-            <PlusCircle className="h-4 w-4" />
-            <span className="font-medium text-xs sm:text-sm">Add Service</span>
-          </button>
-        )}
-        
         <div 
           ref={canvasRef}
-          className="relative h-full w-full overflow-auto canvas-grid p-1 sm:p-2"
+          className="relative h-full w-full overflow-auto canvas-grid p-4"
           style={{
-            maxWidth: "calc(100vw - 100px)",
             backgroundSize: `${20 * zoom}px ${20 * zoom}px`,
             backgroundImage: `
               linear-gradient(to right, rgba(203, 213, 225, 0.1) 1px, transparent 1px),
@@ -425,7 +367,7 @@ export default function ServiceCanvas({
             transformOrigin: "top left"
           }}
         >
-          {/* SVG for Connection Lines with Animation */}
+          {/* SVG for Connection Lines */}
           <svg ref={svgRef} className="absolute top-0 left-0 w-full h-full pointer-events-none" style={{ zIndex: 15 }}>
             {/* Background gradient for connections */}
             <defs>
@@ -442,10 +384,10 @@ export default function ServiceCanvas({
               if (!source || !target) return null;
               
               // Calculate center positions for source and target
-              const sourceX = source.x + 70; // Half of service width (140px / 2)
-              const sourceY = source.y + 50; // Half of service height
-              const targetX = target.x + 70;
-              const targetY = target.y + 50;
+              const sourceX = source.x + 90; // Half of service width
+              const sourceY = source.y + 60; // Half of service height
+              const targetX = target.x + 90;
+              const targetY = target.y + 60;
               
               // Calculate line length for animation
               const dx = targetX - sourceX;
@@ -579,10 +521,10 @@ export default function ServiceCanvas({
                     if (!servicePos) return null;
                     
                     // Calculate positions for curved path
-                    const x1 = position.x + 80; // Half of agent width (160px / 2)
-                    const y1 = position.y + 50; // Half of agent height
-                    const x2 = servicePos.x + 70; // Half of service width (140px / 2)
-                    const y2 = servicePos.y + 50; // Half of service height
+                    const x1 = position.x + 100;
+                    const y1 = position.y + 60;
+                    const x2 = servicePos.x + 90;
+                    const y2 = servicePos.y + 50;
                     
                     // Calculate control points for bezier curve
                     const dx = x2 - x1;
@@ -699,7 +641,7 @@ export default function ServiceCanvas({
                 key={service.id}
                 className="service-node absolute bg-card dark:bg-card rounded-xl shadow-lg border-2 overflow-hidden transition-all duration-200 hover:shadow-xl"
                 style={{
-                  width: "120px",
+                  width: "180px",
                   left: `${position.x}px`,
                   top: `${position.y}px`,
                   zIndex: draggingService === service.id ? 100 : 20,
@@ -726,16 +668,16 @@ export default function ServiceCanvas({
                     service.status === "degraded" ? "bg-yellow-300" : "bg-gray-300"
                   )}></span>
                 </div>
-                <div className="px-2 py-1.5 relative overflow-hidden">
+                <div className="p-4 relative overflow-hidden">
                   {/* Background glow effect based on status */}
                   {service.status === "online" && (
-                    <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-green-500/10 rounded-full blur-2xl"></div>
+                    <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-green-500/10 rounded-full blur-2xl"></div>
                   )}
                   {service.status === "degraded" && (
-                    <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-yellow-500/10 rounded-full blur-2xl"></div>
+                    <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-yellow-500/10 rounded-full blur-2xl"></div>
                   )}
                   {service.status === "offline" && (
-                    <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-red-500/10 rounded-full blur-2xl"></div>
+                    <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-red-500/10 rounded-full blur-2xl"></div>
                   )}
                   
                   <div className="mb-3 relative">
@@ -804,7 +746,7 @@ export default function ServiceCanvas({
                 key={`agent-${agent.id}`}
                 className="agent-node absolute bg-card dark:bg-card rounded-xl shadow-lg border-2 overflow-hidden transition-all duration-200 hover:shadow-xl"
                 style={{
-                  width: "140px",
+                  width: "200px",
                   left: `${position.x}px`,
                   top: `${position.y}px`,
                   zIndex: draggingAgent === agent.id ? 100 : 30,
@@ -841,10 +783,10 @@ export default function ServiceCanvas({
                   </div>
                 </div>
                 
-                <div className="px-2 py-1.5 relative overflow-hidden">
+                <div className="p-4 pb-3 relative overflow-hidden">
                   {/* Background glow effect for active agents */}
                   {agent.status === "active" && (
-                    <div className="absolute -top-6 -right-6 w-20 h-20 bg-blue-500/10 rounded-full blur-2xl"></div>
+                    <div className="absolute -top-6 -right-6 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl"></div>
                   )}
                   
                   <div className="mb-3 relative">
@@ -904,24 +846,22 @@ export default function ServiceCanvas({
             );
           })}
 
-          {/* Add New Service Button - only shown when not in readonly mode */}
-          {!readonly && onAddService && (
-            <div 
-              className="service-node absolute bg-card dark:bg-card rounded-xl border-2 border-dashed border-primary p-3 flex flex-col items-center justify-center cursor-pointer hover:bg-accent transition-all duration-200 shadow-md hover:shadow-lg"
-              style={{
-                width: "110px",
-                left: "20px",
-                top: "400px",
-                zIndex: 5
-              }}
-              onClick={onAddService}
-            >
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-2">
-                <Plus className="h-5 w-5 text-primary" />
-              </div>
-              <p className="text-xs font-medium text-primary">Add Service</p>
+          {/* Add New Service Button */}
+          <div 
+            className="service-node absolute bg-card dark:bg-card rounded-xl border-2 border-dashed border-primary p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-accent transition-all duration-200 shadow-md hover:shadow-lg"
+            style={{
+              width: "180px",
+              left: "380px",
+              top: "520px",
+              zIndex: 5
+            }}
+            onClick={onAddService}
+          >
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+              <Plus className="h-6 w-6 text-primary" />
             </div>
-          )}
+            <p className="text-sm font-medium text-primary">Add New Service</p>
+          </div>
         </div>
       </div>
     </Card>
