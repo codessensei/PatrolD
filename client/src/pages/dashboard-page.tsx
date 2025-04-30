@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Sidebar from "@/components/layout/sidebar";
 import Topbar from "@/components/layout/topbar";
@@ -16,28 +16,41 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
+import { queryClient } from "@/lib/queryClient";
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const [isAddServiceModalOpen, setIsAddServiceModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Fetch data
+  // Fetch data with auto-refresh (5 second polling)
   const { data: services = [], isLoading: isLoadingServices } = useQuery<Service[]>({
     queryKey: ["/api/services"],
+    refetchInterval: 5000, // Poll every 5 seconds for real-time updates
   });
 
   const { data: connections = [], isLoading: isLoadingConnections } = useQuery<Connection[]>({
     queryKey: ["/api/connections"],
+    refetchInterval: 5000,
   });
 
   const { data: alerts = [], isLoading: isLoadingAlerts } = useQuery<Alert[]>({
     queryKey: ["/api/alerts"],
+    refetchInterval: 5000,
   });
 
   const { data: stats, isLoading: isLoadingStats } = useQuery({
     queryKey: ["/api/stats"],
+    refetchInterval: 5000,
   });
+  
+  // Manual refresh handler
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/services"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/connections"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+  };
 
   // Derived stats
   const onlineServices = services.filter(s => s.status === "online").length;
@@ -98,9 +111,13 @@ export default function DashboardPage() {
                 </Button>
               </div>
               
-              <Button variant="outline" className="glass-button flex items-center gap-2 font-medium">
-                <RefreshCw className="h-4 w-4" />
-                Refresh
+              <Button 
+                variant="outline" 
+                className="glass-button flex items-center gap-2 font-medium"
+                onClick={handleRefresh}
+              >
+                <RefreshCw className={`h-4 w-4 ${isLoadingServices || isLoadingConnections ? "animate-spin" : ""}`} />
+                {isLoadingServices || isLoadingConnections ? "Refreshing..." : "Refresh"}
               </Button>
             </div>
           </div>
