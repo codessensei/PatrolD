@@ -437,10 +437,10 @@ export default function ServiceCanvas({
               if (!source || !target) return null;
               
               // Calculate center positions for source and target
-              const sourceX = source.x + 90; // Half of service width
-              const sourceY = source.y + 60; // Half of service height
-              const targetX = target.x + 90;
-              const targetY = target.y + 60;
+              const sourceX = source.x + 75; // Half of service width (150px / 2)
+              const sourceY = source.y + 50; // Half of service height
+              const targetX = target.x + 75;
+              const targetY = target.y + 50;
               
               // Calculate line length for animation
               const dx = targetX - sourceX;
@@ -574,10 +574,10 @@ export default function ServiceCanvas({
                     if (!servicePos) return null;
                     
                     // Calculate positions for curved path
-                    const x1 = position.x + 100;
-                    const y1 = position.y + 60;
-                    const x2 = servicePos.x + 90;
-                    const y2 = servicePos.y + 50;
+                    const x1 = position.x + 85; // Half of agent width (170px / 2)
+                    const y1 = position.y + 50; // Half of agent height
+                    const x2 = servicePos.x + 75; // Half of service width (150px / 2)
+                    const y2 = servicePos.y + 50; // Half of service height
                     
                     // Calculate control points for bezier curve
                     const dx = x2 - x1;
@@ -694,7 +694,7 @@ export default function ServiceCanvas({
                 key={service.id}
                 className="service-node absolute bg-card dark:bg-card rounded-xl shadow-lg border-2 overflow-hidden transition-all duration-200 hover:shadow-xl"
                 style={{
-                  width: "180px",
+                  width: "150px",
                   left: `${position.x}px`,
                   top: `${position.y}px`,
                   zIndex: draggingService === service.id ? 100 : 20,
@@ -799,7 +799,7 @@ export default function ServiceCanvas({
                 key={`agent-${agent.id}`}
                 className="agent-node absolute bg-card dark:bg-card rounded-xl shadow-lg border-2 overflow-hidden transition-all duration-200 hover:shadow-xl"
                 style={{
-                  width: "200px",
+                  width: "170px",
                   left: `${position.x}px`,
                   top: `${position.y}px`,
                   zIndex: draggingAgent === agent.id ? 100 : 30,
@@ -904,7 +904,7 @@ export default function ServiceCanvas({
             <div 
               className="service-node absolute bg-card dark:bg-card rounded-xl border-2 border-dashed border-primary p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-accent transition-all duration-200 shadow-md hover:shadow-lg"
               style={{
-                width: "180px",
+                width: "150px",
                 left: "380px",
                 top: "520px",
                 zIndex: 5
