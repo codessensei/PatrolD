@@ -51,29 +51,38 @@ export default function ServiceCanvas({
     queryKey: ["/api/agents"],
   });
 
-  // Initialize service positions based on their stored positions with a smart layout
+  // Initialize service positions based on their stored positions with a central layout
   useEffect(() => {
     const positions: Record<number, Position> = {};
     
-    // Define canvas dimensions and item sizes for a more harmonious layout
+    // Define canvas dimensions and item sizes for a centralized layout
     const canvasWidth = canvasRef.current?.clientWidth || 1200;
     const canvasHeight = canvasRef.current?.clientHeight || 800;
-    const paddingX = 40; // Padding from edges
-    const paddingY = 40;
     
-    // Optimize grid layout dimensions based on number of services
+    // Calculate center of the canvas
+    const centerX = canvasWidth / 2;
+    const centerY = canvasHeight / 2;
+    
+    // Set fixed spacing between services
+    const serviceWidth = 220; // Width including margin
+    const serviceHeight = 180; // Height including margin
+    
+    // Optimize the number of rows and columns based on number of services
     const numServices = services.length;
-    const aspectRatio = canvasWidth / canvasHeight;
     
-    // Calculate optimal grid dimensions based on aspect ratio
-    const optimalCols = Math.ceil(Math.sqrt(numServices * aspectRatio));
+    // Aim for roughly equal rows and columns in a circle-like pattern
+    const optimalCols = Math.ceil(Math.sqrt(numServices));
     const optimalRows = Math.ceil(numServices / optimalCols);
     
-    // Calculate item spacing based on available space
-    const itemWidth = (canvasWidth - (paddingX * 2)) / Math.max(optimalCols, 1);
-    const itemHeight = (canvasHeight - (paddingY * 2)) / Math.max(optimalRows, 1);
+    // Calculate total width and height of the grid
+    const totalGridWidth = optimalCols * serviceWidth;
+    const totalGridHeight = optimalRows * serviceHeight;
     
-    // Use stored positions if available or create an optimized grid layout
+    // Calculate starting position (top-left corner of the grid)
+    const startX = centerX - (totalGridWidth / 2);
+    const startY = centerY - (totalGridHeight / 2);
+    
+    // Use stored positions if available or create a centralized grid layout
     services.forEach((service, index) => {
       // Check if the service already has a position stored
       if (service.positionX !== null && service.positionY !== null && 
@@ -88,15 +97,10 @@ export default function ServiceCanvas({
         const col = index % optimalCols;
         const row = Math.floor(index / optimalCols);
         
-        // Add small random variation to make it look more natural
-        // but keep it controlled to avoid overlaps
-        const offsetX = Math.random() * (itemWidth * 0.1) - (itemWidth * 0.05);
-        const offsetY = Math.random() * (itemHeight * 0.1) - (itemHeight * 0.05);
-        
-        // Position in grid with proper spacing and centered in cell
+        // Center each service in its grid cell without random variation
         positions[service.id] = {
-          x: paddingX + (col * itemWidth) + (itemWidth / 2) + offsetX,
-          y: paddingY + (row * itemHeight) + (itemHeight / 2) + offsetY
+          x: startX + (col * serviceWidth) + (serviceWidth / 2),
+          y: startY + (row * serviceHeight) + (serviceHeight / 2)
         };
       }
     });
@@ -693,11 +697,7 @@ export default function ServiceCanvas({
                   boxShadow: service.status === "online" ? "0 4px 20px rgba(16, 185, 129, 0.2)" : 
                              service.status === "offline" ? "0 4px 20px rgba(239, 68, 68, 0.2)" : 
                              service.status === "degraded" ? "0 4px 20px rgba(245, 158, 11, 0.2)" : 
-                             "0 4px 12px rgba(0, 0, 0, 0.1)",
-                  animation: `fadeIn 0.5s ease-out forwards, slideIn 0.5s ease-out forwards, pulse 2s infinite ${service.status === "online" ? "alternate" : ""}`,
-                  animationDelay: `${index * 0.1}s`,
-                  opacity: 0, // Start with opacity 0 for fadeIn animation
-                  transform: `translateY(20px) scale(0.95)` // Start position for slideIn animation
+                             "0 4px 12px rgba(0, 0, 0, 0.1)"
                 }}
                 onMouseDown={(e) => handleDragStart(e, service.id)}
               >
@@ -804,11 +804,7 @@ export default function ServiceCanvas({
                               "rgb(245, 158, 11)",
                   boxShadow: agent.status === "active" ? "0 4px 20px rgba(59, 130, 246, 0.2)" : 
                              agent.status === "inactive" ? "0 4px 12px rgba(0, 0, 0, 0.1)" : 
-                             "0 4px 20px rgba(245, 158, 11, 0.2)",
-                  animation: `fadeIn 0.5s ease-out forwards, slideIn 0.5s ease-out forwards`,
-                  animationDelay: `${0.5 + (index * 0.15)}s`, // Agents come in after services
-                  opacity: 0, // Start with opacity 0 for fadeIn animation
-                  transform: `translateY(20px) scale(0.95)` // Start position for slideIn animation
+                             "0 4px 20px rgba(245, 158, 11, 0.2)"
                 }}
                 onMouseDown={(e) => handleAgentDragStart(e, agent.id)}
               >
@@ -907,11 +903,7 @@ export default function ServiceCanvas({
               width: "180px",
               left: "380px",
               top: "520px",
-              zIndex: 5,
-              animation: "fadeIn 0.5s ease-out forwards, slideIn 0.5s ease-out forwards, pulse 3s infinite alternate",
-              animationDelay: `${services.length * 0.1 + 0.3}s`, // Show after all services are animated
-              opacity: 0, // Start with opacity 0 for fadeIn animation
-              transform: "translateY(20px) scale(0.95)" // Start position for slideIn animation
+              zIndex: 5
             }}
             onClick={onAddService}
           >
