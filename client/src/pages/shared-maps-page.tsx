@@ -504,6 +504,7 @@ const SharedMapsPage = () => {
         </DialogContent>
       </Dialog>
     </div>
+    </Layout>
   );
 };
 
