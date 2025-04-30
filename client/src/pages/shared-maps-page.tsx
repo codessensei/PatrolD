@@ -201,6 +201,7 @@ const SharedMapsPage = ({ viewMode = false }: { viewMode?: boolean } = {}) => {
     setSelectedMap(map);
     const host = window.location.host;
     const protocol = window.location.protocol;
+    // Ensure the URL matches the route in App.tsx ("/shared-map/:shareKey")
     setPublicShareUrl(`${protocol}//${host}/shared-map/${map.shareKey}`);
     setIsShareDialogOpen(true);
   };
