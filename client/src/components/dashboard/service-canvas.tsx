@@ -111,8 +111,8 @@ export default function ServiceCanvas({
     const servicePosition = servicePositions[serviceId] || { x: 0, y: 0 };
     
     // Calculate offset from the mouse position to the service's origin
-    const offsetX = e.clientX - canvasRect.left - servicePosition.x;
-    const offsetY = e.clientY - canvasRect.top - servicePosition.y;
+    const offsetX = (e.clientX - canvasRect.left) / zoom - servicePosition.x;
+    const offsetY = (e.clientY - canvasRect.top) / zoom - servicePosition.y;
     
     setDragOffset({ x: offsetX, y: offsetY });
     setDraggingService(serviceId);
@@ -132,8 +132,8 @@ export default function ServiceCanvas({
     const agentPosition = agentPositions[agentId] || { x: 0, y: 0 };
     
     // Calculate offset from the mouse position to the agent's origin
-    const offsetX = e.clientX - canvasRect.left - agentPosition.x;
-    const offsetY = e.clientY - canvasRect.top - agentPosition.y;
+    const offsetX = (e.clientX - canvasRect.left) / zoom - agentPosition.x;
+    const offsetY = (e.clientY - canvasRect.top) / zoom - agentPosition.y;
     
     setDragOffset({ x: offsetX, y: offsetY });
     setDraggingAgent(agentId);
@@ -150,13 +150,20 @@ export default function ServiceCanvas({
     
     const canvasRect = canvasRef.current.getBoundingClientRect();
     
+    // Get the zoom-adjusted mouse position
+    const mouseX = (e.clientX - canvasRect.left) / zoom;
+    const mouseY = (e.clientY - canvasRect.top) / zoom;
+    
     // Calculate new position based on mouse position minus the drag offset
-    let newX = e.clientX - canvasRect.left - dragOffset.x;
-    let newY = e.clientY - canvasRect.top - dragOffset.y;
+    let newX = mouseX - dragOffset.x;
+    let newY = mouseY - dragOffset.y;
     
     // Ensure element stays within canvas bounds
-    newX = Math.max(0, Math.min(newX, canvasRect.width - 180)); // Width of 180px
-    newY = Math.max(0, Math.min(newY, canvasRect.height - 160)); // Height ~160px
+    const canvasWidth = canvasRect.width / zoom;
+    const canvasHeight = canvasRect.height / zoom;
+    
+    newX = Math.max(0, Math.min(newX, canvasWidth - 180)); // Width of 180px
+    newY = Math.max(0, Math.min(newY, canvasHeight - 160)); // Height ~160px
     
     // Update position state based on what's being dragged
     if (draggingService !== null) {
@@ -171,7 +178,7 @@ export default function ServiceCanvas({
       }));
     }
     
-  }, [draggingService, draggingAgent, dragOffset]);
+  }, [draggingService, draggingAgent, dragOffset, zoom]);
 
   // Handle drag end
   const handleDragEnd = useCallback(() => {
@@ -361,7 +368,7 @@ export default function ServiceCanvas({
           }}
         >
           {/* SVG for Connection Lines */}
-          <svg ref={svgRef} className="absolute top-0 left-0 w-full h-full" style={{ zIndex: 5 }}>
+          <svg ref={svgRef} className="absolute top-0 left-0 w-full h-full pointer-events-none" style={{ zIndex: 5 }}>
             {/* Background gradient for connections */}
             <defs>
               <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
@@ -397,6 +404,17 @@ export default function ServiceCanvas({
                                "rgba(245, 158, 11, 0.5)" : 
                                "rgba(156, 163, 175, 0.3)";
               const animationId = `flow-${connection.id}`;
+              
+              // Use a nice curved path instead of a straight line
+              const midX = (sourceX + targetX) / 2;
+              const midY = (sourceY + targetY) / 2;
+              
+              // Offset to create a curved path
+              const offsetX = -dy * 0.2; // Perpendicular to the line
+              const offsetY = dx * 0.2;
+              
+              // Create the path for a bezier curve
+              const path = `M${sourceX},${sourceY} Q${midX + offsetX},${midY + offsetY} ${targetX},${targetY}`;
               
               return (
                 <g key={connection.id}>
@@ -437,13 +455,10 @@ export default function ServiceCanvas({
                     </linearGradient>
                   </defs>
                   
-                  {/* Base connection line with subtle glow effect */}
-                  <line 
-                    x1={sourceX} 
-                    y1={sourceY} 
-                    x2={targetX} 
-                    y2={targetY}
-                    className="connection-line" 
+                  {/* Base connection curve with subtle glow effect */}
+                  <path 
+                    d={path}
+                    fill="none"
                     stroke={connectionColor}
                     strokeWidth={connection.status === "online" ? 3 : 2}
                     strokeOpacity={connection.status === "online" ? 0.8 : 0.5}
@@ -461,7 +476,7 @@ export default function ServiceCanvas({
                           fill={connectionColor}
                           filter="url(#glow)">
                           <animateMotion
-                            path={`M${sourceX},${sourceY} L${targetX},${targetY}`}
+                            path={path}
                             dur={`${2 + i * 0.5}s`}
                             repeatCount="indefinite"
                             rotate="auto"
@@ -469,12 +484,10 @@ export default function ServiceCanvas({
                         </circle>
                       ))}
                       
-                      {/* Dynamic pulse effect along the line */}
-                      <line 
-                        x1={sourceX} 
-                        y1={sourceY} 
-                        x2={targetX} 
-                        y2={targetY}
+                      {/* Dynamic pulse effect along the curve */}
+                      <path 
+                        d={path}
+                        fill="none"
                         stroke={`url(#pulse-${animationId})`}
                         strokeWidth={2}
                         strokeDasharray="3 3"
@@ -495,6 +508,128 @@ export default function ServiceCanvas({
                 </g>
               );
             })}
+            
+            {/* Agent-Service Connections */}
+            {agents.map(agent => {
+              const position = agentPositions[agent.id] || { x: 100, y: 100 };
+              const agentServices = services.filter(s => s.agentId === agent.id && s.monitorType === "agent");
+              
+              return (
+                <g key={`agent-connections-${agent.id}`}>
+                  {agentServices.map(service => {
+                    const servicePos = servicePositions[service.id];
+                    if (!servicePos) return null;
+                    
+                    // Calculate positions for curved path
+                    const x1 = position.x + 100;
+                    const y1 = position.y + 60;
+                    const x2 = servicePos.x + 90;
+                    const y2 = servicePos.y + 50;
+                    
+                    // Calculate control points for bezier curve
+                    const dx = x2 - x1;
+                    const dy = y2 - y1;
+                    const midX = (x1 + x2) / 2;
+                    const midY = (y1 + y2) / 2;
+                    
+                    // Offset control point to create a nice curve
+                    const offsetX = -dy * 0.2; // Perpendicular to the line
+                    const offsetY = dx * 0.2;
+                    
+                    // Create the path for a bezier curve
+                    const path = `M${x1},${y1} Q${midX + offsetX},${midY + offsetY} ${x2},${y2}`;
+                    
+                    // Dynamic color based on agent and service status
+                    const connectionColor = agent.status === "active" ? getConnectionColor(service.status) : "#9CA3AF";
+                    
+                    // Unique ID for this connection's animation
+                    const animationId = `agent-service-${agent.id}-${service.id}`;
+                    
+                    return (
+                      <g key={`agent-service-${agent.id}-${service.id}`}>
+                        <defs>
+                          <linearGradient id={`agent-pulse-${animationId}`}>
+                            <stop offset="0%" stopColor={connectionColor}>
+                              <animate 
+                                attributeName="offset" 
+                                values="0;1" 
+                                dur="3s" 
+                                repeatCount="indefinite" 
+                              />
+                            </stop>
+                            <stop offset="25%" stopColor="white">
+                              <animate 
+                                attributeName="offset" 
+                                values="0;1" 
+                                dur="3s" 
+                                repeatCount="indefinite" 
+                              />
+                            </stop>
+                            <stop offset="50%" stopColor={connectionColor}>
+                              <animate 
+                                attributeName="offset" 
+                                values="0;1" 
+                                dur="3s" 
+                                repeatCount="indefinite" 
+                              />
+                            </stop>
+                          </linearGradient>
+                        </defs>
+                        
+                        {/* Base curve path */}
+                        <path 
+                          d={path}
+                          fill="none"
+                          stroke={connectionColor}
+                          strokeWidth={1.5}
+                          strokeDasharray="4 2"
+                          opacity={0.8}
+                        />
+                        
+                        {/* Animated overlay for active agents */}
+                        {agent.status === "active" && (
+                          <>
+                            {/* Flowing dots */}
+                            {Array.from({ length: 3 }).map((_, i) => (
+                              <circle 
+                                key={i} 
+                                r={1.5}
+                                fill={connectionColor}
+                                opacity={0.8}>
+                                <animateMotion
+                                  path={path}
+                                  dur={`${3 + i * 0.8}s`}
+                                  repeatCount="indefinite"
+                                  rotate="auto"
+                                />
+                              </circle>
+                            ))}
+                            
+                            {/* Pulsing line effect */}
+                            <path 
+                              d={path}
+                              fill="none"
+                              stroke={`url(#agent-pulse-${animationId})`}
+                              strokeWidth={2}
+                              strokeDasharray="3 5"
+                              opacity={0.6}
+                            />
+                          </>
+                        )}
+                        
+                        {/* Direction indicator */}
+                        <polygon 
+                          points="0,-3 6,0 0,3" 
+                          fill={connectionColor} 
+                          opacity={0.8}
+                          transform={`translate(${x2 - dx * 0.05}, ${y2 - dy * 0.05}) rotate(${Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI})`}
+                        />
+                      </g>
+                    );
+                  })}
+                </g>
+              );
+            })}
           </svg>
 
           {/* Service Nodes */}
@@ -509,7 +644,7 @@ export default function ServiceCanvas({
                   width: "180px",
                   left: `${position.x}px`,
                   top: `${position.y}px`,
-                  zIndex: draggingService === service.id ? 100 : 1,
+                  zIndex: draggingService === service.id ? 100 : 10,
                   cursor: draggingService === service.id ? "grabbing" : "grab",
                   borderColor: service.status === "online" ? "rgb(16, 185, 129)" : 
                                service.status === "offline" ? "rgb(239, 68, 68)" : 
@@ -613,7 +748,7 @@ export default function ServiceCanvas({
                   width: "200px",
                   left: `${position.x}px`,
                   top: `${position.y}px`,
-                  zIndex: draggingAgent === agent.id ? 100 : 10,
+                  zIndex: draggingAgent === agent.id ? 100 : 20,
                   cursor: draggingAgent === agent.id ? "grabbing" : "grab",
                   borderColor: agent.status === "active" ? "rgb(16, 185, 129)" : 
                               agent.status === "inactive" ? "rgb(156, 163, 175)" : 
@@ -705,119 +840,6 @@ export default function ServiceCanvas({
                     )}
                   </div>
                 </div>
-                
-                {/* Agent service connections */}
-                {agentServices.map(service => {
-                  const servicePos = servicePositions[service.id];
-                  if (!servicePos) return null;
-                  
-                  // Calculate positions for curved path
-                  const x1 = position.x + 100;
-                  const y1 = position.y + 60;
-                  const x2 = servicePos.x + 90;
-                  const y2 = servicePos.y + 50;
-                  
-                  // Calculate control points for bezier curve
-                  const dx = x2 - x1;
-                  const dy = y2 - y1;
-                  const midX = (x1 + x2) / 2;
-                  const midY = (y1 + y2) / 2;
-                  
-                  // Offset control point to create a nice curve
-                  const offsetX = -dy * 0.2; // Perpendicular to the line
-                  const offsetY = dx * 0.2;
-                  
-                  // Create the path for a bezier curve
-                  const path = `M${x1},${y1} Q${midX + offsetX},${midY + offsetY} ${x2},${y2}`;
-                  
-                  // Dynamic color based on agent and service status
-                  const connectionColor = agent.status === "active" ? getConnectionColor(service.status) : "#9CA3AF";
-                  
-                  // Unique ID for this connection's animation
-                  const animationId = `agent-service-${agent.id}-${service.id}`;
-                  
-                  return (
-                    <svg key={animationId} className="absolute top-0 left-0 w-full h-full" style={{ zIndex: 3 }}>
-                      <defs>
-                        <linearGradient id={`agent-pulse-${animationId}`}>
-                          <stop offset="0%" stopColor={connectionColor}>
-                            <animate 
-                              attributeName="offset" 
-                              values="0;1" 
-                              dur="3s" 
-                              repeatCount="indefinite" 
-                            />
-                          </stop>
-                          <stop offset="25%" stopColor="white">
-                            <animate 
-                              attributeName="offset" 
-                              values="0;1" 
-                              dur="3s" 
-                              repeatCount="indefinite" 
-                            />
-                          </stop>
-                          <stop offset="50%" stopColor={connectionColor}>
-                            <animate 
-                              attributeName="offset" 
-                              values="0;1" 
-                              dur="3s" 
-                              repeatCount="indefinite" 
-                            />
-                          </stop>
-                        </linearGradient>
-                      </defs>
-                      
-                      {/* Base curve path */}
-                      <path 
-                        d={path}
-                        fill="none"
-                        stroke={connectionColor}
-                        strokeWidth={1.5}
-                        strokeDasharray="4 2"
-                        opacity={0.8}
-                      />
-                      
-                      {/* Animated overlay for active agents */}
-                      {agent.status === "active" && (
-                        <>
-                          {/* Flowing dots */}
-                          {Array.from({ length: 3 }).map((_, i) => (
-                            <circle 
-                              key={i} 
-                              r={1.5}
-                              fill={connectionColor}
-                              opacity={0.8}>
-                              <animateMotion
-                                path={path}
-                                dur={`${3 + i * 0.8}s`}
-                                repeatCount="indefinite"
-                                rotate="auto"
-                              />
-                            </circle>
-                          ))}
-                          
-                          {/* Pulsing line effect */}
-                          <path 
-                            d={path}
-                            fill="none"
-                            stroke={`url(#agent-pulse-${animationId})`}
-                            strokeWidth={2}
-                            strokeDasharray="3 5"
-                            opacity={0.6}
-                          />
-                        </>
-                      )}
-                      
-                      {/* Direction indicator */}
-                      <polygon 
-                        points="0,-3 6,0 0,3" 
-                        fill={connectionColor} 
-                        opacity={0.8}
-                        transform={`translate(${x2 - dx * 0.05}, ${y2 - dy * 0.05}) rotate(${Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI})`}
-                      />
-                    </svg>
-                  );
-                })}
               </div>
             );
           })}
@@ -829,6 +851,7 @@ export default function ServiceCanvas({
               width: "180px",
               left: "380px",
               top: "520px",
+              zIndex: 5
             }}
             onClick={onAddService}
           >
