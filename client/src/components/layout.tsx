@@ -140,8 +140,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </header>
         
         {/* Page Content */}
-        <div className="flex-1 overflow-auto">
-          <main className="w-full h-full max-w-full px-2 py-2 sm:p-4">{children}</main>
+        <div className="flex-1 overflow-auto w-full">
+          <main className="w-full h-full max-w-full px-1 py-1 sm:px-2 sm:py-2">{children}</main>
         </div>
       </div>
     </div>

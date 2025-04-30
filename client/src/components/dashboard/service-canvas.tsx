@@ -81,16 +81,16 @@ export default function ServiceCanvas({
     // If services need auto layout, arrange them in a grid
     if (needsAutoLayout) {
       const canvasWidth = canvasRef.current?.clientWidth || 1000;
-      const itemsPerRow = Math.max(Math.floor(canvasWidth / 250), 3);
+      const itemsPerRow = Math.max(Math.floor(canvasWidth / 200), 4);
       
       services.forEach((service, index) => {
         const col = index % itemsPerRow;
         const row = Math.floor(index / itemsPerRow);
         
-        // Distribute services in a grid with appropriate spacing
+        // Distribute services in a grid with appropriate spacing - tighter for small screens
         positions[service.id] = { 
-          x: 100 + col * 250, 
-          y: 100 + row * 200 
+          x: 20 + col * 180, 
+          y: 30 + row * 150 
         };
         
         // Save the new position to the backend
@@ -130,8 +130,8 @@ export default function ServiceCanvas({
       if (!positions[agent.id]) {
         // Arrange agents in a grid layout if no position is provided
         positions[agent.id] = { 
-          x: 50 + (index % 3) * 220, 
-          y: 50 + Math.floor(index / 3) * 200 
+          x: 40 + (index % 4) * 180, 
+          y: 250 + Math.floor(index / 4) * 150 
         };
         updated = true;
       }
@@ -350,8 +350,8 @@ export default function ServiceCanvas({
   }
 
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="flex flex-row items-center justify-between py-2 px-3 sm:px-4 sm:py-4">
+    <Card className="overflow-hidden w-full max-w-full">
+      <CardHeader className="flex flex-row items-center justify-between py-2 px-2 sm:px-3 sm:py-3">
         <div className="flex items-center gap-1 sm:gap-3">
           <CardTitle className="text-sm sm:text-base font-medium">Service Map</CardTitle>
           <span className="text-[10px] sm:text-xs bg-muted px-1 sm:px-2 py-0.5 sm:py-1 rounded-md font-mono hidden sm:inline-block">
@@ -382,7 +382,7 @@ export default function ServiceCanvas({
       </CardHeader>
       
       {/* Service Canvas Area with improved scaling */}
-      <div className="relative min-h-[400px] h-[calc(100vh-20rem)] sm:h-[calc(100vh-15rem)] overflow-hidden">
+      <div className="relative min-h-[400px] h-[calc(100vh-20rem)] sm:h-[calc(100vh-15rem)] overflow-hidden max-w-full">
         {/* Zoom indicator overlay */}
         {zoom !== 1 && (
           <div className="absolute bottom-4 right-4 z-30 bg-slate-800/80 dark:bg-slate-900/80 text-white py-1 px-2 rounded-md text-xs font-mono flex items-center gap-2">
@@ -409,7 +409,7 @@ export default function ServiceCanvas({
         
         <div 
           ref={canvasRef}
-          className="relative h-full w-full overflow-auto canvas-grid p-4 sm:p-8"
+          className="relative h-full w-full overflow-auto canvas-grid p-2 sm:p-4 max-w-[calc(100vw-35px)]"
           style={{
             backgroundSize: `${20 * zoom}px ${20 * zoom}px`,
             backgroundImage: `
