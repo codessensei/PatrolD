@@ -11,10 +11,14 @@ import AlertsPage from "@/pages/alerts-page";
 import HistoryPage from "@/pages/history-page";
 import SettingsPage from "@/pages/settings-page";
 import AgentsPage from "@/pages/agents-page";
-import SharedMapsPage from "@/pages/shared-maps-page";
+import { lazy, Suspense } from "react";
 import { ProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
 import { ThemeProvider, ThemeToggleProvider } from "@/components/theme-provider";
+import { Loader2 } from "lucide-react";
+
+// Lazy load shared maps page
+const SharedMapsPage = lazy(() => import("./pages/shared-maps-page"));
 
 function Router() {
   return (
@@ -25,7 +29,11 @@ function Router() {
       <ProtectedRoute path="/agents" component={AgentsPage} />
       <ProtectedRoute path="/history" component={HistoryPage} />
       <ProtectedRoute path="/settings" component={SettingsPage} />
-      <ProtectedRoute path="/shared-maps" component={SharedMapsPage} />
+      <ProtectedRoute path="/shared-maps" component={() => (
+        <Suspense fallback={<div className="flex items-center justify-center h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+          <SharedMapsPage />
+        </Suspense>
+      )} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>
