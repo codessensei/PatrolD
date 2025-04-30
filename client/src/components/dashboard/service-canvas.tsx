@@ -130,8 +130,8 @@ export default function ServiceCanvas({
       if (!positions[agent.id]) {
         // Arrange agents in a grid layout if no position is provided
         positions[agent.id] = { 
-          x: 40 + (index % 4) * 180, 
-          y: 250 + Math.floor(index / 4) * 150 
+          x: 30 + (index % 5) * 160, 
+          y: 250 + Math.floor(index / 5) * 140 
         };
         updated = true;
       }
@@ -205,8 +205,8 @@ export default function ServiceCanvas({
     const canvasHeight = canvasRect.height / zoom;
     
     // Use smaller widths based on what's being dragged
-    const widthConstraint = draggingService !== null ? 150 : 170; // Service: 150px, Agent: 170px
-    const heightConstraint = 130; // Reduced height constraint
+    const widthConstraint = draggingService !== null ? 140 : 160; // Service: 140px, Agent: 160px
+    const heightConstraint = 120; // Reduced height constraint
     
     newX = Math.max(0, Math.min(newX, canvasWidth - widthConstraint)); 
     newY = Math.max(0, Math.min(newY, canvasHeight - heightConstraint));
@@ -386,7 +386,7 @@ export default function ServiceCanvas({
       </CardHeader>
       
       {/* Service Canvas Area with improved scaling - reduced max width */}
-      <div className="relative min-h-[400px] h-[calc(100vh-20rem)] sm:h-[calc(100vh-15rem)] overflow-hidden mx-auto" style={{ maxWidth: "calc(100vw - 40px)" }}>
+      <div className="relative min-h-[400px] h-[calc(100vh-20rem)] sm:h-[calc(100vh-15rem)] overflow-hidden mx-auto" style={{ maxWidth: "calc(100vw - 60px)" }}>
         {/* Zoom indicator overlay */}
         {zoom !== 1 && (
           <div className="absolute bottom-4 right-4 z-30 bg-slate-800/80 dark:bg-slate-900/80 text-white py-1 px-2 rounded-md text-xs font-mono flex items-center gap-2">
@@ -415,7 +415,7 @@ export default function ServiceCanvas({
           ref={canvasRef}
           className="relative h-full w-full overflow-auto canvas-grid p-2 sm:p-4"
           style={{
-            maxWidth: "calc(100vw - 45px)",
+            maxWidth: "calc(100vw - 65px)",
             backgroundSize: `${20 * zoom}px ${20 * zoom}px`,
             backgroundImage: `
               linear-gradient(to right, rgba(203, 213, 225, 0.1) 1px, transparent 1px),
@@ -907,9 +907,9 @@ export default function ServiceCanvas({
           {/* Add New Service Button - only shown when not in readonly mode */}
           {!readonly && onAddService && (
             <div 
-              className="service-node absolute bg-card dark:bg-card rounded-xl border-2 border-dashed border-primary p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-accent transition-all duration-200 shadow-md hover:shadow-lg"
+              className="service-node absolute bg-card dark:bg-card rounded-xl border-2 border-dashed border-primary p-3 flex flex-col items-center justify-center cursor-pointer hover:bg-accent transition-all duration-200 shadow-md hover:shadow-lg"
               style={{
-                width: "130px",
+                width: "120px",
                 left: "20px",
                 top: "400px",
                 zIndex: 5
