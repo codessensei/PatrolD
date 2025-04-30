@@ -368,7 +368,7 @@ export default function ServiceCanvas({
           }}
         >
           {/* SVG for Connection Lines */}
-          <svg ref={svgRef} className="absolute top-0 left-0 w-full h-full pointer-events-none" style={{ zIndex: 5 }}>
+          <svg ref={svgRef} className="absolute top-0 left-0 w-full h-full pointer-events-none" style={{ zIndex: 15 }}>
             {/* Background gradient for connections */}
             <defs>
               <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
@@ -644,11 +644,12 @@ export default function ServiceCanvas({
                   width: "180px",
                   left: `${position.x}px`,
                   top: `${position.y}px`,
-                  zIndex: draggingService === service.id ? 100 : 10,
+                  zIndex: draggingService === service.id ? 100 : 20,
                   cursor: draggingService === service.id ? "grabbing" : "grab",
                   borderColor: service.status === "online" ? "rgb(16, 185, 129)" : 
                                service.status === "offline" ? "rgb(239, 68, 68)" : 
-                               service.status === "degraded" ? "rgb(245, 158, 11)" : "rgb(156, 163, 175)"
+                               service.status === "degraded" ? "rgb(245, 158, 11)" : "rgb(156, 163, 175)",
+                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)"
                 }}
                 onMouseDown={(e) => handleDragStart(e, service.id)}
               >
@@ -748,11 +749,12 @@ export default function ServiceCanvas({
                   width: "200px",
                   left: `${position.x}px`,
                   top: `${position.y}px`,
-                  zIndex: draggingAgent === agent.id ? 100 : 20,
+                  zIndex: draggingAgent === agent.id ? 100 : 30,
                   cursor: draggingAgent === agent.id ? "grabbing" : "grab",
-                  borderColor: agent.status === "active" ? "rgb(16, 185, 129)" : 
+                  borderColor: agent.status === "active" ? "rgb(59, 130, 246)" : 
                               agent.status === "inactive" ? "rgb(156, 163, 175)" : 
-                              "rgb(245, 158, 11)"
+                              "rgb(245, 158, 11)",
+                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)"
                 }}
                 onMouseDown={(e) => handleAgentDragStart(e, agent.id)}
               >
