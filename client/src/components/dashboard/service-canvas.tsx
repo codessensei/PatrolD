@@ -51,15 +51,40 @@ export default function ServiceCanvas({
     queryKey: ["/api/agents"],
   });
 
-  // Initialize service positions based on their stored positions
+  // Initialize service positions based on their stored positions with a smart layout
   useEffect(() => {
     const positions: Record<number, Position> = {};
-    services.forEach(service => {
-      positions[service.id] = { 
-        x: service.positionX, 
-        y: service.positionY 
-      };
+    
+    // Initial grid layout for better organization
+    const gridCols = 4; // Define how many columns to use in the grid
+    const itemWidth = 220; // Width of a service node + margin
+    const itemHeight = 200; // Height of a service node + margin
+    
+    // Use stored positions if available or create a balanced grid layout
+    services.forEach((service, index) => {
+      // Check if the service already has a position stored
+      if (service.positionX !== 0 || service.positionY !== 0) {
+        // Use stored positions
+        positions[service.id] = { 
+          x: service.positionX, 
+          y: service.positionY 
+        };
+      } else {
+        // Calculate a grid position
+        const col = index % gridCols;
+        const row = Math.floor(index / gridCols);
+        
+        // Add some variation to make it look more natural
+        const offsetX = Math.random() * 20 - 10;
+        const offsetY = Math.random() * 20 - 10;
+        
+        positions[service.id] = {
+          x: 50 + (col * itemWidth) + offsetX,
+          y: 50 + (row * itemHeight) + offsetY
+        };
+      }
     });
+    
     setServicePositions(positions);
   }, [services]);
 
@@ -632,14 +657,14 @@ export default function ServiceCanvas({
             })}
           </svg>
 
-          {/* Service Nodes */}
-          {services.map(service => {
+          {/* Service Nodes with Animated Entrance */}
+          {services.map((service, index) => {
             const position = servicePositions[service.id] || { x: 0, y: 0 };
             
             return (
               <div 
                 key={service.id}
-                className="service-node absolute bg-card dark:bg-card rounded-xl shadow-lg border-2 overflow-hidden transition-all duration-200 hover:shadow-xl"
+                className="service-node absolute bg-card dark:bg-card rounded-xl shadow-lg border-2 overflow-hidden hover:shadow-xl"
                 style={{
                   width: "180px",
                   left: `${position.x}px`,
@@ -649,7 +674,14 @@ export default function ServiceCanvas({
                   borderColor: service.status === "online" ? "rgb(16, 185, 129)" : 
                                service.status === "offline" ? "rgb(239, 68, 68)" : 
                                service.status === "degraded" ? "rgb(245, 158, 11)" : "rgb(156, 163, 175)",
-                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)"
+                  boxShadow: service.status === "online" ? "0 4px 20px rgba(16, 185, 129, 0.2)" : 
+                             service.status === "offline" ? "0 4px 20px rgba(239, 68, 68, 0.2)" : 
+                             service.status === "degraded" ? "0 4px 20px rgba(245, 158, 11, 0.2)" : 
+                             "0 4px 12px rgba(0, 0, 0, 0.1)",
+                  animation: `fadeIn 0.5s ease-out forwards, slideIn 0.5s ease-out forwards, pulse 2s infinite ${service.status === "online" ? "alternate" : ""}`,
+                  animationDelay: `${index * 0.1}s`,
+                  opacity: 0, // Start with opacity 0 for fadeIn animation
+                  transform: `translateY(20px) scale(0.95)` // Start position for slideIn animation
                 }}
                 onMouseDown={(e) => handleDragStart(e, service.id)}
               >
@@ -734,8 +766,8 @@ export default function ServiceCanvas({
             );
           })}
 
-          {/* Agent Nodes */}
-          {agents.map(agent => {
+          {/* Agent Nodes with Animated Entrance */}
+          {agents.map((agent, index) => {
             const position = agentPositions[agent.id] || { x: 100, y: 100 };
             
             // Find services monitored by this agent
@@ -744,7 +776,7 @@ export default function ServiceCanvas({
             return (
               <div
                 key={`agent-${agent.id}`}
-                className="agent-node absolute bg-card dark:bg-card rounded-xl shadow-lg border-2 overflow-hidden transition-all duration-200 hover:shadow-xl"
+                className="agent-node absolute bg-card dark:bg-card rounded-xl shadow-lg border-2 overflow-hidden hover:shadow-xl"
                 style={{
                   width: "200px",
                   left: `${position.x}px`,
@@ -754,7 +786,13 @@ export default function ServiceCanvas({
                   borderColor: agent.status === "active" ? "rgb(59, 130, 246)" : 
                               agent.status === "inactive" ? "rgb(156, 163, 175)" : 
                               "rgb(245, 158, 11)",
-                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)"
+                  boxShadow: agent.status === "active" ? "0 4px 20px rgba(59, 130, 246, 0.2)" : 
+                             agent.status === "inactive" ? "0 4px 12px rgba(0, 0, 0, 0.1)" : 
+                             "0 4px 20px rgba(245, 158, 11, 0.2)",
+                  animation: `fadeIn 0.5s ease-out forwards, slideIn 0.5s ease-out forwards`,
+                  animationDelay: `${0.5 + (index * 0.15)}s`, // Agents come in after services
+                  opacity: 0, // Start with opacity 0 for fadeIn animation
+                  transform: `translateY(20px) scale(0.95)` // Start position for slideIn animation
                 }}
                 onMouseDown={(e) => handleAgentDragStart(e, agent.id)}
               >
@@ -846,14 +884,18 @@ export default function ServiceCanvas({
             );
           })}
 
-          {/* Add New Service Button */}
+          {/* Add New Service Button with Animation */}
           <div 
-            className="service-node absolute bg-card dark:bg-card rounded-xl border-2 border-dashed border-primary p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-accent transition-all duration-200 shadow-md hover:shadow-lg"
+            className="service-node absolute bg-card dark:bg-card rounded-xl border-2 border-dashed border-primary p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-accent/10 hover:border-accent shadow-md hover:shadow-lg"
             style={{
               width: "180px",
               left: "380px",
               top: "520px",
-              zIndex: 5
+              zIndex: 5,
+              animation: "fadeIn 0.5s ease-out forwards, slideIn 0.5s ease-out forwards, pulse 3s infinite alternate",
+              animationDelay: `${services.length * 0.1 + 0.3}s`, // Show after all services are animated
+              opacity: 0, // Start with opacity 0 for fadeIn animation
+              transform: "translateY(20px) scale(0.95)" // Start position for slideIn animation
             }}
             onClick={onAddService}
           >
