@@ -4,7 +4,8 @@ import {
   Connection, InsertConnection,
   Alert, InsertAlert,
   Agent, InsertAgent,
-  UserSettings, InsertUserSettings
+  UserSettings, InsertUserSettings,
+  SharedMap, InsertSharedMap
 } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
@@ -56,6 +57,16 @@ export interface IStorage {
   // User Settings
   getUserSettings(userId: number): Promise<UserSettings | undefined>;
   updateUserSettings(settings: Partial<UserSettings> & { userId: number }): Promise<UserSettings>;
+  
+  // Shared Maps (PatrolD)
+  getSharedMapById(id: number): Promise<SharedMap | undefined>;
+  getSharedMapByShareKey(shareKey: string): Promise<SharedMap | undefined>;
+  getSharedMapsByUserId(userId: number): Promise<SharedMap[]>;
+  getPublishedSharedMaps(): Promise<SharedMap[]>;
+  createSharedMap(map: InsertSharedMap): Promise<SharedMap>;
+  updateSharedMap(id: number, data: Partial<SharedMap>): Promise<SharedMap>;
+  deleteSharedMap(id: number): Promise<void>;
+  incrementSharedMapViewCount(id: number): Promise<SharedMap>;
   
   // Session store
   sessionStore: SessionStore;
@@ -379,6 +390,81 @@ export class MemStorage implements IStorage {
       this.userSettings.set(id, newSettings);
       return newSettings;
     }
+  }
+  
+  // Shared Maps (PatrolD) methods
+  private sharedMaps: Map<number, SharedMap> = new Map();
+  private sharedMapId: number = 1;
+  
+  async getSharedMapById(id: number): Promise<SharedMap | undefined> {
+    return this.sharedMaps.get(id);
+  }
+  
+  async getSharedMapByShareKey(shareKey: string): Promise<SharedMap | undefined> {
+    return Array.from(this.sharedMaps.values()).find(
+      map => map.shareKey === shareKey
+    );
+  }
+  
+  async getSharedMapsByUserId(userId: number): Promise<SharedMap[]> {
+    return Array.from(this.sharedMaps.values()).filter(
+      map => map.userId === userId
+    );
+  }
+  
+  async getPublishedSharedMaps(): Promise<SharedMap[]> {
+    return Array.from(this.sharedMaps.values()).filter(
+      map => map.isPublished
+    );
+  }
+  
+  async createSharedMap(insertMap: InsertSharedMap): Promise<SharedMap> {
+    const id = this.sharedMapId++;
+    // Generate a unique share key
+    const shareKey = `map_${Math.random().toString(36).substring(2, 10)}_${new Date().getTime().toString(36)}`;
+    
+    const map: SharedMap = {
+      ...insertMap,
+      id,
+      shareKey,
+      viewCount: 0,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    this.sharedMaps.set(id, map);
+    return map;
+  }
+  
+  async updateSharedMap(id: number, data: Partial<SharedMap>): Promise<SharedMap> {
+    const map = await this.getSharedMapById(id);
+    if (!map) throw new Error(`Shared map with id ${id} not found`);
+    
+    const updatedMap: SharedMap = {
+      ...map,
+      ...data,
+      updatedAt: new Date()
+    };
+    
+    this.sharedMaps.set(id, updatedMap);
+    return updatedMap;
+  }
+  
+  async deleteSharedMap(id: number): Promise<void> {
+    this.sharedMaps.delete(id);
+  }
+  
+  async incrementSharedMapViewCount(id: number): Promise<SharedMap> {
+    const map = await this.getSharedMapById(id);
+    if (!map) throw new Error(`Shared map with id ${id} not found`);
+    
+    const updatedMap: SharedMap = {
+      ...map,
+      viewCount: map.viewCount + 1
+    };
+    
+    this.sharedMaps.set(id, updatedMap);
+    return updatedMap;
   }
 }
 
