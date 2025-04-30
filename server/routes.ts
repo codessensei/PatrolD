@@ -654,6 +654,288 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Service Maps (Project Topologies)
+  app.get("/api/service-maps", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const maps = await storage.getServiceMapsByUserId(req.user!.id);
+    res.status(200).json(maps);
+  });
+
+  app.get("/api/service-maps/default", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const map = await storage.getDefaultServiceMap(req.user!.id);
+    if (!map) {
+      return res.status(404).json({ error: "No default service map found" });
+    }
+    
+    res.status(200).json(map);
+  });
+
+  app.get("/api/service-maps/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const mapId = parseInt(req.params.id);
+    if (isNaN(mapId)) {
+      return res.status(400).json({ error: "Invalid map ID" });
+    }
+    
+    const map = await storage.getServiceMapById(mapId);
+    if (!map || map.userId !== req.user!.id) {
+      return res.status(404).json({ error: "Service map not found" });
+    }
+    
+    // Get items associated with this map
+    const serviceItems = await storage.getServiceMapItems(mapId);
+    const agentItems = await storage.getAgentMapItems(mapId);
+    
+    // Return the map with its items
+    res.status(200).json({
+      ...map,
+      serviceItems,
+      agentItems
+    });
+  });
+
+  app.post("/api/service-maps", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const data = insertServiceMapSchema.parse({
+        ...req.body,
+        userId: req.user!.id
+      });
+      
+      const map = await storage.createServiceMap(data);
+      res.status(201).json(map);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Failed to create service map:", error);
+      res.status(500).json({ error: "Failed to create service map" });
+    }
+  });
+
+  app.put("/api/service-maps/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const mapId = parseInt(req.params.id);
+    if (isNaN(mapId)) {
+      return res.status(400).json({ error: "Invalid map ID" });
+    }
+    
+    const map = await storage.getServiceMapById(mapId);
+    if (!map || map.userId !== req.user!.id) {
+      return res.status(404).json({ error: "Service map not found" });
+    }
+    
+    try {
+      const updatedMap = await storage.updateServiceMap(mapId, req.body);
+      res.status(200).json(updatedMap);
+    } catch (error) {
+      console.error("Failed to update service map:", error);
+      res.status(500).json({ error: "Failed to update service map" });
+    }
+  });
+
+  app.put("/api/service-maps/:id/set-default", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const mapId = parseInt(req.params.id);
+    if (isNaN(mapId)) {
+      return res.status(400).json({ error: "Invalid map ID" });
+    }
+    
+    const map = await storage.getServiceMapById(mapId);
+    if (!map || map.userId !== req.user!.id) {
+      return res.status(404).json({ error: "Service map not found" });
+    }
+    
+    try {
+      const updatedMap = await storage.setDefaultServiceMap(mapId);
+      res.status(200).json(updatedMap);
+    } catch (error) {
+      console.error("Failed to set map as default:", error);
+      res.status(500).json({ error: "Failed to set map as default" });
+    }
+  });
+
+  app.delete("/api/service-maps/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const mapId = parseInt(req.params.id);
+    if (isNaN(mapId)) {
+      return res.status(400).json({ error: "Invalid map ID" });
+    }
+    
+    const map = await storage.getServiceMapById(mapId);
+    if (!map || map.userId !== req.user!.id) {
+      return res.status(404).json({ error: "Service map not found" });
+    }
+    
+    await storage.deleteServiceMap(mapId);
+    res.status(204).send();
+  });
+
+  // Service Map Items
+  app.get("/api/service-maps/:id/items", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const mapId = parseInt(req.params.id);
+    if (isNaN(mapId)) {
+      return res.status(400).json({ error: "Invalid map ID" });
+    }
+    
+    const map = await storage.getServiceMapById(mapId);
+    if (!map || map.userId !== req.user!.id) {
+      return res.status(404).json({ error: "Service map not found" });
+    }
+    
+    const serviceItems = await storage.getServiceMapItems(mapId);
+    const agentItems = await storage.getAgentMapItems(mapId);
+    
+    res.status(200).json({
+      serviceItems,
+      agentItems
+    });
+  });
+
+  app.post("/api/service-maps/:id/services/:serviceId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const mapId = parseInt(req.params.id);
+    const serviceId = parseInt(req.params.serviceId);
+    
+    if (isNaN(mapId) || isNaN(serviceId)) {
+      return res.status(400).json({ error: "Invalid ID" });
+    }
+    
+    const map = await storage.getServiceMapById(mapId);
+    const service = await storage.getServiceById(serviceId);
+    
+    if (!map || !service || map.userId !== req.user!.id || service.userId !== req.user!.id) {
+      return res.status(404).json({ error: "Map or service not found" });
+    }
+    
+    try {
+      // Check if a position was provided
+      const position = req.body.position ? { 
+        x: req.body.position.x, 
+        y: req.body.position.y 
+      } : undefined;
+      
+      const item = await storage.addServiceToMap(mapId, serviceId, position);
+      res.status(201).json(item);
+    } catch (error) {
+      console.error("Failed to add service to map:", error);
+      res.status(500).json({ error: "Failed to add service to map" });
+    }
+  });
+
+  app.delete("/api/service-maps/:id/services/:serviceId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const mapId = parseInt(req.params.id);
+    const serviceId = parseInt(req.params.serviceId);
+    
+    if (isNaN(mapId) || isNaN(serviceId)) {
+      return res.status(400).json({ error: "Invalid ID" });
+    }
+    
+    const map = await storage.getServiceMapById(mapId);
+    if (!map || map.userId !== req.user!.id) {
+      return res.status(404).json({ error: "Map not found" });
+    }
+    
+    await storage.removeServiceFromMap(mapId, serviceId);
+    res.status(204).send();
+  });
+
+  app.put("/api/service-maps/:id/items/:itemId/position", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const mapId = parseInt(req.params.id);
+    const itemId = parseInt(req.params.itemId);
+    
+    if (isNaN(mapId) || isNaN(itemId)) {
+      return res.status(400).json({ error: "Invalid ID" });
+    }
+    
+    const map = await storage.getServiceMapById(mapId);
+    if (!map || map.userId !== req.user!.id) {
+      return res.status(404).json({ error: "Map not found" });
+    }
+    
+    if (!req.body.position || typeof req.body.position.x !== 'number' || typeof req.body.position.y !== 'number') {
+      return res.status(400).json({ error: "Position must include x and y coordinates" });
+    }
+    
+    try {
+      const item = await storage.updateServiceMapItemPosition(itemId, {
+        x: req.body.position.x,
+        y: req.body.position.y
+      });
+      res.status(200).json(item);
+    } catch (error) {
+      console.error("Failed to update item position:", error);
+      res.status(500).json({ error: "Failed to update item position" });
+    }
+  });
+
+  // Agent Map Items
+  app.post("/api/service-maps/:id/agents/:agentId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const mapId = parseInt(req.params.id);
+    const agentId = parseInt(req.params.agentId);
+    
+    if (isNaN(mapId) || isNaN(agentId)) {
+      return res.status(400).json({ error: "Invalid ID" });
+    }
+    
+    const map = await storage.getServiceMapById(mapId);
+    const agent = await storage.getAgentById(agentId);
+    
+    if (!map || !agent || map.userId !== req.user!.id || agent.userId !== req.user!.id) {
+      return res.status(404).json({ error: "Map or agent not found" });
+    }
+    
+    try {
+      // Check if a position was provided
+      const position = req.body.position ? { 
+        x: req.body.position.x, 
+        y: req.body.position.y 
+      } : undefined;
+      
+      const item = await storage.addAgentToMap(mapId, agentId, position);
+      res.status(201).json(item);
+    } catch (error) {
+      console.error("Failed to add agent to map:", error);
+      res.status(500).json({ error: "Failed to add agent to map" });
+    }
+  });
+
+  app.delete("/api/service-maps/:id/agents/:agentId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const mapId = parseInt(req.params.id);
+    const agentId = parseInt(req.params.agentId);
+    
+    if (isNaN(mapId) || isNaN(agentId)) {
+      return res.status(400).json({ error: "Invalid ID" });
+    }
+    
+    const map = await storage.getServiceMapById(mapId);
+    if (!map || map.userId !== req.user!.id) {
+      return res.status(404).json({ error: "Map not found" });
+    }
+    
+    await storage.removeAgentFromMap(mapId, agentId);
+    res.status(204).send();
+  });
+
   // Shared Maps (PatrolD)
   app.get("/api/shared-maps", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
