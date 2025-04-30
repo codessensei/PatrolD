@@ -7,6 +7,7 @@ import { z } from "zod";
 import { insertConnectionSchema, insertServiceSchema, insertAgentSchema } from "@shared/schema";
 import { randomBytes } from "crypto";
 import * as fs from 'fs';
+import * as path from 'path';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication

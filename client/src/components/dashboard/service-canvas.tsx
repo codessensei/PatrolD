@@ -55,15 +55,29 @@ export default function ServiceCanvas({
   useEffect(() => {
     const positions: Record<number, Position> = {};
     
-    // Initial grid layout for better organization
-    const gridCols = 4; // Define how many columns to use in the grid
-    const itemWidth = 220; // Width of a service node + margin
-    const itemHeight = 200; // Height of a service node + margin
+    // Define canvas dimensions and item sizes for a more harmonious layout
+    const canvasWidth = canvasRef.current?.clientWidth || 1200;
+    const canvasHeight = canvasRef.current?.clientHeight || 800;
+    const paddingX = 40; // Padding from edges
+    const paddingY = 40;
     
-    // Use stored positions if available or create a balanced grid layout
+    // Optimize grid layout dimensions based on number of services
+    const numServices = services.length;
+    const aspectRatio = canvasWidth / canvasHeight;
+    
+    // Calculate optimal grid dimensions based on aspect ratio
+    const optimalCols = Math.ceil(Math.sqrt(numServices * aspectRatio));
+    const optimalRows = Math.ceil(numServices / optimalCols);
+    
+    // Calculate item spacing based on available space
+    const itemWidth = (canvasWidth - (paddingX * 2)) / Math.max(optimalCols, 1);
+    const itemHeight = (canvasHeight - (paddingY * 2)) / Math.max(optimalRows, 1);
+    
+    // Use stored positions if available or create an optimized grid layout
     services.forEach((service, index) => {
       // Check if the service already has a position stored
-      if (service.positionX !== 0 || service.positionY !== 0) {
+      if (service.positionX !== null && service.positionY !== null && 
+          (service.positionX !== 0 || service.positionY !== 0)) {
         // Use stored positions
         positions[service.id] = { 
           x: service.positionX, 
@@ -71,22 +85,24 @@ export default function ServiceCanvas({
         };
       } else {
         // Calculate a grid position
-        const col = index % gridCols;
-        const row = Math.floor(index / gridCols);
+        const col = index % optimalCols;
+        const row = Math.floor(index / optimalCols);
         
-        // Add some variation to make it look more natural
-        const offsetX = Math.random() * 20 - 10;
-        const offsetY = Math.random() * 20 - 10;
+        // Add small random variation to make it look more natural
+        // but keep it controlled to avoid overlaps
+        const offsetX = Math.random() * (itemWidth * 0.1) - (itemWidth * 0.05);
+        const offsetY = Math.random() * (itemHeight * 0.1) - (itemHeight * 0.05);
         
+        // Position in grid with proper spacing and centered in cell
         positions[service.id] = {
-          x: 50 + (col * itemWidth) + offsetX,
-          y: 50 + (row * itemHeight) + offsetY
+          x: paddingX + (col * itemWidth) + (itemWidth / 2) + offsetX,
+          y: paddingY + (row * itemHeight) + (itemHeight / 2) + offsetY
         };
       }
     });
     
     setServicePositions(positions);
-  }, [services]);
+  }, [services, canvasRef.current?.clientWidth, canvasRef.current?.clientHeight]);
 
   // Mutation to update service position
   const updateServicePosition = useMutation({
