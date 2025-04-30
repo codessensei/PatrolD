@@ -351,38 +351,38 @@ export default function ServiceCanvas({
 
   return (
     <Card className="overflow-hidden">
-      <CardHeader className="flex flex-row items-center justify-between py-4">
-        <div className="flex items-center gap-3">
-          <CardTitle className="text-base font-medium">Service Map</CardTitle>
-          <span className="text-xs bg-muted px-2 py-1 rounded-md font-mono">
+      <CardHeader className="flex flex-row items-center justify-between py-2 px-3 sm:px-4 sm:py-4">
+        <div className="flex items-center gap-1 sm:gap-3">
+          <CardTitle className="text-sm sm:text-base font-medium">Service Map</CardTitle>
+          <span className="text-[10px] sm:text-xs bg-muted px-1 sm:px-2 py-0.5 sm:py-1 rounded-md font-mono hidden sm:inline-block">
             Zoom: {Math.round(zoom * 100)}%
           </span>
         </div>
         
-        <div className="flex items-center space-x-2">
-          <Button variant="ghost" size="icon" onClick={handleZoomIn} title="Zoom In">
-            <ZoomIn className="h-5 w-5" />
+        <div className="flex items-center space-x-1 sm:space-x-2">
+          <Button variant="ghost" size="icon" onClick={handleZoomIn} title="Zoom In" className="h-7 w-7 p-0">
+            <ZoomIn className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={handleZoomOut} title="Zoom Out">
-            <ZoomOut className="h-5 w-5" />
+          <Button variant="ghost" size="icon" onClick={handleZoomOut} title="Zoom Out" className="h-7 w-7 p-0">
+            <ZoomOut className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={handleResetZoom} title="Reset Zoom">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <Button variant="ghost" size="icon" onClick={handleResetZoom} title="Reset Zoom" className="h-7 w-7 p-0">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" />
               <path d="M12 12h.01" />
             </svg>
           </Button>
-          <Button variant="ghost" size="icon" onClick={handleRefresh} title="Refresh Map">
-            <RefreshCw className="h-5 w-5" />
+          <Button variant="ghost" size="icon" onClick={handleRefresh} title="Refresh Map" className="h-7 w-7 p-0">
+            <RefreshCw className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={handleFullscreen} title="Fullscreen">
-            <Maximize className="h-5 w-5" />
+          <Button variant="ghost" size="icon" onClick={handleFullscreen} title="Fullscreen" className="h-7 w-7 p-0">
+            <Maximize className="h-4 w-4" />
           </Button>
         </div>
       </CardHeader>
       
       {/* Service Canvas Area with improved scaling */}
-      <div className="relative min-h-[500px] h-[calc(100vh-15rem)] overflow-hidden">
+      <div className="relative min-h-[400px] h-[calc(100vh-20rem)] sm:h-[calc(100vh-15rem)] overflow-hidden">
         {/* Zoom indicator overlay */}
         {zoom !== 1 && (
           <div className="absolute bottom-4 right-4 z-30 bg-slate-800/80 dark:bg-slate-900/80 text-white py-1 px-2 rounded-md text-xs font-mono flex items-center gap-2">
@@ -400,16 +400,16 @@ export default function ServiceCanvas({
         {!readonly && onAddService && (
           <button
             onClick={onAddService}
-            className="absolute right-4 top-4 z-30 flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors px-3 py-2 rounded-md shadow-md"
+            className="absolute right-4 top-4 z-30 flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors px-2 py-1 sm:px-3 sm:py-2 rounded-md shadow-md"
           >
             <PlusCircle className="h-4 w-4" />
-            <span className="font-medium text-sm">Add Service</span>
+            <span className="font-medium text-xs sm:text-sm">Add Service</span>
           </button>
         )}
         
         <div 
           ref={canvasRef}
-          className="relative h-full w-full overflow-auto canvas-grid p-8"
+          className="relative h-full w-full overflow-auto canvas-grid p-4 sm:p-8"
           style={{
             backgroundSize: `${20 * zoom}px ${20 * zoom}px`,
             backgroundImage: `
