@@ -905,6 +905,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Service Metrics endpoints
+  app.get("/api/services/:id/metrics", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const serviceId = parseInt(req.params.id);
+    if (isNaN(serviceId)) {
+      return res.status(400).json({ error: "Invalid service ID" });
+    }
+    
+    const service = await storage.getServiceById(serviceId);
+    if (!service || service.userId !== req.user!.id) {
+      return res.status(404).json({ error: "Service not found" });
+    }
+    
+    try {
+      // Get timespan from query parameter (default to 24h)
+      const timespan = req.query.timespan as string || '24h';
+      
+      // Get metrics from storage
+      const metrics = await storage.getServiceMetrics(serviceId, timespan);
+      
+      res.status(200).json(metrics);
+    } catch (error) {
+      console.error(`Error retrieving metrics for service ${serviceId}:`, error);
+      res.status(500).json({ error: "Failed to retrieve service metrics" });
+    }
+  });
+  
+  // Agent service metrics submission endpoint
+  app.post("/api/agents/service-metrics", async (req, res) => {
+    const { apiKey, serviceId, metrics } = req.body;
+    
+    if (!apiKey) {
+      return res.status(401).json({ error: "API key required" });
+    }
+    
+    const agent = await storage.getAgentByApiKey(apiKey);
+    if (!agent) {
+      return res.status(404).json({ error: "Agent not found" });
+    }
+    
+    // Verify the service belongs to this agent's user and is assigned to this agent
+    const service = await storage.getServiceById(serviceId);
+    if (!service || service.userId !== agent.userId || service.agentId !== agent.id) {
+      return res.status(404).json({ error: "Service not found or not assigned to this agent" });
+    }
+    
+    try {
+      // Create a valid metrics object
+      const metricData = {
+        serviceId,
+        status: metrics.status || service.status || 'unknown',
+        timestamp: new Date(),
+        responseTime: metrics.responseTime || null,
+        latency: metrics.latency || null,
+        packetLoss: metrics.packetLoss || null,
+        jitter: metrics.jitter || null,
+        bandwidth: metrics.bandwidth || null,
+        dnsResolutionTime: metrics.dnsResolutionTime || null,
+        tlsHandshakeTime: metrics.tlsHandshakeTime || null,
+        certificateExpiryDays: metrics.certificateExpiryDays || null
+      };
+      
+      // Add the metric
+      await storage.addServiceMetric(metricData);
+      
+      // Update service status if provided
+      if (metrics.status && service.status !== metrics.status) {
+        await storage.updateServiceStatus(
+          serviceId, 
+          metrics.status, 
+          metrics.responseTime || undefined
+        );
+        
+        // Create an alert for status change
+        await createStatusChangeAlert(storage, service, service.status || 'unknown', metrics.status);
+      }
+      
+      res.status(200).json({ status: "ok" });
+    } catch (error) {
+      console.error(`Error storing metrics for service ${serviceId}:`, error);
+      res.status(500).json({ error: "Failed to store service metrics" });
+    }
+  });
+  
+  // Get aggregated metrics for the dashboard
+  app.get("/api/services/:id/metrics/summary", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const serviceId = parseInt(req.params.id);
+    if (isNaN(serviceId)) {
+      return res.status(400).json({ error: "Invalid service ID" });
+    }
+    
+    const service = await storage.getServiceById(serviceId);
+    if (!service || service.userId !== req.user!.id) {
+      return res.status(404).json({ error: "Service not found" });
+    }
+    
+    // Return the aggregated metrics stored in the service
+    const summary = {
+      avgResponseTime: service.avgResponseTime24h,
+      maxResponseTime: service.maxResponseTime24h,
+      minResponseTime: service.minResponseTime24h,
+      avgLatency: service.avgLatency24h,
+      packetLoss: service.packetLoss24h,
+      availability: service.availability24h,
+      certificateExpiryDays: service.certificateExpiryDays
+    };
+    
+    res.status(200).json(summary);
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

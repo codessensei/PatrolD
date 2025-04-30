@@ -14,6 +14,11 @@ const http = require('http');
 const https = require('https');
 const net = require('net');
 const os = require('os');
+const dns = require('dns');
+const { promisify } = require('util');
+
+// Promisify DNS resolution
+const dnsLookup = promisify(dns.lookup);
 
 // Configuration
 const API_KEY = '{{API_KEY}}'; // Replace with your agent API key
@@ -33,10 +38,94 @@ const HEARTBEAT_INTERVAL = 1 * 1000;
 const REQUEST_TIMEOUT = 3000;
 
 /**
+ * Measure DNS resolution time for a hostname
+ */
+async function measureDnsResolutionTime(hostname) {
+  // Skip DNS resolution for IP addresses
+  if (/^(\d{1,3}\.){3}\d{1,3}$/.test(hostname)) {
+    return null;
+  }
+  
+  try {
+    const startTime = Date.now();
+    await dnsLookup(hostname);
+    return Date.now() - startTime;
+  } catch (error) {
+    console.error(`DNS resolution error for ${hostname}:`, error.message);
+    return null;
+  }
+}
+
+/**
+ * Check TLS certificate for HTTPS services
+ */
+async function checkTlsCertificate(host, port = 443) {
+  return new Promise(resolve => {
+    const startTime = Date.now();
+    const req = https.request({
+      host,
+      port,
+      method: 'HEAD',
+      rejectUnauthorized: false,
+    }, (res) => {
+      try {
+        const socket = res.socket;
+        const cert = socket.getPeerCertificate && socket.getPeerCertificate();
+        
+        if (!cert || !cert.valid_to) {
+          resolve({ expiryDays: null, handshakeTime: null });
+          return;
+        }
+        
+        const expiryDate = new Date(cert.valid_to);
+        const currentDate = new Date();
+        const diffTime = Math.abs(expiryDate.getTime() - currentDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        const handshakeTime = Date.now() - startTime;
+        
+        resolve({ expiryDays: diffDays, handshakeTime });
+      } catch (error) {
+        console.error(`Certificate check error for ${host}:`, error);
+        resolve({ expiryDays: null, handshakeTime: null });
+      }
+    });
+    
+    req.on('error', (err) => {
+      console.error(`TLS request error for ${host}:${port}:`, err.message);
+      resolve({ expiryDays: null, handshakeTime: null });
+    });
+    
+    req.on('timeout', () => {
+      req.destroy();
+      console.error(`TLS request timeout for ${host}:${port}`);
+      resolve({ expiryDays: null, handshakeTime: null });
+    });
+    
+    req.setTimeout(3000);
+    req.end();
+  });
+}
+
+/**
  * Check if a service is online by attempting either a TCP socket connection
  * or HTTP connection depending on the service type
  */
 async function checkService(service) {
+  // Metrics object to collect all measurements
+  const metrics = {
+    serviceId: service.id,
+    status: 'unknown',
+    responseTime: null,
+    latency: null,
+    packetLoss: null,
+    jitter: null,
+    bandwidth: null,
+    dnsResolutionTime: null,
+    tlsHandshakeTime: null,
+    certificateExpiryDays: null
+  };
+  
   const startTime = Date.now();
   
   // Function to check if the host is an IP address
@@ -44,7 +133,34 @@ async function checkService(service) {
     return /^(\d{1,3}\.){3}\d{1,3}$/.test(host);
   }
   
-  // Try a direct TCP socket connection first, especially for local IPs and non-HTTP services
+  // Step 1: Measure DNS resolution time if applicable
+  if (!isIpAddress(service.host)) {
+    console.log(`Measuring DNS resolution time for ${service.host}`);
+    metrics.dnsResolutionTime = await measureDnsResolutionTime(service.host);
+    
+    // If DNS resolution failed, service is offline
+    if (metrics.dnsResolutionTime === null) {
+      console.log(`DNS resolution failed for ${service.host}`);
+      metrics.status = 'offline';
+      return {
+        host: service.host,
+        port: service.port,
+        status: metrics.status,
+        serviceId: service.id,
+        metrics
+      };
+    }
+  }
+  
+  // Step 2: For HTTPS services, check TLS certificate
+  if (service.port === 443) {
+    console.log(`Checking TLS certificate for ${service.host}`);
+    const certCheck = await checkTlsCertificate(service.host, service.port);
+    metrics.tlsHandshakeTime = certCheck.handshakeTime;
+    metrics.certificateExpiryDays = certCheck.expiryDays;
+  }
+  
+  // Step 3: Try a direct TCP socket connection, especially for local IPs and non-HTTP services
   if (isIpAddress(service.host) || service.port !== 80 && service.port !== 443 && service.port !== 8080) {
     return new Promise((resolve) => {
       console.log(`Checking ${service.host}:${service.port} using TCP socket connection`);
@@ -59,11 +175,18 @@ async function checkService(service) {
         console.log(`Socket connection successful to ${service.host}:${service.port}, response time: ${responseTime}ms`);
         socket.destroy();
         
+        // Update metrics
+        metrics.status = status;
+        metrics.responseTime = responseTime;
+        metrics.latency = responseTime;
+        
         resolve({
           host: service.host,
           port: service.port,
+          serviceId: service.id,
           status,
-          responseTime
+          responseTime,
+          metrics
         });
       });
       
@@ -71,11 +194,15 @@ async function checkService(service) {
         console.log(`Socket connection timeout to ${service.host}:${service.port}`);
         socket.destroy();
         
+        metrics.status = 'offline';
+        
         resolve({
           host: service.host,
           port: service.port,
+          serviceId: service.id,
           status: 'offline',
-          responseTime: null
+          responseTime: null,
+          metrics
         });
       });
       
@@ -83,11 +210,15 @@ async function checkService(service) {
         console.log(`Socket connection error to ${service.host}:${service.port}: ${err.message}`);
         socket.destroy();
         
+        metrics.status = 'offline';
+        
         resolve({
           host: service.host,
           port: service.port,
+          serviceId: service.id,
           status: 'offline',
-          responseTime: null
+          responseTime: null,
+          metrics
         });
       });
       
@@ -98,17 +229,22 @@ async function checkService(service) {
         });
       } catch (err) {
         console.error(`Failed to initiate socket connection to ${service.host}:${service.port}:`, err.message);
+        
+        metrics.status = 'offline';
+        
         resolve({
           host: service.host,
           port: service.port,
+          serviceId: service.id,
           status: 'offline',
-          responseTime: null
+          responseTime: null,
+          metrics
         });
       }
     });
   }
   
-  // For web services, use HTTP/HTTPS protocol
+  // Step 4: For web services, use HTTP/HTTPS protocol
   console.log(`Checking ${service.host}:${service.port} using HTTP request`);
   
   const protocol = service.port === 443 ? https : http;
@@ -138,11 +274,18 @@ async function checkService(service) {
         // Consume response data to free up memory
         res.resume();
         
+        // Update metrics
+        metrics.status = status;
+        metrics.responseTime = responseTime;
+        metrics.latency = responseTime;
+        
         resolve({
           host: service.host,
           port: service.port,
+          serviceId: service.id,
           status,
-          responseTime
+          responseTime,
+          metrics
         });
       }
     );
@@ -165,11 +308,18 @@ async function checkService(service) {
           console.log(`Fallback socket connection successful to ${service.host}:${service.port}`);
           socket.destroy();
           
+          // Update metrics
+          metrics.status = status;
+          metrics.responseTime = responseTime;
+          metrics.latency = responseTime;
+          
           resolve({
             host: service.host,
             port: service.port,
+            serviceId: service.id,
             status,
-            responseTime
+            responseTime,
+            metrics
           });
         });
         
@@ -177,11 +327,15 @@ async function checkService(service) {
           console.log(`Fallback socket connection timeout to ${service.host}:${service.port}`);
           socket.destroy();
           
+          metrics.status = 'offline';
+          
           resolve({
             host: service.host,
             port: service.port,
+            serviceId: service.id,
             status: 'offline',
-            responseTime: null
+            responseTime: null,
+            metrics
           });
         });
         
@@ -189,11 +343,15 @@ async function checkService(service) {
           console.log(`Fallback socket connection error to ${service.host}:${service.port}: ${err.message}`);
           socket.destroy();
           
+          metrics.status = 'offline';
+          
           resolve({
             host: service.host,
             port: service.port,
+            serviceId: service.id,
             status: 'offline',
-            responseTime: null
+            responseTime: null,
+            metrics
           });
         });
         
@@ -204,19 +362,28 @@ async function checkService(service) {
           });
         } catch (err) {
           console.error(`Failed to initiate fallback socket to ${service.host}:${service.port}:`, err.message);
+          
+          metrics.status = 'offline';
+          
           resolve({
             host: service.host,
             port: service.port,
+            serviceId: service.id,
             status: 'offline',
-            responseTime: null
+            responseTime: null,
+            metrics
           });
         }
       } else {
+        metrics.status = 'offline';
+        
         resolve({
           host: service.host,
           port: service.port,
+          serviceId: service.id,
           status: 'offline',
-          responseTime: null
+          responseTime: null,
+          metrics
         });
       }
     });
@@ -225,11 +392,15 @@ async function checkService(service) {
       console.log(`HTTP request timeout for ${service.host}:${service.port}`);
       req.destroy();
       
+      metrics.status = 'offline';
+      
       resolve({
         host: service.host,
         port: service.port,
+        serviceId: service.id,
         status: 'offline',
-        responseTime: null
+        responseTime: null,
+        metrics
       });
     });
 
@@ -380,6 +551,65 @@ async function reportServiceStatus(result) {
 }
 
 /**
+ * Send service metrics to the API
+ */
+async function reportServiceMetrics(serviceId, metrics) {
+  return new Promise((resolve, reject) => {
+    const apiUrl = new URL('/api/agents/service-metrics', API_BASE_URL);
+    const protocol = apiUrl.protocol === 'https:' ? https : http;
+    
+    const data = JSON.stringify({
+      apiKey: API_KEY,
+      serviceId,
+      metrics
+    });
+    
+    const options = {
+      hostname: apiUrl.hostname,
+      port: apiUrl.port || (apiUrl.protocol === 'https:' ? 443 : 80),
+      path: apiUrl.pathname,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': data.length
+      }
+    };
+    
+    const req = protocol.request(options, (res) => {
+      let responseData = '';
+      
+      res.on('data', (chunk) => {
+        responseData += chunk;
+      });
+      
+      res.on('end', () => {
+        if (res.statusCode === 200) {
+          console.log(`Service metrics reported for service ID ${serviceId}`);
+          try {
+            const json = JSON.parse(responseData);
+            resolve(json);
+          } catch (e) {
+            console.error('Error parsing service metrics response:', e.message);
+            reject(e);
+          }
+        } else {
+          console.log(`Service metrics API error: ${res.statusCode} - ${responseData}`);
+          reject(new Error(`API responded with status ${res.statusCode}`));
+        }
+      });
+    });
+    
+    req.on('error', (e) => {
+      console.error('Service metrics API request failed:', e.message);
+      reject(e);
+    });
+    
+    req.write(data);
+    req.end();
+  });
+}
+
+/**
  * Main monitoring function
  */
 async function runMonitoring() {
@@ -425,7 +655,14 @@ function runServiceChecks() {
     for (const service of SERVICES) {
       try {
         const result = await checkService(service);
+        
+        // Report basic status for backward compatibility
         await reportServiceStatus(result);
+        
+        // Also send detailed metrics if available
+        if (result.metrics && result.serviceId) {
+          await reportServiceMetrics(result.serviceId, result.metrics);
+        }
       } catch (e) {
         console.error(`Error checking service ${service.host}:${service.port}:`, e.message);
       }
