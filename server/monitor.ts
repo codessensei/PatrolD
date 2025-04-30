@@ -1,7 +1,11 @@
 import axios from "axios";
 import { IStorage } from "./storage";
-import { Service, Connection, Alert } from "@shared/schema";
+import { Service, Connection, Alert, InsertServiceMetrics } from "@shared/schema";
 import TelegramService from "./telegram-service";
+import https from "https";
+import dns from "dns";
+import { promisify } from "util";
+import net from "net";
 
 // Telegram servisini tanımla
 let telegramService: TelegramService | null = null;
@@ -30,6 +34,104 @@ async function getAllServices(storage: IStorage): Promise<Service[]> {
 
 // Timeout for HTTP requests in ms
 const REQUEST_TIMEOUT = 5000;
+
+// DNS lookup promise
+const dnsLookup = promisify(dns.lookup);
+
+// Helper functions for advanced metrics
+async function measureDnsResolutionTime(hostname: string): Promise<number | null> {
+  try {
+    const startTime = Date.now();
+    await dnsLookup(hostname);
+    return Date.now() - startTime;
+  } catch (error) {
+    console.error(`DNS resolution error for ${hostname}:`, error);
+    return null;
+  }
+}
+
+async function checkTcpConnection(host: string, port: number, timeout = 2000): Promise<{ latency: number | null, status: string }> {
+  return new Promise(resolve => {
+    const startTime = Date.now();
+    const socket = new net.Socket();
+    let resolved = false;
+    
+    socket.setTimeout(timeout);
+    
+    socket.on('connect', () => {
+      if (resolved) return;
+      resolved = true;
+      const latency = Date.now() - startTime;
+      socket.destroy();
+      resolve({ latency, status: 'online' });
+    });
+    
+    socket.on('timeout', () => {
+      if (resolved) return;
+      resolved = true;
+      socket.destroy();
+      resolve({ latency: null, status: 'degraded' });
+    });
+    
+    socket.on('error', () => {
+      if (resolved) return;
+      resolved = true;
+      socket.destroy();
+      resolve({ latency: null, status: 'offline' });
+    });
+    
+    socket.connect(port, host);
+  });
+}
+
+async function checkTlsCertificate(host: string, port: number = 443): Promise<{ expiryDays: number | null, handshakeTime: number | null }> {
+  return new Promise(resolve => {
+    const startTime = Date.now();
+    const req = https.request({
+      host,
+      port,
+      method: 'HEAD',
+      rejectUnauthorized: false,
+    }, (res) => {
+      try {
+        // Type assertion to access TLS-specific properties safely
+        const tlsSocket = res.socket as any;
+        const cert = tlsSocket.getPeerCertificate ? tlsSocket.getPeerCertificate() : null;
+        
+        if (!cert || !cert.valid_to) {
+          resolve({ expiryDays: null, handshakeTime: null });
+          return;
+        }
+        
+        const expiryDate = new Date(cert.valid_to);
+        const currentDate = new Date();
+        const diffTime = Math.abs(expiryDate.getTime() - currentDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        const handshakeTime = Date.now() - startTime;
+        
+        resolve({ expiryDays: diffDays, handshakeTime });
+      } catch (error) {
+        console.error(`Certificate check error for ${host}:`, error);
+        resolve({ expiryDays: null, handshakeTime: null });
+      }
+    });
+    
+    req.on('error', (err) => {
+      console.error(`TLS request error for ${host}:${port}:`, err.message);
+      resolve({ expiryDays: null, handshakeTime: null });
+    });
+    
+    req.on('timeout', () => {
+      req.destroy();
+      console.error(`TLS request timeout for ${host}:${port}`);
+      resolve({ expiryDays: null, handshakeTime: null });
+    });
+    
+    req.setTimeout(3000);
+    req.end();
+  });
+}
 
 export function setupMonitoring(storage: IStorage) {
   // Telegram servisi oluştur
@@ -163,7 +265,7 @@ async function checkServices(storage: IStorage) {
 
 async function checkService(storage: IStorage, service: Service) {
   try {
-    // Önceki durumu sakla
+    // Store previous status
     const previousStatus = service.status || 'unknown';
     
     // Check if this service is monitored by an agent
@@ -173,24 +275,23 @@ async function checkService(storage: IStorage, service: Service) {
       // We only check if the agent itself is active
       const agent = await storage.getAgentById(service.agentId);
       
-      // Daha hızlı bir timeout ile gerçek zamanlı izleme
-      // Artık 3 saniye içinde heartbeat göndermeyen agentları inactive olarak işaretle
-      const agentTimeout = 3 * 1000; // 3 saniye timeout (hızlı tepki için)
+      // Use a faster timeout for real-time monitoring
+      const agentTimeout = 3 * 1000; // 3 second timeout for quick response
       
-      // Agent inaktif mi kontrol et
+      // Check if agent is inactive
       const agentInactive = 
         !agent || 
         !agent.lastSeen || 
         (Date.now() - agent.lastSeen.getTime() > agentTimeout);
       
-      // Agent'ın durumunu kontrol et
+      // Check agent status
       if (agentInactive) {
-        // Agent inactive olarak işaretle
+        // Mark agent as inactive
         if (agent && agent.status !== "inactive") {
           console.log(`Agent ${agent.id} (${agent.name}) marked as inactive - has not reported in over 3 seconds`);
           await storage.updateAgentStatus(agent.id, "inactive");
           
-          // Agent inactive olduğunda bağlı tüm servisleri de unknown olarak işaretle
+          // Mark all services linked to this agent as unknown
           const agentServices = await storage.getServicesByUserId(agent.userId);
           const linkedServices = agentServices.filter(s => s.agentId === agent.id && s.monitorType === "agent");
           
@@ -198,13 +299,13 @@ async function checkService(storage: IStorage, service: Service) {
             if (linkedService.status !== "unknown") {
               console.log(`Service ${linkedService.id} (${linkedService.name}) marked as unknown because agent ${agent.id} is inactive`);
               
-              // Servis durumu null olabilir, bu durumda "unknown" varsayalım
+              // Service status might be null, default to "unknown"
               const currentStatus = linkedService.status || "unknown";
               
-              // Önce durumu güncelleyelim
+              // First update the status
               await storage.updateServiceStatus(linkedService.id, "unknown");
               
-              // Sonra alert oluşturalım
+              // Then create an alert
               if (currentStatus !== "unknown") {
                 await createStatusChangeAlert(storage, linkedService, currentStatus, "unknown");
               }
@@ -212,17 +313,17 @@ async function checkService(storage: IStorage, service: Service) {
           }
         }
         
-        // Bu servisin durumunu güncelle
+        // Update this service's status
         if (service.status !== "unknown") {
           await storage.updateServiceStatus(service.id, "unknown");
           
-          // Durum "unknown" olarak değiştiyse bildirim gönder
+          // Send notification if status changed to "unknown"
           if (previousStatus !== "unknown") {
             await createStatusChangeAlert(storage, service, previousStatus, "unknown");
           }
         }
       } else if (agent && agent.status !== "active") {
-        // Agent aktif değilse aktife çevir
+        // Mark agent as active if it's reporting but not marked as active
         console.log(`Agent ${agent.id} (${agent.name}) is reporting but not marked as active - updating status`);
         await storage.updateAgentStatus(agent.id, "active");
       }
@@ -230,10 +331,91 @@ async function checkService(storage: IStorage, service: Service) {
       return;
     }
     
-    // For directly monitored services, proceed with HTTP check
+    // For directly monitored services, proceed with enhanced health checks
     const url = buildServiceUrl(service);
-    const startTime = Date.now();
+    const metrics: InsertServiceMetrics = {
+      serviceId: service.id,
+      status: 'unknown',
+      timestamp: new Date(),
+      responseTime: null,
+      latency: null,
+      packetLoss: null,
+      jitter: null,
+      bandwidth: null,
+      dnsResolutionTime: null,
+      tlsHandshakeTime: null,
+      certificateExpiryDays: null
+    };
     
+    // Start collecting metrics
+    let status = "unknown";
+    
+    // 1. DNS Resolution Time Check
+    const dnsResolutionTime = await measureDnsResolutionTime(service.host);
+    metrics.dnsResolutionTime = dnsResolutionTime;
+    
+    // If DNS resolution failed, mark as offline
+    if (dnsResolutionTime === null) {
+      status = "offline";
+      metrics.status = status;
+      
+      // Record metrics and update service status
+      await storage.addServiceMetric(metrics);
+      await storage.updateServiceStatus(service.id, status);
+      
+      // Send alert if status changed
+      if (previousStatus !== status) {
+        await createStatusChangeAlert(storage, service, previousStatus, status);
+      }
+      
+      return;
+    }
+    
+    // 2. TCP Connection Check
+    const tcpCheck = await checkTcpConnection(service.host, service.port);
+    metrics.latency = tcpCheck.latency;
+    
+    // If TCP connection failed, mark as offline
+    if (tcpCheck.status === "offline") {
+      status = "offline";
+      metrics.status = status;
+      
+      // Record metrics and update service status
+      await storage.addServiceMetric(metrics);
+      await storage.updateServiceStatus(service.id, status);
+      
+      // Send alert if status changed
+      if (previousStatus !== status) {
+        await createStatusChangeAlert(storage, service, previousStatus, status);
+      }
+      
+      return;
+    }
+    
+    // 3. For HTTPS services, check TLS certificate
+    if (service.port === 443) {
+      const certCheck = await checkTlsCertificate(service.host, service.port);
+      metrics.tlsHandshakeTime = certCheck.handshakeTime;
+      metrics.certificateExpiryDays = certCheck.expiryDays;
+      
+      // Check if certificate is expiring soon (if threshold is set)
+      if (certCheck.expiryDays !== null && 
+          service.certExpiryThreshold !== null && 
+          certCheck.expiryDays <= service.certExpiryThreshold) {
+        // Create an alert for certificate expiry
+        await storage.createAlert({
+          userId: service.userId,
+          serviceId: service.id,
+          type: "cert_expiry",
+          message: `Certificate for ${service.name} expires in ${certCheck.expiryDays} days`,
+          timestamp: new Date(),
+          acknowledged: false
+        });
+      }
+    }
+    
+    // 4. HTTP Check (final check)
+    const startTime = Date.now();
     try {
       const response = await axios.get(url, { 
         timeout: REQUEST_TIMEOUT,
@@ -241,31 +423,51 @@ async function checkService(storage: IStorage, service: Service) {
       });
       
       const responseTime = Date.now() - startTime;
+      metrics.responseTime = responseTime;
       
-      // Determine status based on response
-      let status = "online";
-      if (response.status >= 400) {
+      // Determine status based on response and thresholds
+      status = "online";
+      
+      // Check against response time threshold if set
+      if (service.responseTimeThreshold !== null && 
+          responseTime > service.responseTimeThreshold) {
+        status = "degraded";
+      } 
+      // Check HTTP status codes
+      else if (response.status >= 400) {
         status = "offline";
-      } else if (response.status >= 300 || responseTime > 1000) {
+      } else if (response.status >= 300) {
         status = "degraded";
       }
       
-      // Durumu güncelle
+      // Add status to metrics
+      metrics.status = status;
+      
+      // Record metrics
+      await storage.addServiceMetric(metrics);
+      
+      // Update service status with response time
       await storage.updateServiceStatus(service.id, status, responseTime);
       
-      // Durum değiştiyse bildirim gönder
+      // Send alert if status changed
       if (previousStatus !== status) {
         await createStatusChangeAlert(storage, service, previousStatus, status);
       }
       
     } catch (error) {
       // Request failed or timed out
-      const newStatus = "offline";
-      await storage.updateServiceStatus(service.id, newStatus);
+      status = "offline";
+      metrics.status = status;
       
-      // Durum "offline" olarak değiştiyse bildirim gönder
-      if (previousStatus !== newStatus) {
-        await createStatusChangeAlert(storage, service, previousStatus, newStatus);
+      // Record metrics
+      await storage.addServiceMetric(metrics);
+      
+      // Update service status
+      await storage.updateServiceStatus(service.id, status);
+      
+      // Send alert if status changed
+      if (previousStatus !== status) {
+        await createStatusChangeAlert(storage, service, previousStatus, status);
       }
     }
   } catch (error) {
