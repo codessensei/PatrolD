@@ -412,9 +412,9 @@ export default function ServiceCanvas({
             `,
             transform: `scale(${zoom})`,
             transformOrigin: "top left",
-            height: "3000px", // Çok daha büyük alan "sonsuz" canvas için
-            width: "3000px",  // Çok daha büyük alan "sonsuz" canvas için
-            minHeight: "2000px",
+            height: window.innerWidth > 768 ? "2000px" : "1000px", // Daha küçük ekranlar için daha az yükseklik
+            width: window.innerWidth > 768 ? "2000px" : "1000px",  // Daha küçük ekranlar için daha az genişlik
+            minHeight: "100%",
             minWidth: "100%"
           }}
         >

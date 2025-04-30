@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -16,9 +16,11 @@ import { Eye, Lock, Share2, Trash2, ListX, PlusCircle, CheckCircle2, Copy, Globe
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { randomBytes, scryptSync } from "crypto";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import Layout from "@/components/layout";
 
-type SharedMap = {
+interface SharedMap {
   id: number;
   userId: number;
   title: string;
@@ -31,15 +33,18 @@ type SharedMap = {
   mapData: any;
   createdAt: string;
   updatedAt: string;
-};
+}
 
-type CreateMapFormData = {
-  title: string;
-  description: string;
-  password: string;
-  isPasswordProtected: boolean;
-  isPublished: boolean;
-};
+// Form validation schema
+const createMapSchema = z.object({
+  title: z.string().min(3, { message: "Title must be at least 3 characters long" }),
+  description: z.string().optional(),
+  password: z.string().optional(),
+  isPasswordProtected: z.boolean().default(false),
+  isPublished: z.boolean().default(true),
+});
+
+type CreateMapFormData = z.infer<typeof createMapSchema>;
 
 const SharedMapsPage = () => {
   const { user } = useAuth();
@@ -48,6 +53,7 @@ const SharedMapsPage = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [publicShareUrl, setPublicShareUrl] = useState("");
+  const [copiedText, setCopiedText] = useState<string | null>(null);
   
   const { register, handleSubmit, watch, reset, setValue, formState: { errors, isSubmitting } } = useForm<CreateMapFormData>({
     defaultValues: {
@@ -210,17 +216,18 @@ const SharedMapsPage = () => {
   };
   
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">PatrolD - Shared Maps</h1>
-          <p className="text-muted-foreground">Create and manage shareable service maps</p>
+    <Layout>
+      <div className="container mx-auto p-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">PatrolD - Shared Maps</h1>
+            <p className="text-muted-foreground">Create and manage shareable service maps</p>
+          </div>
+          <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Create Map
+          </Button>
         </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Create Map
-        </Button>
-      </div>
       
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
