@@ -124,6 +124,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <h1 className="text-lg font-semibold">
               {navItems.find(item => item.path === location)?.label || "Dashboard"}
             </h1>
+            <div className="flex items-center gap-2">
+              {/* Import and add ThemeToggle here */}
+              {React.createElement(
+                // Dynamically import to avoid direct import issues
+                require("@/components/theme-toggle").ThemeToggle
+              )}
+            </div>
           </div>
         </header>
         

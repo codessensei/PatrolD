@@ -403,7 +403,7 @@ export default function ServiceCanvas({
         
         <div 
           ref={canvasRef}
-          className="relative overflow-auto canvas-grid p-8"
+          className="relative overflow-auto canvas-grid p-8 dark:bg-slate-900/20"
           style={{
             backgroundSize: `${20 * zoom}px ${20 * zoom}px`,
             backgroundImage: `
@@ -656,7 +656,7 @@ export default function ServiceCanvas({
             return (
               <div 
                 key={service.id}
-                className="service-node absolute bg-card dark:bg-card rounded-xl shadow-lg border-2 overflow-hidden transition-all duration-200 hover:shadow-xl"
+                className="service-node absolute bg-card dark:bg-slate-800 rounded-xl shadow-lg border-2 overflow-hidden transition-all duration-200 hover:shadow-xl"
                 style={{
                   width: "180px",
                   left: `${position.x}px`,
@@ -666,7 +666,9 @@ export default function ServiceCanvas({
                   borderColor: service.status === "online" ? "rgb(16, 185, 129)" : 
                                service.status === "offline" ? "rgb(239, 68, 68)" : 
                                service.status === "degraded" ? "rgb(245, 158, 11)" : "rgb(156, 163, 175)",
-                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)"
+                  boxShadow: document.documentElement.classList.contains('dark') 
+                    ? "0 4px 12px rgba(0, 0, 0, 0.3)" 
+                    : "0 4px 12px rgba(0, 0, 0, 0.1)"
                 }}
                 onMouseDown={(e) => handleDragStart(e, service.id)}
               >
