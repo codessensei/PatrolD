@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import Sidebar from "@/components/layout/sidebar";
@@ -33,33 +33,67 @@ export default function DashboardPage() {
   const [isAddServiceModalOpen, setIsAddServiceModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [, setLocation] = useLocation();
+  const [selectedMapId, setSelectedMapId] = useState<number | null>(null);
 
-  // Fetch data with auto-refresh (5 second polling)
-  const { data: services = [], isLoading: isLoadingServices } = useQuery<Service[]>({
-    queryKey: ["/api/services"],
-    refetchInterval: 5000, // Poll every 5 seconds for real-time updates
-  });
-
-  const { data: connections = [], isLoading: isLoadingConnections } = useQuery<Connection[]>({
-    queryKey: ["/api/connections"],
-    refetchInterval: 5000,
-  });
-
-  const { data: alerts = [], isLoading: isLoadingAlerts } = useQuery<Alert[]>({
-    queryKey: ["/api/alerts"],
-    refetchInterval: 5000,
-  });
-
-  const { data: stats, isLoading: isLoadingStats } = useQuery({
-    queryKey: ["/api/stats"],
-    refetchInterval: 5000,
-  });
-  
   // Get service maps
   const { data: serviceMaps = [], isLoading: isLoadingMaps } = useQuery<ServiceMap[]>({
     queryKey: ["/api/service-maps"],
     enabled: !!user,
   });
+
+  // Fetch the default map on initial load
+  const { data: defaultMap } = useQuery<ServiceMap>({
+    queryKey: ["/api/service-maps/default"],
+    enabled: !!user && !selectedMapId,
+  });
+  
+  // Handle default map loading
+  useEffect(() => {
+    if (defaultMap && !selectedMapId) {
+      setSelectedMapId(defaultMap.id);
+    }
+  }, [defaultMap, selectedMapId]);
+
+  // If a specific map is selected, get its services and items
+  const { data: selectedMap } = useQuery<any>({
+    queryKey: [`/api/service-maps/${selectedMapId}`],
+    enabled: !!selectedMapId && !!user,
+  });
+
+  // Get all services (for filtering)
+  const { data: allServices = [], isLoading: isLoadingServices } = useQuery<Service[]>({
+    queryKey: ["/api/services"],
+    refetchInterval: 5000, // Poll every 5 seconds for real-time updates
+  });
+
+  // Fetch connections with polling
+  const { data: connections = [], isLoading: isLoadingConnections } = useQuery<Connection[]>({
+    queryKey: ["/api/connections"],
+    refetchInterval: 5000,
+  });
+
+  // Get alerts with polling
+  const { data: alerts = [], isLoading: isLoadingAlerts } = useQuery<Alert[]>({
+    queryKey: ["/api/alerts"],
+    refetchInterval: 5000,
+  });
+
+  // Get stats with polling
+  const { data: stats, isLoading: isLoadingStats } = useQuery({
+    queryKey: ["/api/stats"],
+    refetchInterval: 5000,
+  });
+  
+  // Determine which services to display based on the selected map
+  const services = useMemo(() => {
+    if (selectedMap && selectedMap.serviceItems && selectedMap.serviceItems.length > 0) {
+      // If a map is selected, show only services in that map
+      const serviceIds = selectedMap.serviceItems.map((item: {serviceId: number}) => item.serviceId);
+      return allServices.filter((service: Service) => serviceIds.includes(service.id));
+    }
+    // Otherwise, show all services
+    return allServices;
+  }, [selectedMap, allServices]);
   
   // Manual refresh handler
   const handleRefresh = () => {
@@ -70,9 +104,9 @@ export default function DashboardPage() {
   };
 
   // Derived stats
-  const onlineServices = services.filter(s => s.status === "online").length;
-  const offlineServices = services.filter(s => s.status === "offline").length;
-  const degradedServices = services.filter(s => s.status === "degraded").length;
+  const onlineServices = services.filter((s: Service) => s.status === "online").length;
+  const offlineServices = services.filter((s: Service) => s.status === "offline").length;
+  const degradedServices = services.filter((s: Service) => s.status === "degraded").length;
   // Type-safe way to handle stats
   const avgResponseTime = stats && 
     typeof stats === 'object' && 
@@ -82,7 +116,7 @@ export default function DashboardPage() {
 
   // Search filter
   const filteredServices = searchQuery
-    ? services.filter(s => 
+    ? services.filter((s: Service) => 
         s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
         s.host.toLowerCase().includes(searchQuery.toLowerCase())
       )
@@ -131,7 +165,7 @@ export default function DashboardPage() {
                     ) : serviceMaps.length > 0 ? (
                       <>
                         {serviceMaps.map(map => (
-                          <DropdownMenuItem key={map.id} onClick={() => setLocation(`/service-maps/${map.id}`)}>
+                          <DropdownMenuItem key={map.id} onClick={() => setSelectedMapId(map.id)}>
                             <div className="flex items-center w-full">
                               <div 
                                 className="w-2 h-2 rounded-full mr-2" 
@@ -142,6 +176,9 @@ export default function DashboardPage() {
                                 <span className="ml-2 text-xs rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 px-1.5 py-0.5">
                                   Default
                                 </span>
+                              )}
+                              {selectedMapId === map.id && (
+                                <CheckCircle2 className="h-4 w-4 ml-auto text-green-500" />
                               )}
                             </div>
                           </DropdownMenuItem>
