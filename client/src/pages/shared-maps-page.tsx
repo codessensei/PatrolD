@@ -56,7 +56,8 @@ export default function SharedMapsPage() {
     description: "",
     isPublished: false,
     isPasswordProtected: false,
-    password: ""
+    password: "",
+    serviceMapId: "" // Ekledik - bir harita seçmek için
   });
 
   // Fetch user's shared maps
