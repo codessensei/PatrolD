@@ -68,7 +68,7 @@ export default function SharedMapsPage() {
     isPublished: false,
     isPasswordProtected: false,
     password: "",
-    serviceMapId: "" // Ekledik - bir harita seçmek için
+    serviceMapId: "all" // Default to "all" services
   });
 
   // Fetch user's shared maps
@@ -103,7 +103,7 @@ export default function SharedMapsPage() {
         isPublished: false,
         isPasswordProtected: false,
         password: "",
-        serviceMapId: ""
+        serviceMapId: "all"
       });
       toast({
         title: "Success",
@@ -264,7 +264,7 @@ export default function SharedMapsPage() {
                         <SelectValue placeholder="Select a map to share" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Services (Default)</SelectItem>
+                        <SelectItem value="all">All Services (Default)</SelectItem>
                         {serviceMaps.map((map) => (
                           <SelectItem key={map.id} value={map.id.toString()}>
                             {map.name}

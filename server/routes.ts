@@ -977,7 +977,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let mapData: any = {};
       
       // Check if a specific service map ID was provided
-      if (req.body.serviceMapId) {
+      if (req.body.serviceMapId && req.body.serviceMapId !== "all") {
         const serviceMapId = parseInt(req.body.serviceMapId);
         
         // Validate that the service map belongs to the user
