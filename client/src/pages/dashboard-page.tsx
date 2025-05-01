@@ -140,10 +140,10 @@ export default function DashboardPage() {
           <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between">
             <div>
               <h1 className="text-3xl font-bold glow-text animate-gradient-text mb-2 tracking-tight">
-                Service Mesh View
+                {selectedMap ? selectedMap.name : "Service Mesh View"}
               </h1>
               <p className="text-slate-600 dark:text-slate-400 text-lg flex items-center">
-                <span>Monitor your services and visualize connections</span>
+                <span>{selectedMap?.description || "Monitor your services and visualize connections"}</span>
                 
                 {/* Map Selector */}
                 <DropdownMenu>
@@ -367,7 +367,7 @@ export default function DashboardPage() {
                       <AlertItem 
                         key={alert.id}
                         alert={alert}
-                        service={services.find(s => s.id === alert.serviceId)}
+                        service={services.find((s: Service) => s.id === alert.serviceId)}
                       />
                     ))
                   ) : (
