@@ -57,18 +57,24 @@ export default function DashboardPage() {
     }
   }, [defaultMap, selectedMapId]);
 
-  // If a specific map is selected, get its services and items
+  // Use a more specific approach for map selection and rendering
   const { data: selectedMap, refetch: refetchSelectedMap } = useQuery<any>({
     queryKey: [`/api/service-maps/${selectedMapId}`],
     enabled: !!selectedMapId && !!user,
   });
   
-  // Re-fetch data whenever selectedMapId changes
+  // Re-fetch ALL data whenever map changes - this is important for ensuring proper map switching
   useEffect(() => {
     if (selectedMapId) {
+      console.log(`Map selected: ${selectedMapId}`);
+      // Force refetch of the selected map
       refetchSelectedMap();
-      queryClient.invalidateQueries({ queryKey: ["/api/services"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      
+      // Force invalidation of all data to ensure fresh rendering
+      queryClient.invalidateQueries();
+      
+      // Log to confirm these actions happened
+      console.log("All queries invalidated to refresh data for new map selection");
     }
   }, [selectedMapId, refetchSelectedMap]);
 
@@ -96,15 +102,38 @@ export default function DashboardPage() {
     refetchInterval: 5000,
   });
   
+  // Direct API call to get services for a specific map
+  const { data: mapServices = [] } = useQuery<any[]>({
+    queryKey: [`/api/service-maps/${selectedMapId}/items`],
+    enabled: !!selectedMapId && !!user,
+  });
+
   // Determine which services to display based on the selected map and calculate stats
   const { services, onlineServices, offlineServices, degradedServices } = useMemo(() => {
     let filteredServices;
-    if (selectedMap && selectedMap.serviceItems && selectedMap.serviceItems.length > 0) {
-      // If a map is selected, show only services in that map
-      const serviceIds = selectedMap.serviceItems.map((item: {serviceId: number}) => item.serviceId);
-      filteredServices = allServices.filter((service: Service) => serviceIds.includes(service.id));
-    } else {
-      // Otherwise, show all services
+    
+    // More robust handling of map selection and service filtering
+    try {
+      // Check if we have a selected map and service items from the map
+      if (selectedMap && selectedMap.serviceItems && Array.isArray(selectedMap.serviceItems) && selectedMap.serviceItems.length > 0) {
+        console.log("Using services from selectedMap.serviceItems", selectedMap.serviceItems);
+        // Extract service IDs and filter services
+        const serviceIds = selectedMap.serviceItems.map((item: {serviceId: number}) => item.serviceId);
+        filteredServices = allServices.filter((service: Service) => serviceIds.includes(service.id));
+      } 
+      // Fallback to map items if available
+      else if (mapServices && Array.isArray(mapServices) && mapServices.length > 0) {
+        console.log("Using services from mapServices API", mapServices);
+        const serviceIds = mapServices.map((item: {serviceId: number}) => item.serviceId);
+        filteredServices = allServices.filter((service: Service) => serviceIds.includes(service.id));
+      }
+      // If no filter criteria is available, use all services
+      else {
+        console.log("No service filtering criteria found, showing all services");
+        filteredServices = allServices;
+      }
+    } catch (error) {
+      console.error("Error filtering services:", error);
       filteredServices = allServices;
     }
     
@@ -119,7 +148,7 @@ export default function DashboardPage() {
       offlineServices: offline,
       degradedServices: degraded
     };
-  }, [selectedMap, allServices]);
+  }, [selectedMap, mapServices, allServices]);
   
   // Manual refresh handler
   const handleRefresh = () => {
