@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Plus, 
   Pencil, 
@@ -192,6 +193,65 @@ export default function ServiceMapDetailPage() {
   const handleBackToMaps = () => {
     setLocation("/service-maps");
   };
+  
+  // Share map functionality
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [shareData, setShareData] = useState({
+    title: "",
+    description: "",
+    isPublished: true,
+    isPasswordProtected: false,
+    password: "",
+    serviceMapId: ""
+  });
+
+  // When clicking on the Share Map button, we open a dialog
+  const handleShareMap = () => {
+    if (map) {
+      setShareData({
+        title: map.name,
+        description: map.description || "",
+        isPublished: true,
+        isPasswordProtected: false,
+        password: "",
+        serviceMapId: mapId.toString()
+      });
+      setIsShareDialogOpen(true);
+    }
+  };
+  
+  // Create new shared map
+  const createSharedMapMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const response = await apiRequest("POST", "/api/shared-maps", data);
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      setIsShareDialogOpen(false);
+      toast({
+        title: "Map shared successfully",
+        description: "Your service map has been shared. You can view it in the Shared Maps section.",
+      });
+      // Copy to clipboard if available
+      if (data.shareKey && navigator.clipboard) {
+        const shareUrl = `${window.location.origin}/view-map/${data.shareKey}`;
+        navigator.clipboard.writeText(shareUrl)
+          .then(() => {
+            toast({
+              title: "Share link copied!",
+              description: "The share link has been copied to your clipboard.",
+            });
+          });
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to share map",
+        description: error.message || "An error occurred while sharing the map.",
+        variant: "destructive",
+      });
+    },
+  });
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row overflow-hidden">
@@ -376,6 +436,84 @@ export default function ServiceMapDetailPage() {
 
                 </div>
               </div>
+
+              {/* Share Map Dialog */}
+              <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
+                <DialogContent className="sm:max-w-[500px]">
+                  <DialogHeader>
+                    <DialogTitle>Share Your Service Map</DialogTitle>
+                    <DialogDescription>
+                      Create a shareable view of this service map
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="share-title">Title</Label>
+                      <Input
+                        id="share-title"
+                        placeholder="Enter a title for your shared map"
+                        value={shareData.title}
+                        onChange={(e) => setShareData({ ...shareData, title: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="share-description">Description (optional)</Label>
+                      <Input
+                        id="share-description"
+                        placeholder="Enter a description"
+                        value={shareData.description}
+                        onChange={(e) => setShareData({ ...shareData, description: e.target.value })}
+                      />
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="share-publish"
+                        checked={shareData.isPublished}
+                        onCheckedChange={(checked) => 
+                          setShareData({ ...shareData, isPublished: checked === true })
+                        }
+                      />
+                      <Label htmlFor="share-publish">Publish publicly (anyone with the link can access)</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="share-password"
+                        checked={shareData.isPasswordProtected}
+                        onCheckedChange={(checked) => 
+                          setShareData({ ...shareData, isPasswordProtected: checked === true })
+                        }
+                      />
+                      <Label htmlFor="share-password">Password protect</Label>
+                    </div>
+                    {shareData.isPasswordProtected && (
+                      <div className="space-y-2">
+                        <Label htmlFor="password">Password</Label>
+                        <Input
+                          id="password"
+                          type="password"
+                          placeholder="Enter a password"
+                          value={shareData.password}
+                          onChange={(e) => setShareData({ ...shareData, password: e.target.value })}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <DialogFooter>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setIsShareDialogOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={() => createSharedMapMutation.mutate(shareData)}
+                      disabled={createSharedMapMutation.isPending || !shareData.title}
+                    >
+                      Share Map
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
 
               <ServiceCanvas
                 services={mapServices || []}
