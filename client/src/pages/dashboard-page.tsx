@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import Sidebar from "@/components/layout/sidebar";
 import Topbar from "@/components/layout/topbar";
 import StatusCard from "@/components/dashboard/status-card";
@@ -7,21 +8,31 @@ import ServiceCanvas from "@/components/dashboard/service-canvas";
 import AlertItem from "@/components/dashboard/alert-item";
 import StatsPanel from "@/components/dashboard/stats-panel";
 import AddServiceModal from "@/components/modals/add-service-modal";
-import { Alert, Connection, Service } from "@shared/schema";
+import { Alert, Connection, Service, ServiceMap } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
   CheckCircle2, AlertTriangle, AlertCircle, Clock, PlusCircle, 
-  RefreshCw, ArrowDown, Calendar, Network, Activity, Filter
+  RefreshCw, ArrowDown, Calendar, Network, Activity, Filter,
+  Map, ChevronDown, ChevronRight, ExternalLink
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { queryClient } from "@/lib/queryClient";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const [isAddServiceModalOpen, setIsAddServiceModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [, setLocation] = useLocation();
 
   // Fetch data with auto-refresh (5 second polling)
   const { data: services = [], isLoading: isLoadingServices } = useQuery<Service[]>({
@@ -42,6 +53,12 @@ export default function DashboardPage() {
   const { data: stats, isLoading: isLoadingStats } = useQuery({
     queryKey: ["/api/stats"],
     refetchInterval: 5000,
+  });
+  
+  // Get service maps
+  const { data: serviceMaps = [], isLoading: isLoadingMaps } = useQuery<ServiceMap[]>({
+    queryKey: ["/api/service-maps"],
+    enabled: !!user,
   });
   
   // Manual refresh handler
