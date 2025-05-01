@@ -96,15 +96,29 @@ export default function DashboardPage() {
     refetchInterval: 5000,
   });
   
-  // Determine which services to display based on the selected map
-  const services = useMemo(() => {
+  // Determine which services to display based on the selected map and calculate stats
+  const { services, onlineServices, offlineServices, degradedServices } = useMemo(() => {
+    let filteredServices;
     if (selectedMap && selectedMap.serviceItems && selectedMap.serviceItems.length > 0) {
       // If a map is selected, show only services in that map
       const serviceIds = selectedMap.serviceItems.map((item: {serviceId: number}) => item.serviceId);
-      return allServices.filter((service: Service) => serviceIds.includes(service.id));
+      filteredServices = allServices.filter((service: Service) => serviceIds.includes(service.id));
+    } else {
+      // Otherwise, show all services
+      filteredServices = allServices;
     }
-    // Otherwise, show all services
-    return allServices;
+    
+    // Calculate service stats based on the filtered services
+    const online = filteredServices.filter((s: Service) => s.status === "online").length;
+    const offline = filteredServices.filter((s: Service) => s.status === "offline").length;
+    const degraded = filteredServices.filter((s: Service) => s.status === "degraded").length;
+    
+    return {
+      services: filteredServices,
+      onlineServices: online,
+      offlineServices: offline,
+      degradedServices: degraded
+    };
   }, [selectedMap, allServices]);
   
   // Manual refresh handler
@@ -114,11 +128,6 @@ export default function DashboardPage() {
     queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
     queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
   };
-
-  // Derived stats
-  const onlineServices = services.filter((s: Service) => s.status === "online").length;
-  const offlineServices = services.filter((s: Service) => s.status === "offline").length;
-  const degradedServices = services.filter((s: Service) => s.status === "degraded").length;
   // Type-safe way to handle stats
   const avgResponseTime = stats && 
     typeof stats === 'object' && 
@@ -126,13 +135,15 @@ export default function DashboardPage() {
     'avgResponseTime' in stats &&
     typeof stats.avgResponseTime === 'number' ? stats.avgResponseTime : null;
 
-  // Search filter
-  const filteredServices = searchQuery
-    ? services.filter((s: Service) => 
-        s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        s.host.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : services;
+  // Search filter - also update this to use useMemo so it re-calculates when services or searchQuery changes
+  const filteredServices = useMemo(() => {
+    return searchQuery
+      ? services.filter((s: Service) => 
+          s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+          s.host.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      : services;
+  }, [services, searchQuery]);
 
   // Recent alerts
   const recentAlerts = alerts.slice(0, 5);
