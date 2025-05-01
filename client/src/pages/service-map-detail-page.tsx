@@ -252,6 +252,15 @@ export default function ServiceMapDetailPage() {
                   )}
                 </div>
                 <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    className="flex items-center gap-2"
+                    onClick={handleShareMap}
+                  >
+                    <Share size={14} />
+                    Share Map
+                  </Button>
+                
                   <Dialog open={isAddServiceDialogOpen} onOpenChange={setIsAddServiceDialogOpen}>
                     <DialogTrigger asChild>
                       <Button variant="outline" className="flex items-center gap-2">
@@ -364,20 +373,7 @@ export default function ServiceMapDetailPage() {
                     </DialogContent>
                   </Dialog>
                   
-                  <Button 
-                    variant="outline" 
-                    className="flex items-center gap-2"
-                    onClick={() => {
-                      // Harita paylaşma işlevi
-                      toast({
-                        title: "Coming soon",
-                        description: "Map sharing feature will be available soon.",
-                      });
-                    }}
-                  >
-                    <Share size={14} />
-                    Share Map
-                  </Button>
+
                 </div>
               </div>
 
