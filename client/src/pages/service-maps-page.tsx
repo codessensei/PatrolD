@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "../lib/queryClient";
-import { ServiceMap, InsertServiceMap } from "@shared/schema";
+import { ServiceMap, InsertServiceMap, InsertSharedMap } from "@shared/schema";
 import Sidebar from "@/components/layout/sidebar";
 import Topbar from "@/components/layout/topbar";
 
@@ -38,6 +38,14 @@ export default function ServiceMapsPage() {
     queryKey: ["/api/service-maps"],
     enabled: !!user,
   });
+  
+  // Her harita için item sayılarını getir
+  const mapItemQueries = serviceMaps.map(map => 
+    useQuery<{serviceItems: any[], agentItems: any[]}>({
+      queryKey: [`/api/service-maps/${map.id}/items`],
+      enabled: !!serviceMaps.length,
+    })
+  );
 
   // Create new service map
   const createMapMutation = useMutation({
@@ -254,6 +262,24 @@ export default function ServiceMapsPage() {
                           Created {new Date(map.createdAt || new Date()).toLocaleDateString()}
                         </span>
                       </div>
+                      
+                      {/* Item counts */}
+                      {mapItemQueries[serviceMaps.findIndex(m => m.id === map.id)]?.data && (
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                          <div className="flex items-center gap-2 rounded-md border p-2">
+                            <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                            <span className="text-xs">
+                              {mapItemQueries[serviceMaps.findIndex(m => m.id === map.id)]?.data?.serviceItems?.length || 0} Services
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 rounded-md border p-2">
+                            <div className="h-2 w-2 rounded-full bg-blue-500"></div>
+                            <span className="text-xs">
+                              {mapItemQueries[serviceMaps.findIndex(m => m.id === map.id)]?.data?.agentItems?.length || 0} Agents
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </CardContent>
                     <CardFooter className="flex justify-between border-t p-4">
                       <div className="flex gap-2">

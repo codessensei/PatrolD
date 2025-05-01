@@ -698,6 +698,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
   
+  // Get services in a map
+  app.get("/api/service-maps/:id/services", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const mapId = parseInt(req.params.id);
+    if (isNaN(mapId)) {
+      return res.status(400).json({ error: "Invalid map ID" });
+    }
+    
+    const map = await storage.getServiceMapById(mapId);
+    if (!map || map.userId !== req.user!.id) {
+      return res.status(404).json({ error: "Service map not found" });
+    }
+    
+    // Get services in this map
+    const serviceItems = await storage.getServiceMapItems(mapId);
+    if (serviceItems.length === 0) {
+      return res.status(200).json([]);
+    }
+    
+    // Get the service details
+    const serviceIds = serviceItems.map(item => item.serviceId);
+    const allServices = await storage.getServicesByUserId(req.user!.id);
+    const mapServices = allServices.filter(service => serviceIds.includes(service.id));
+    
+    res.status(200).json(mapServices);
+  });
+  
+  // Get agents in a map
+  app.get("/api/service-maps/:id/agents", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const mapId = parseInt(req.params.id);
+    if (isNaN(mapId)) {
+      return res.status(400).json({ error: "Invalid map ID" });
+    }
+    
+    const map = await storage.getServiceMapById(mapId);
+    if (!map || map.userId !== req.user!.id) {
+      return res.status(404).json({ error: "Service map not found" });
+    }
+    
+    // Get agents in this map
+    const agentItems = await storage.getAgentMapItems(mapId);
+    if (agentItems.length === 0) {
+      return res.status(200).json([]);
+    }
+    
+    // Get the agent details
+    const agentIds = agentItems.map(item => item.agentId);
+    const allAgents = await storage.getAgentsByUserId(req.user!.id);
+    const mapAgents = allAgents.filter(agent => agentIds.includes(agent.id));
+    
+    res.status(200).json(mapAgents);
+  });
+  
   // We'll use the existing endpoint at line ~800 instead
 
   app.post("/api/service-maps", async (req, res) => {
@@ -802,6 +858,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       serviceItems,
       agentItems
     });
+  });
+  
+  // Get available services that are not in the map already
+  app.get("/api/service-maps/:id/available-services", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const mapId = parseInt(req.params.id);
+    if (isNaN(mapId)) {
+      return res.status(400).json({ error: "Invalid map ID" });
+    }
+    
+    const map = await storage.getServiceMapById(mapId);
+    if (!map || map.userId !== req.user!.id) {
+      return res.status(404).json({ error: "Service map not found" });
+    }
+    
+    // Get services in this map
+    const serviceItems = await storage.getServiceMapItems(mapId);
+    const serviceIds = serviceItems.map(item => item.serviceId);
+    
+    // Get all user services
+    const allServices = await storage.getServicesByUserId(req.user!.id);
+    
+    // Filter out services already in the map
+    const availableServices = allServices.filter(service => !serviceIds.includes(service.id));
+    
+    res.status(200).json(availableServices);
   });
 
   app.post("/api/service-maps/:id/services/:serviceId", async (req, res) => {
