@@ -27,6 +27,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Share, Eye, Lock, Globe, Trash2, Plus, Copy, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -43,6 +44,16 @@ type SharedMap = {
   shareKey: string;
   viewCount: number;
   mapData: any; // Service and connections data
+  createdAt: string;
+  updatedAt: string;
+};
+
+type ServiceMap = {
+  id: number;
+  userId: number;
+  name: string;
+  description: string | null;
+  isDefault: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -70,6 +81,12 @@ export default function SharedMapsPage() {
   const { data: publicMaps = [], isLoading: isLoadingPublic } = useQuery<SharedMap[]>({
     queryKey: ["/api/shared-maps/public"],
   });
+  
+  // Fetch user's service maps to select from
+  const { data: serviceMaps = [], isLoading: isLoadingServiceMaps } = useQuery<ServiceMap[]>({
+    queryKey: ["/api/service-maps"],
+    enabled: !!user,
+  });
 
   // Create a new shared map
   const createMapMutation = useMutation({
@@ -85,7 +102,8 @@ export default function SharedMapsPage() {
         description: "",
         isPublished: false,
         isPasswordProtected: false,
-        password: ""
+        password: "",
+        serviceMapId: ""
       });
       toast({
         title: "Success",
@@ -235,6 +253,28 @@ export default function SharedMapsPage() {
                       value={newMap.description}
                       onChange={(e) => setNewMap({ ...newMap, description: e.target.value })}
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="serviceMapId">Select Service Map</Label>
+                    <Select
+                      value={newMap.serviceMapId}
+                      onValueChange={(value) => setNewMap({ ...newMap, serviceMapId: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a map to share" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">All Services (Default)</SelectItem>
+                        {serviceMaps.map((map) => (
+                          <SelectItem key={map.id} value={map.id.toString()}>
+                            {map.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-muted-foreground">
+                      Select a specific map layout to share, or leave empty to share all services
+                    </p>
                   </div>
                   <div className="flex items-center space-x-2">
                     <Checkbox
