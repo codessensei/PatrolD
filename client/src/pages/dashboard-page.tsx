@@ -386,6 +386,7 @@ export default function DashboardPage() {
           <div className="glass-card mb-8 p-1">
             <div className="rounded-lg overflow-hidden">
               <ServiceCanvas 
+                key={`canvas-${selectedMapId || 'default'}`}
                 services={filteredServices} 
                 connections={connections}
                 isLoading={isLoadingServices || isLoadingConnections}
@@ -417,7 +418,7 @@ export default function DashboardPage() {
                   ) : recentAlerts.length > 0 ? (
                     recentAlerts.map(alert => (
                       <AlertItem 
-                        key={alert.id}
+                        key={`alert-${alert.id}-map-${selectedMapId || 'default'}`}
                         alert={alert}
                         service={services.find((s: Service) => s.id === alert.serviceId)}
                       />
@@ -439,6 +440,7 @@ export default function DashboardPage() {
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Service Stats</h3>
                 </div>
                 <StatsPanel 
+                  key={`stats-${selectedMapId || 'default'}`}
                   services={services}
                   isLoading={isLoadingServices}
                 />

@@ -697,6 +697,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       agentItems
     });
   });
+  
+  // We'll use the existing endpoint at line ~800 instead
 
   app.post("/api/service-maps", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
