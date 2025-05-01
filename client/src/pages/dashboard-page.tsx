@@ -73,7 +73,12 @@ export default function DashboardPage() {
   const onlineServices = services.filter(s => s.status === "online").length;
   const offlineServices = services.filter(s => s.status === "offline").length;
   const degradedServices = services.filter(s => s.status === "degraded").length;
-  const avgResponseTime = stats && typeof stats === 'object' && 'avgResponseTime' in stats ? stats.avgResponseTime : 0;
+  // Type-safe way to handle stats
+  const avgResponseTime = stats && 
+    typeof stats === 'object' && 
+    stats !== null &&
+    'avgResponseTime' in stats &&
+    typeof stats.avgResponseTime === 'number' ? stats.avgResponseTime : null;
 
   // Search filter
   const filteredServices = searchQuery
@@ -103,8 +108,58 @@ export default function DashboardPage() {
               <h1 className="text-3xl font-bold glow-text animate-gradient-text mb-2 tracking-tight">
                 Service Mesh View
               </h1>
-              <p className="text-slate-600 dark:text-slate-400 text-lg">
-                Monitor your services and visualize connections
+              <p className="text-slate-600 dark:text-slate-400 text-lg flex items-center">
+                <span>Monitor your services and visualize connections</span>
+                
+                {/* Map Selector */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="link" className="ml-2 p-1 h-auto text-blue-500 dark:text-blue-400 hover:no-underline hover:text-blue-600 dark:hover:text-blue-300">
+                      <Map className="h-4 w-4 mr-1" />
+                      <span className="underline underline-offset-4">Service Maps</span>
+                      <ChevronDown className="h-3 w-3 ml-1 opacity-70" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-56">
+                    <DropdownMenuLabel>Available Maps</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    
+                    {isLoadingMaps ? (
+                      <div className="py-2 px-2 text-center text-sm text-muted-foreground">
+                        Loading maps...
+                      </div>
+                    ) : serviceMaps.length > 0 ? (
+                      <>
+                        {serviceMaps.map(map => (
+                          <DropdownMenuItem key={map.id} onClick={() => setLocation(`/service-maps/${map.id}`)}>
+                            <div className="flex items-center w-full">
+                              <div 
+                                className="w-2 h-2 rounded-full mr-2" 
+                                style={{ backgroundColor: map.color || '#4f46e5' }}
+                              />
+                              <span>{map.name}</span>
+                              {map.isDefault && (
+                                <span className="ml-2 text-xs rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 px-1.5 py-0.5">
+                                  Default
+                                </span>
+                              )}
+                            </div>
+                          </DropdownMenuItem>
+                        ))}
+                        <DropdownMenuSeparator />
+                      </>
+                    ) : (
+                      <div className="py-2 px-2 text-center text-sm text-muted-foreground">
+                        No maps created yet
+                      </div>
+                    )}
+                    
+                    <DropdownMenuItem onClick={() => setLocation('/service-maps')}>
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Manage Service Maps
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </p>
             </div>
             
@@ -222,7 +277,7 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400">Avg Response</h3>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{avgResponseTime}ms</p>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{typeof avgResponseTime === 'number' ? `${avgResponseTime}ms` : '---'}</p>
                   </div>
                 </div>
 
