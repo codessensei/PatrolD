@@ -51,6 +51,9 @@ export default function DashboardPage() {
   useEffect(() => {
     if (defaultMap && !selectedMapId) {
       setSelectedMapId(defaultMap.id);
+      // Invalidate queries to refresh map data when selecting the default map
+      queryClient.invalidateQueries({ queryKey: [`/api/service-maps/${defaultMap.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/service-maps/${defaultMap.id}/services`] });
     }
   }, [defaultMap, selectedMapId]);
 
@@ -165,7 +168,12 @@ export default function DashboardPage() {
                     ) : serviceMaps.length > 0 ? (
                       <>
                         {serviceMaps.map(map => (
-                          <DropdownMenuItem key={map.id} onClick={() => setSelectedMapId(map.id)}>
+                          <DropdownMenuItem key={map.id} onClick={() => {
+                            setSelectedMapId(map.id);
+                            // Invalidate queries to refresh map data
+                            queryClient.invalidateQueries({ queryKey: [`/api/service-maps/${map.id}`] });
+                            queryClient.invalidateQueries({ queryKey: [`/api/service-maps/${map.id}/services`] });
+                          }}>
                             <div className="flex items-center w-full">
                               <div 
                                 className="w-2 h-2 rounded-full mr-2" 

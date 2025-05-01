@@ -402,7 +402,7 @@ export default function ServiceCanvas({
         
         <div 
           ref={canvasRef}
-          className="relative h-full w-full overflow-auto canvas-grid p-4"
+          className="relative h-full w-full overflow-hidden canvas-grid p-4"
           style={{
             backgroundSize: `${20 * zoom}px ${20 * zoom}px`,
             backgroundImage: `
@@ -410,7 +410,9 @@ export default function ServiceCanvas({
               linear-gradient(to bottom, rgba(203, 213, 225, 0.1) 1px, transparent 1px)
             `,
             transform: `scale(${zoom})`,
-            transformOrigin: "top left"
+            transformOrigin: "top left",
+            width: zoom < 1 ? `${100 / zoom}%` : "100%",
+            height: zoom < 1 ? `${100 / zoom}%` : "100%"
           }}
         >
           {/* SVG for Connection Lines */}
