@@ -60,7 +60,7 @@ export default function Topbar({ title, onSearch }: TopbarProps) {
                 : "glow-text"
             )}
           >
-            {title}
+            {title === "Dashboard" ? "PatrolD Dashboard" : title}
             {isScrolled ? null : <Sparkles className="inline-block ml-2 h-4 w-4 text-indigo-500 animate-pulse" />}
           </h1>
         </div>

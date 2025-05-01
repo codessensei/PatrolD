@@ -77,7 +77,7 @@ export default function Sidebar() {
                 </div>
                 <div>
                   <span className="font-bold text-lg bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-indigo-600 dark:from-blue-400 dark:to-indigo-500">
-                    UptimeMonitor
+                    PatrolD
                   </span>
                 </div>
               </Link>
