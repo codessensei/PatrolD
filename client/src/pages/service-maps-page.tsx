@@ -7,6 +7,17 @@ import { queryClient, apiRequest } from "../lib/queryClient";
 import { ServiceMap, InsertServiceMap, InsertSharedMap } from "@shared/schema";
 import Sidebar from "@/components/layout/sidebar";
 import Topbar from "@/components/layout/topbar";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useLocation } from "wouter";
 
 // Type for map items
 interface MapItems {
@@ -44,18 +55,6 @@ function useMapItems(maps: ServiceMap[]) {
   
   return mapItems;
 }
-
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Switch } from "@/components/ui/switch";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useLocation } from "wouter";
 
 export default function ServiceMapsPage() {
   const { user } = useAuth();
@@ -420,112 +419,106 @@ export default function ServiceMapsPage() {
                                 </div>
                               </TooltipTrigger>
                               <TooltipContent>
-                                Default Map
+                                <p>Default Map</p>
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
                         )}
                       </div>
-
-                      <div className="flex items-start gap-3">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center`} style={{ background: map.color || "#4f46e5" }}>
-                          <Map className="h-5 w-5 text-white" />
+                      <div className="flex items-center mb-2">
+                        <div className="w-10 h-10 rounded-md flex items-center justify-center mr-3" 
+                          style={{ background: `${map.color}20` }}>
+                          <Map className="h-5 w-5" style={{ color: map.color }} />
                         </div>
-                        <div>
-                          <CardTitle className="text-lg">{map.name}</CardTitle>
-                          <CardDescription>
-                            {map.description || "No description"}
-                          </CardDescription>
-                        </div>
+                        <CardTitle className="text-xl">{map.name}</CardTitle>
                       </div>
-                    </CardHeader>
-                    <CardContent className="pt-4">
-                      <div className="flex justify-between items-center mb-3">
-                        <Badge variant="outline" className="gap-1">
-                          <User size={12} className="opacity-70" />
-                          <span className="text-xs">Creator</span>
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">
-                          Created {new Date(map.createdAt || new Date()).toLocaleDateString()}
-                        </span>
-                      </div>
-                      
-                      {/* Item counts */}
-                      {mapItems[map.id] && (
-                        <div className="grid grid-cols-2 gap-2 mt-2">
-                          <div className="flex items-center gap-2 rounded-md border p-2">
-                            <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                            <span className="text-xs">
-                              {mapItems[map.id]?.serviceItems?.length || 0} Services
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 rounded-md border p-2">
-                            <div className="h-2 w-2 rounded-full bg-blue-500"></div>
-                            <span className="text-xs">
-                              {mapItems[map.id]?.agentItems?.length || 0} Agents
-                            </span>
-                          </div>
-                        </div>
+                      {map.description && (
+                        <CardDescription className="text-sm">
+                          {map.description}
+                        </CardDescription>
                       )}
-                    </CardContent>
-                    <CardFooter className="flex justify-between border-t p-4">
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="gap-1 h-8"
-                          onClick={() => goToMap(map.id)}
-                        >
-                          <Map size={14} />
-                          View
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="gap-1 h-8"
-                          onClick={() => openShareDialog(map)}
-                        >
-                          <Share size={14} />
-                          Share
-                        </Button>
-                        {map.isDefault === false && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="gap-1 h-8"
-                            onClick={() => setDefaultMapMutation.mutate(map.id)}
-                          >
-                            <Check size={14} />
-                            Set Default
-                          </Button>
+                      
+                      <div className="flex gap-2 mt-4">
+                        {mapItems[map.id]?.serviceItems && (
+                          <Badge variant="secondary" className="flex items-center gap-1.5">
+                            <Globe className="h-3 w-3" />
+                            {mapItems[map.id].serviceItems.length} services
+                          </Badge>
+                        )}
+                        
+                        {mapItems[map.id]?.agentItems && (
+                          <Badge variant="outline" className="flex items-center gap-1.5">
+                            <User className="h-3 w-3" />
+                            {mapItems[map.id].agentItems.length} agents
+                          </Badge>
                         )}
                       </div>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        className="gap-1 h-8"
-                        onClick={() => deleteMapMutation.mutate(map.id)}
-                        disabled={!!map.isDefault}
-                      >
-                        <Trash2 size={14} />
-                        Delete
-                      </Button>
+                    </CardHeader>
+                    <CardContent className="pt-4 pb-2">
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="col-span-3">
+                          <Button 
+                            onClick={() => goToMap(map.id)}
+                            variant="default" 
+                            className="w-full" 
+                            size="sm"
+                          >
+                            View Map
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="pt-0">
+                      <div className="flex w-full justify-between text-sm">
+                        <div className="flex gap-3">
+                          {!map.isDefault && (
+                            <button 
+                              onClick={() => setDefaultMapMutation.mutate(map.id)}
+                              className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors flex items-center gap-1"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                              <span>Set default</span>
+                            </button>
+                          )}
+                        </div>
+                        <div className="flex gap-3">
+                          <button 
+                            onClick={() => openShareDialog(map)}
+                            className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors flex items-center gap-1"
+                          >
+                            <Share className="h-3.5 w-3.5" />
+                            <span>Share</span>
+                          </button>
+                          
+                          {serviceMaps.length > 1 && !map.isDefault && (
+                            <button 
+                              onClick={() => deleteMapMutation.mutate(map.id)}
+                              className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors flex items-center gap-1"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              <span>Delete</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </CardFooter>
                   </Card>
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12 bg-card/50 rounded-lg">
-                <Map className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                <h3 className="text-lg font-medium mb-2">No Service Maps Yet</h3>
-                <p className="text-muted-foreground max-w-md mx-auto mb-6">
-                  Create service maps to organize your services and agents by project.
-                  Each map can contain different services and agents.
+              <div className="text-center my-12">
+                <div className="mx-auto w-16 h-16 bg-muted/30 flex items-center justify-center rounded-full mb-4">
+                  <Map className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-xl font-medium mb-2">No service maps yet</h3>
+                <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                  Create a service map to organize your services and agents into different project views
                 </p>
                 <Button 
                   onClick={() => setIsCreateDialogOpen(true)}
-                  className="mx-auto glass-button"
+                  className="glass-button gap-1"
                 >
+                  <Plus size={16} />
                   Create Your First Map
                 </Button>
               </div>
