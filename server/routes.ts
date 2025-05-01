@@ -972,9 +972,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     
     try {
-      let services = [];
-      let connections = [];
-      let mapData = {};
+      let services: any[] = [];
+      let connections: any[] = [];
+      let mapData: any = {};
       
       // Check if a specific service map ID was provided
       if (req.body.serviceMapId) {

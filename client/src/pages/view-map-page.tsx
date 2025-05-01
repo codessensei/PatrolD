@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Lock, AlertTriangle, Clock, Eye, Server, Network } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
+import ServiceCanvas from "@/components/dashboard/service-canvas";
 
 export default function ViewMapPage() {
   const [password, setPassword] = useState("");
@@ -192,19 +193,22 @@ export default function ViewMapPage() {
           </div>
         </CardHeader>
         <CardContent className="pt-6">
-          {/* Here we would render the service map visualization */}
-          <div className="bg-muted/10 rounded-md p-8 border border-dashed text-center h-[500px] flex items-center justify-center">
-            <div className="max-w-md mx-auto space-y-4">
-              <h3 className="text-lg font-medium">Service Map Visualization</h3>
-              <p className="text-muted-foreground">
-                This is where the interactive service map would be rendered.
-                In a production implementation, we would reuse the ServiceCanvas component
-                but in read-only mode to display the services and connections.
-              </p>
-              <Button variant="outline" onClick={() => setLocation("/")}>
-                Return to Dashboard
-              </Button>
-            </div>
+          {/* Render service map visualization using ServiceCanvas */}
+          <div className="relative h-[500px] border rounded-md overflow-hidden">
+            {mapData?.mapData?.services && mapData?.mapData?.connections && (
+              <ServiceCanvas 
+                services={mapData.mapData.services} 
+                connections={mapData.mapData.connections}
+                agents={[]}
+                onAddService={() => {}} // Empty function since this is view-only mode
+                isLoading={false}
+              />
+            )}
+          </div>
+          <div className="flex justify-center mt-4">
+            <Button variant="outline" onClick={() => setLocation("/")}>
+              Return to Dashboard
+            </Button>
           </div>
         </CardContent>
       </Card>
