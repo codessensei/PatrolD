@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Pencil, Trash2, Globe, Map, Share, ExternalLink, User, Check, Lock } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -7,6 +7,43 @@ import { queryClient, apiRequest } from "../lib/queryClient";
 import { ServiceMap, InsertServiceMap, InsertSharedMap } from "@shared/schema";
 import Sidebar from "@/components/layout/sidebar";
 import Topbar from "@/components/layout/topbar";
+
+// Type for map items
+interface MapItems {
+  serviceItems: any[];
+  agentItems: any[];
+}
+
+// Custom hook for fetching map items
+function useMapItems(maps: ServiceMap[]) {
+  const [mapItems, setMapItems] = useState<Record<number, MapItems>>({});
+  
+  useEffect(() => {
+    const fetchItems = async () => {
+      const newMapItems: Record<number, MapItems> = {};
+      
+      for (const map of maps) {
+        try {
+          const response = await fetch(`/api/service-maps/${map.id}/items`);
+          if (response.ok) {
+            const data = await response.json();
+            newMapItems[map.id] = data;
+          }
+        } catch (error) {
+          console.error(`Error fetching items for map ${map.id}:`, error);
+        }
+      }
+      
+      setMapItems(newMapItems);
+    };
+    
+    if (maps && maps.length > 0) {
+      fetchItems();
+    }
+  }, [maps]);
+  
+  return mapItems;
+}
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,13 +87,8 @@ export default function ServiceMapsPage() {
     enabled: !!user,
   });
   
-  // Her harita için item sayılarını getir
-  const mapItemQueries = serviceMaps.map(map => 
-    useQuery<{serviceItems: any[], agentItems: any[]}>({
-      queryKey: [`/api/service-maps/${map.id}/items`],
-      enabled: !!serviceMaps.length,
-    })
-  );
+  // Use our custom hook to fetch map items
+  const mapItems = useMapItems(serviceMaps);
 
   // Create new service map
   const createMapMutation = useMutation({
@@ -419,28 +451,22 @@ export default function ServiceMapsPage() {
                       </div>
                       
                       {/* Item counts */}
-                      {(() => {
-                        const index = serviceMaps.findIndex(m => m.id === map.id);
-                        const itemData = mapItemQueries[index]?.data;
-                        if (!itemData) return null;
-                        
-                        return (
-                          <div className="grid grid-cols-2 gap-2 mt-2">
-                            <div className="flex items-center gap-2 rounded-md border p-2">
-                              <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                              <span className="text-xs">
-                                {itemData.serviceItems?.length || 0} Services
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2 rounded-md border p-2">
-                              <div className="h-2 w-2 rounded-full bg-blue-500"></div>
-                              <span className="text-xs">
-                                {itemData.agentItems?.length || 0} Agents
-                              </span>
-                            </div>
+                      {mapItems[map.id] && (
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                          <div className="flex items-center gap-2 rounded-md border p-2">
+                            <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                            <span className="text-xs">
+                              {mapItems[map.id]?.serviceItems?.length || 0} Services
+                            </span>
                           </div>
-                        );
-                      })()}
+                          <div className="flex items-center gap-2 rounded-md border p-2">
+                            <div className="h-2 w-2 rounded-full bg-blue-500"></div>
+                            <span className="text-xs">
+                              {mapItems[map.id]?.agentItems?.length || 0} Agents
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </CardContent>
                     <CardFooter className="flex justify-between border-t p-4">
                       <div className="flex gap-2">
