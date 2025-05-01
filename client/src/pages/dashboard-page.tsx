@@ -110,7 +110,7 @@ export default function DashboardPage() {
 
   // Determine which services to display based on the selected map and calculate stats
   const { services, onlineServices, offlineServices, degradedServices } = useMemo(() => {
-    let filteredServices;
+    let filteredServices: Service[] = [];
     
     // More robust handling of map selection and service filtering
     try {
@@ -127,9 +127,14 @@ export default function DashboardPage() {
         const serviceIds = mapServices.map((item: {serviceId: number}) => item.serviceId);
         filteredServices = allServices.filter((service: Service) => serviceIds.includes(service.id));
       }
-      // If no filter criteria is available, use all services
+      // If selected map exists but has no services, show empty array (important!)
+      else if (selectedMap) {
+        console.log("Selected map has no services, showing empty service list");
+        filteredServices = []; // Important: Show EMPTY list, not ALL services
+      }
+      // If no filter criteria or map is available, use all services
       else {
-        console.log("No service filtering criteria found, showing all services");
+        console.log("No map selected, showing all services");
         filteredServices = allServices;
       }
     } catch (error) {
@@ -178,7 +183,7 @@ export default function DashboardPage() {
   const recentAlerts = alerts.slice(0, 5);
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row overflow-hidden">
+    <div className="min-h-screen flex flex-col md:flex-row overflow-hidden" key={`dashboard-${selectedMapId || 'all'}`}>
       <Sidebar />
       
       <main className="flex-1 md:ml-64 relative">
