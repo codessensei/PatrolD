@@ -24,6 +24,8 @@ export default function ServiceMapsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [selectedMapForShare, setSelectedMapForShare] = useState<ServiceMap | null>(null);
   const [_, setLocation] = useLocation();
   const [newMap, setNewMap] = useState({
     name: "",
@@ -31,6 +33,15 @@ export default function ServiceMapsPage() {
     isDefault: false,
     icon: "map",
     color: "#4f46e5"
+  });
+  
+  const [newShare, setNewShare] = useState({
+    title: "",
+    description: "",
+    isPublished: false,
+    isPasswordProtected: false,
+    password: "",
+    serviceMapId: 0
   });
 
   // Kullanıcının haritalarını getir
@@ -128,6 +139,64 @@ export default function ServiceMapsPage() {
   const handleCreateMap = () => {
     createMapMutation.mutate(newMap);
   };
+  
+  // Create shared map
+  const createShareMutation = useMutation({
+    mutationFn: async (data: Partial<InsertSharedMap>) => {
+      const response = await apiRequest("POST", "/api/shared-maps", data);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/shared-maps"] });
+      setIsShareDialogOpen(false);
+      setSelectedMapForShare(null);
+      setNewShare({
+        title: "",
+        description: "",
+        isPublished: false,
+        isPasswordProtected: false,
+        password: "",
+        serviceMapId: 0
+      });
+      toast({
+        title: "Map shared",
+        description: "Your map has been shared successfully. You can view it in the Shared Maps section.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to share map",
+        description: error.message || "An error occurred while sharing the map.",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Open share dialog for a specific map
+  const openShareDialog = (map: ServiceMap) => {
+    setSelectedMapForShare(map);
+    setNewShare({
+      title: `${map.name} - Shared Map`,
+      description: map.description || "",
+      isPublished: false,
+      isPasswordProtected: false,
+      password: "",
+      serviceMapId: map.id
+    });
+    setIsShareDialogOpen(true);
+  };
+  
+  // Handle share map
+  const handleShareMap = () => {
+    if (!selectedMapForShare) return;
+    
+    const { serviceMapId, ...shareData } = newShare;
+    
+    createShareMutation.mutate({
+      ...shareData,
+      mapData: { serviceMapId: selectedMapForShare.id }
+    });
+  };
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row overflow-hidden">
@@ -202,6 +271,92 @@ export default function ServiceMapsPage() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+            
+            {/* Share Dialog */}
+            <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
+              <DialogContent className="sm:max-w-[550px]">
+                <DialogHeader>
+                  <DialogTitle>Share Service Map</DialogTitle>
+                  <DialogDescription>
+                    Share your service map with others to display the service status and connections
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="shareTitle">Title</Label>
+                      <Input
+                        id="shareTitle"
+                        placeholder="Enter a title for the shared map"
+                        value={newShare.title}
+                        onChange={(e) => setNewShare({ ...newShare, title: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="shareDescription">Description (optional)</Label>
+                      <Input
+                        id="shareDescription"
+                        placeholder="Enter a description"
+                        value={newShare.description || ""}
+                        onChange={(e) => setNewShare({ ...newShare, description: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="isPublished"
+                        checked={newShare.isPublished}
+                        onCheckedChange={(checked) => setNewShare({ ...newShare, isPublished: checked })}
+                      />
+                      <Label htmlFor="isPublished" className="font-medium">Publish map publicly</Label>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      When published, this map will be listed in the public maps directory.
+                    </p>
+                  </div>
+                  
+                  <div className="flex flex-col space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="isPasswordProtected"
+                        checked={newShare.isPasswordProtected}
+                        onCheckedChange={(checked) => setNewShare({ ...newShare, isPasswordProtected: checked })}
+                      />
+                      <Label htmlFor="isPasswordProtected" className="font-medium">Password protect</Label>
+                    </div>
+                    
+                    {newShare.isPasswordProtected && (
+                      <div className="space-y-2">
+                        <Label htmlFor="password">Password</Label>
+                        <Input
+                          id="password"
+                          type="password"
+                          placeholder="Enter a password"
+                          value={newShare.password || ""}
+                          onChange={(e) => setNewShare({ ...newShare, password: e.target.value })}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsShareDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    onClick={handleShareMap} 
+                    disabled={!newShare.title}
+                    className="gap-1"
+                  >
+                    <Share size={14} />
+                    Share Map
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
           
           {/* Map Content */}
@@ -264,22 +419,28 @@ export default function ServiceMapsPage() {
                       </div>
                       
                       {/* Item counts */}
-                      {mapItemQueries[serviceMaps.findIndex(m => m.id === map.id)]?.data && (
-                        <div className="grid grid-cols-2 gap-2 mt-2">
-                          <div className="flex items-center gap-2 rounded-md border p-2">
-                            <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                            <span className="text-xs">
-                              {mapItemQueries[serviceMaps.findIndex(m => m.id === map.id)]?.data?.serviceItems?.length || 0} Services
-                            </span>
+                      {(() => {
+                        const index = serviceMaps.findIndex(m => m.id === map.id);
+                        const itemData = mapItemQueries[index]?.data;
+                        if (!itemData) return null;
+                        
+                        return (
+                          <div className="grid grid-cols-2 gap-2 mt-2">
+                            <div className="flex items-center gap-2 rounded-md border p-2">
+                              <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                              <span className="text-xs">
+                                {itemData.serviceItems?.length || 0} Services
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 rounded-md border p-2">
+                              <div className="h-2 w-2 rounded-full bg-blue-500"></div>
+                              <span className="text-xs">
+                                {itemData.agentItems?.length || 0} Agents
+                              </span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2 rounded-md border p-2">
-                            <div className="h-2 w-2 rounded-full bg-blue-500"></div>
-                            <span className="text-xs">
-                              {mapItemQueries[serviceMaps.findIndex(m => m.id === map.id)]?.data?.agentItems?.length || 0} Agents
-                            </span>
-                          </div>
-                        </div>
-                      )}
+                        );
+                      })()}
                     </CardContent>
                     <CardFooter className="flex justify-between border-t p-4">
                       <div className="flex gap-2">
@@ -291,6 +452,15 @@ export default function ServiceMapsPage() {
                         >
                           <Map size={14} />
                           View
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="gap-1 h-8"
+                          onClick={() => openShareDialog(map)}
+                        >
+                          <Share size={14} />
+                          Share
                         </Button>
                         {map.isDefault === false && (
                           <Button
