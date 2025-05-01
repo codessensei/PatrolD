@@ -58,10 +58,19 @@ export default function DashboardPage() {
   }, [defaultMap, selectedMapId]);
 
   // If a specific map is selected, get its services and items
-  const { data: selectedMap } = useQuery<any>({
+  const { data: selectedMap, refetch: refetchSelectedMap } = useQuery<any>({
     queryKey: [`/api/service-maps/${selectedMapId}`],
     enabled: !!selectedMapId && !!user,
   });
+  
+  // Re-fetch data whenever selectedMapId changes
+  useEffect(() => {
+    if (selectedMapId) {
+      refetchSelectedMap();
+      queryClient.invalidateQueries({ queryKey: ["/api/services"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+    }
+  }, [selectedMapId, refetchSelectedMap]);
 
   // Get all services (for filtering)
   const { data: allServices = [], isLoading: isLoadingServices } = useQuery<Service[]>({
@@ -168,12 +177,7 @@ export default function DashboardPage() {
                     ) : serviceMaps.length > 0 ? (
                       <>
                         {serviceMaps.map(map => (
-                          <DropdownMenuItem key={map.id} onClick={() => {
-                            setSelectedMapId(map.id);
-                            // Invalidate queries to refresh map data
-                            queryClient.invalidateQueries({ queryKey: [`/api/service-maps/${map.id}`] });
-                            queryClient.invalidateQueries({ queryKey: [`/api/service-maps/${map.id}/services`] });
-                          }}>
+                          <DropdownMenuItem key={map.id} onClick={() => setSelectedMapId(map.id)}>
                             <div className="flex items-center w-full">
                               <div 
                                 className="w-2 h-2 rounded-full mr-2" 
