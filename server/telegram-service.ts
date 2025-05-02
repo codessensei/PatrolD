@@ -24,10 +24,10 @@ type TelegramMessage = {
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 // Singleton pattern to avoid multiple bot instances
-let botInstance: any | null = null;
+let botInstance: TelegramBot | null = null;
 
 export class TelegramService {
-  private bot: any | null = null;
+  private bot: TelegramBot | null = null;
   private storage!: IStorage; // definite assignment assertion
   private chatIdsToNotify: Set<string> = new Set<string>();
   private static instance: TelegramService | null = null;
@@ -35,6 +35,7 @@ export class TelegramService {
   constructor(storage: IStorage) {
     // Singleton pattern implementation
     if (TelegramService.instance) {
+      console.log('Reusing existing TelegramService instance');
       return TelegramService.instance;
     }
     
@@ -46,28 +47,30 @@ export class TelegramService {
     }
 
     try {
-      // Reuse existing bot instance or create a new one
-      if (!botInstance) {
-        // Stop any existing polling before creating a new bot
+      // Always stop any existing bot polling
+      if (botInstance) {
         try {
-          if (this.bot) {
-            this.bot.stopPolling();
-          }
+          console.log('Stopping existing bot polling before creating new instance');
+          botInstance.stopPolling();
+          botInstance = null; // Reset the instance
         } catch (err) {
           console.warn('Error stopping previous bot polling:', err);
         }
-        
-        // Create new bot with polling
-        botInstance = new TelegramBot(TELEGRAM_BOT_TOKEN, { 
-          polling: true,
-          // Add polling options to handle conflicts
-          onlyFirstMatch: true,
-          params: {
-            timeout: 30
-          }
-        });
-        console.log('Telegram bot singleton instance created');
       }
+      
+      console.log('Creating new Telegram bot instance');
+      // Create new bot with polling
+      botInstance = new TelegramBot(TELEGRAM_BOT_TOKEN, { 
+        polling: {
+          interval: 2000, // Poll every 2 seconds
+          autoStart: true,
+          params: {
+            timeout: 10  // Wait 10 seconds for updates
+          }
+        }
+      });
+      
+      console.log('Telegram bot singleton instance created');
       
       this.bot = botInstance;
       console.log('Telegram bot initialized successfully');

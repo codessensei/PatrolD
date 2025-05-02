@@ -59,18 +59,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(400).json({ error: "Invalid service ID" });
     }
     
-    const service = await storage.getServiceById(serviceId);
-    if (!service || service.userId !== req.user!.id) {
+    // Eski servis durumunu kaydet
+    const existingService = await storage.getServiceById(serviceId);
+    if (!existingService || existingService.userId !== req.user!.id) {
       return res.status(404).json({ error: "Service not found" });
     }
     
+    const oldStatus = existingService.status || 'unknown';
+    
     try {
+      // Servisi güncelle
       const updatedService = await storage.updateService({
-        ...service,
+        ...existingService,
         ...req.body
       });
+      
+      // Durum değişikliği varsa bildirim gönder
+      const newStatus = updatedService.status || 'unknown';
+      if (oldStatus !== newStatus) {
+        console.log(`Service ${serviceId} status changed from ${oldStatus} to ${newStatus}`);
+        
+        // Telegram bildirimini doğrudan gönder
+        try {
+          const telegramService = getTelegramService();
+          if (telegramService) {
+            const statusEmoji = 
+              newStatus === 'online' ? '✅' : 
+              newStatus === 'offline' ? '❌' : 
+              newStatus === 'degraded' ? '⚠️' : '❓';
+              
+            const oldStatusEmoji = 
+              oldStatus === 'online' ? '✅' : 
+              oldStatus === 'offline' ? '❌' : 
+              oldStatus === 'degraded' ? '⚠️' : '❓';
+            
+            let alertTitle = newStatus === 'online' ? 'SERVİS TEKRAR ÇALIŞIYOR' : 
+                            newStatus === 'offline' ? 'SERVİS ÇALIŞMIYOR' : 
+                            'SERVİS DURUM DEĞİŞİKLİĞİ';
+            
+            const message = 
+              `🔔 ${alertTitle}\n\n` +
+              `Servis: ${updatedService.name}\n` +
+              `Adres: ${updatedService.host}:${updatedService.port}\n` +
+              `Değişim: ${oldStatusEmoji} ${oldStatus.toUpperCase()} → ${statusEmoji} ${newStatus.toUpperCase()}\n\n` +
+              `Zaman: ${new Date().toLocaleString()}\n` +
+              `(Web arayüzünden manuel değişiklik)`;
+              
+            await telegramService.sendNotification(req.user!.id, message);
+            console.log(`Manual notification sent for status change of service ${serviceId}`);
+            
+            // Uyarı tablosuna da ekle
+            await storage.createAlert({
+              userId: req.user!.id,
+              serviceId: serviceId,
+              type: newStatus === 'online' ? 'recovery' : newStatus === 'offline' ? 'outage' : 'status_change',
+              message: `Service ${updatedService.name} changed from ${oldStatus} to ${newStatus}`,
+              timestamp: new Date()
+            });
+          }
+        } catch (error) {
+          console.error('Error sending notification for status change:', error);
+        }
+      }
+      
       res.status(200).json(updatedService);
     } catch (error) {
+      console.error("Error updating service:", error);
       res.status(500).json({ error: "Failed to update service" });
     }
   });
