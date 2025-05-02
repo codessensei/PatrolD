@@ -603,6 +603,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Telegram kayıt tokeni oluşturma
+  app.post("/api/telegram/generate-token", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const telegramService = getTelegramService();
+    if (!telegramService) {
+      return res.status(500).json({ 
+        success: false, 
+        error: "Telegram servisi başlatılamadı" 
+      });
+    }
+    
+    try {
+      // Yeni bir kayıt tokeni oluştur
+      const token = await telegramService.generateRegistrationToken(req.user!.id);
+      
+      if (token) {
+        res.status(200).json({ 
+          success: true, 
+          token,
+          expiresIn: "24 saat" 
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          error: "Token oluşturulurken bir hata oluştu" 
+        });
+      }
+    } catch (error) {
+      console.error("Token oluşturulurken hata oluştu:", error);
+      res.status(500).json({ 
+        success: false, 
+        error: "Token oluşturulurken bir hata oluştu" 
+      });
+    }
+  });
+  
   // Telegram ayarlarını getirme
   app.get("/api/telegram/settings", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
@@ -610,9 +647,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const settings = await storage.getUserSettings(req.user!.id);
       
+      // Check if there's a valid registration token
+      let hasActiveToken = false;
+      if (settings?.telegramRegistrationToken && settings?.telegramTokenExpiry) {
+        hasActiveToken = new Date(settings.telegramTokenExpiry) > new Date();
+      }
+      
       res.status(200).json({
         enableTelegramAlerts: settings?.enableTelegramAlerts || false,
-        telegramChatId: settings?.telegramChatId || null
+        telegramChatId: settings?.telegramChatId || null,
+        hasActiveToken: hasActiveToken
       });
     } catch (error) {
       console.error("Telegram ayarları alınırken hata oluştu:", error);

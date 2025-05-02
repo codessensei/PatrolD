@@ -17,6 +17,14 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 type TelegramSettings = {
   enableTelegramAlerts: boolean;
   telegramChatId: string | null;
+  hasActiveToken: boolean;
+};
+
+type TokenResponse = {
+  success: boolean;
+  token?: string;
+  expiresIn?: string;
+  error?: string;
 };
 
 export default function SettingsPage() {
@@ -24,6 +32,7 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const [chatId, setChatId] = useState("");
   const [enableAlerts, setEnableAlerts] = useState(false);
+  const [registrationToken, setRegistrationToken] = useState<string | null>(null);
 
   // Telegram ayarlarını getir
   const { data: telegramSettings, isLoading: isLoadingSettings } = useQuery<TelegramSettings>({
@@ -88,6 +97,40 @@ export default function SettingsPage() {
       toast({
         title: "Hata",
         description: "Test mesajı gönderilirken bir hata oluştu.",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Telegram kayıt tokeni oluştur
+  const generateTokenMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/telegram/generate-token");
+      return await response.json() as TokenResponse;
+    },
+    onSuccess: (data) => {
+      if (data.success && data.token) {
+        setRegistrationToken(data.token);
+        toast({
+          title: "Token Oluşturuldu",
+          description: `Kayıt tokeni başarıyla oluşturuldu. Bu token ${data.expiresIn || '24 saat'} geçerlidir.`,
+          variant: "default",
+        });
+        
+        // Telegram ayarlarını yenile
+        queryClient.invalidateQueries({ queryKey: ["/api/telegram/settings"] });
+      } else {
+        toast({
+          title: "Hata",
+          description: data.error || "Token oluşturulurken bir hata oluştu.",
+          variant: "destructive",
+        });
+      }
+    },
+    onError: () => {
+      toast({
+        title: "Hata",
+        description: "Token oluşturulurken bir hata oluştu.",
         variant: "destructive",
       });
     }
