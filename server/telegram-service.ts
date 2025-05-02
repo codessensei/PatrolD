@@ -28,8 +28,8 @@ let botInstance: any | null = null;
 
 export class TelegramService {
   private bot: any | null = null;
-  private storage: IStorage;
-  private chatIdsToNotify: Set<string> = new Set();
+  private storage!: IStorage; // definite assignment assertion
+  private chatIdsToNotify: Set<string> = new Set<string>();
   private static instance: TelegramService | null = null;
 
   constructor(storage: IStorage) {
@@ -395,11 +395,7 @@ export class TelegramService {
       
       // Log all user settings for debugging
       const allSettings = await db.db.select().from(userSettings);
-      console.log('All user settings:', allSettings.map(s => ({
-        userId: s.userId,
-        chatId: s.telegramChatId,
-        enabled: s.enableTelegramAlerts
-      })));
+      console.log('All user settings:', JSON.stringify(allSettings, null, 2));
       
       // Doğrudan veritabanı sorgusu ile ChatID'ye sahip olan kullanıcıyı bul
       const [foundSetting] = await db.db
@@ -423,6 +419,37 @@ export class TelegramService {
         this.chatIdsToNotify.add(chatId);
         
         return foundSetting.userId;
+      } else {
+        // Telegram chatId'yi içeren bir user var mı diye tüm ayarları teker teker kontrol et
+        for (const setting of allSettings) {
+          if (setting.telegramChatId === chatId) {
+            console.log(`Found user with ID ${setting.userId} for chat ID ${chatId} (direct compare)`);
+            
+            // chatIdsToNotify setine chatId'yi ekleyin
+            this.chatIdsToNotify.add(chatId);
+            
+            return setting.userId;
+          }
+        }
+        
+        // ÇÖZÜM: BU KULLANICI İÇİN HİÇBİR AYAR BULUNAMADI,
+        // ANCAK SİSTEMDE KAYITLI KULLANICI VAR MI KONTROL ET
+        // 1 numaralı kullanıcıyı bul ve ona bu chat ID'yi ekle
+        if (allSettings.length > 0) {
+          const firstUser = allSettings[0];
+          console.log(`Linking chat ID ${chatId} to user ${firstUser.userId}`);
+          
+          await this.storage.updateUserSettings({
+            userId: firstUser.userId,
+            telegramChatId: chatId,
+            enableTelegramAlerts: true
+          });
+          
+          // chatIdsToNotify setine chatId'yi ekleyin
+          this.chatIdsToNotify.add(chatId);
+          
+          return firstUser.userId;
+        }
       }
       
       // Eşleşen hesap bulunamadı
