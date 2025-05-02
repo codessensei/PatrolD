@@ -106,6 +106,8 @@ export const userSettings = pgTable("user_settings", {
   emailAddress: text("email_address"),
   enableTelegramAlerts: boolean("enable_telegram_alerts").default(false),
   telegramChatId: text("telegram_chat_id"),
+  telegramRegistrationToken: text("telegram_registration_token"), // Bot kayıt için token
+  telegramTokenExpiry: timestamp("telegram_token_expiry"), // Tokenin geçerlilik süresi
   alertFrequency: text("alert_frequency").default("immediate"), // immediate, hourly, daily
   customSettings: json("custom_settings").default({}),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

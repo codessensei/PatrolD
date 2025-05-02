@@ -1,10 +1,21 @@
 import TelegramBot from 'node-telegram-bot-api';
 import { IStorage } from './storage';
+import { randomBytes } from 'crypto';
+import { addDays } from 'date-fns';
 
 // Type tanımlamaları
 type TelegramMessage = {
   chat: {
     id: number;
+    username?: string;
+    first_name?: string;
+    last_name?: string;
+  };
+  from?: {
+    id: number;
+    username?: string;
+    first_name?: string;
+    last_name?: string;
   };
   text?: string;
 };
@@ -36,6 +47,66 @@ export class TelegramService {
     }
   }
 
+  // Token üretme - web arayüzünde kullanılır
+  async generateRegistrationToken(userId: number): Promise<string | null> {
+    try {
+      // Benzersiz bir token oluştur
+      const token = randomBytes(16).toString('hex');
+      // Tokenin 24 saat geçerliliği olsun
+      const expiry = addDays(new Date(), 1);
+      
+      // Token ve geçerlilik süresini kullanıcı ayarlarına kaydet
+      await this.storage.updateUserSettings({
+        userId,
+        telegramRegistrationToken: token,
+        telegramTokenExpiry: expiry
+      });
+      
+      console.log(`Generated registration token for user ${userId}: ${token}`);
+      return token;
+    } catch (error) {
+      console.error(`Failed to generate registration token for user ${userId}:`, error);
+      return null;
+    }
+  }
+  
+  // Token doğrulama ve chat ID ile ilişkilendirme
+  async verifyRegistrationToken(token: string, chatId: string): Promise<number | null> {
+    try {
+      // Tüm kullanıcıları getir
+      const allUsers = Array.from(this.storage.users.values());
+      
+      for (const user of allUsers) {
+        const settings = await this.storage.getUserSettings(user.id);
+        
+        // Token kontrolü yap ve süresinin geçip geçmediğini kontrol et
+        if (settings && 
+            settings.telegramRegistrationToken === token && 
+            settings.telegramTokenExpiry && 
+            new Date(settings.telegramTokenExpiry) > new Date()) {
+          
+          // Token doğruysa, chatId'yi kullanıcı ayarlarına kaydet
+          await this.storage.updateUserSettings({
+            userId: user.id,
+            telegramChatId: chatId,
+            enableTelegramAlerts: true,
+            // Token bilgilerini temizle
+            telegramRegistrationToken: null,
+            telegramTokenExpiry: null
+          });
+          
+          console.log(`User ${user.id} verified with token and linked to chat ID ${chatId}`);
+          return user.id;
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error verifying registration token:', error);
+      return null;
+    }
+  }
+
   private setupCommands() {
     if (!this.bot) return;
 
@@ -44,11 +115,48 @@ export class TelegramService {
       const chatId = msg.chat.id;
       const message = `Merhaba! 👋 Servis Monitoring sistemine hoş geldiniz.\n\n`
         + `Komutlar:\n`
+        + `/register <token> - Web arayüzünden aldığınız token ile hesabınızı bağlayın\n`
         + `/subscribe - Bildirimlere abone ol\n`
         + `/unsubscribe - Bildirim aboneliğini iptal et\n`
         + `/status - Sistemdeki servislerin durumunu göster\n`;
       
       this.bot.sendMessage(chatId, message);
+    });
+    
+    // /register komutu ile web arayüzünden alınan token kullanılarak hesap bağlama
+    this.bot.onText(/\/register (.+)/, async (msg: TelegramMessage, match) => {
+      if (!match || !match[1]) {
+        this.bot.sendMessage(msg.chat.id, "❌ Geçersiz komut. Doğru kullanım: /register <token>");
+        return;
+      }
+      
+      const token = match[1].trim();
+      const chatId = String(msg.chat.id);
+      
+      try {
+        // Token doğrulama ve kullanıcı ID'si alımı
+        const userId = await this.verifyRegistrationToken(token, chatId);
+        
+        if (userId) {
+          this.chatIdsToNotify.add(chatId);
+          
+          const userInfo = msg.from?.username ? 
+                          `@${msg.from.username}` : 
+                          `${msg.from?.first_name || ''} ${msg.from?.last_name || ''}`.trim();
+          
+          const successMessage = `✅ Hesabınız başarıyla bağlandı!\n\n`
+            + `Chat ID: ${chatId}\n`
+            + `Kullanıcı: ${userInfo}\n\n`
+            + `Artık sistem bildirimlerini alacaksınız. Bildirimlerden çıkmak için /unsubscribe komutunu kullanabilirsiniz.`;
+          
+          this.bot.sendMessage(msg.chat.id, successMessage);
+        } else {
+          this.bot.sendMessage(msg.chat.id, "❌ Geçersiz veya süresi dolmuş token. Lütfen web arayüzünden yeni bir token oluşturun.");
+        }
+      } catch (error) {
+        console.error('Error in /register:', error);
+        this.bot.sendMessage(msg.chat.id, "❌ Bir hata oluştu. Lütfen daha sonra tekrar deneyin.");
+      }
     });
 
     // /subscribe komutu ile bildirim almak için abone olma
