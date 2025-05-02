@@ -393,6 +393,36 @@ export class TelegramService {
       
       console.log(`Looking for user settings with chatId: ${chatId}`);
       
+      // Direkt hesap kullanılacağı için, her zaman 1 numaralı kullanıcıyı döndür
+      // Telegram chat ID'yi ilk kullanıcıya bağla
+      try {
+        // Tüm ayarları getir
+        const allSettings = await db.db.select().from(userSettings);
+        
+        // Sadece ilk kullanıcıyı bulmak için limit 1
+        if (allSettings.length > 0) {
+          const userId = 1; // Sistemdeki ilk kullanıcının ID'si genellikle 1'dir
+          
+          // Ayarları güncelle
+          await this.storage.updateUserSettings({
+            userId,
+            telegramChatId: chatId,
+            enableTelegramAlerts: true
+          });
+          
+          console.log(`Updated settings for user ${userId} with chat ID ${chatId}`);
+          
+          // chatIdsToNotify setine chatId'yi ekleyin
+          this.chatIdsToNotify.add(chatId);
+          
+          // Her zaman ilk kullanıcıyı döndür
+          return userId;
+        }
+      } catch (dbError) {
+        console.error('Error during direct database operations:', dbError);
+      }
+      
+      // YUKARIDAN SONUÇ GELMEDİYSE, ESKİ YÖNTEME DEVAM ET
       // Log all user settings for debugging
       const allSettings = await db.db.select().from(userSettings);
       console.log('All user settings:', JSON.stringify(allSettings, null, 2));
@@ -432,9 +462,8 @@ export class TelegramService {
           }
         }
         
-        // ÇÖZÜM: BU KULLANICI İÇİN HİÇBİR AYAR BULUNAMADI,
+        // BU KULLANICI İÇİN HİÇBİR AYAR BULUNAMADI,
         // ANCAK SİSTEMDE KAYITLI KULLANICI VAR MI KONTROL ET
-        // 1 numaralı kullanıcıyı bul ve ona bu chat ID'yi ekle
         if (allSettings.length > 0) {
           const firstUser = allSettings[0];
           console.log(`Linking chat ID ${chatId} to user ${firstUser.userId}`);
@@ -452,12 +481,34 @@ export class TelegramService {
         }
       }
       
-      // Eşleşen hesap bulunamadı
-      console.log(`No user found for chat ID ${chatId}`);
-      return null;
+      // Eşleşen hesap bulunamadı - yine de 1 numaralı hesabı döndür
+      console.log(`No user found for chat ID ${chatId}, defaulting to user 1`);
+      
+      await this.storage.updateUserSettings({
+        userId: 1, // Default user
+        telegramChatId: chatId,
+        enableTelegramAlerts: true
+      });
+      
+      this.chatIdsToNotify.add(chatId);
+      return 1;
     } catch (error) {
       console.error('Error finding user by chat ID:', error);
-      return null;
+      
+      // Yine de 1 numaralı kullanıcıyı döndür - bu hızlı çözüm için
+      try {
+        await this.storage.updateUserSettings({
+          userId: 1, // Default user
+          telegramChatId: chatId,
+          enableTelegramAlerts: true
+        });
+        
+        this.chatIdsToNotify.add(chatId);
+        return 1;
+      } catch (innerError) {
+        console.error('Failed to assign default user:', innerError);
+        return null;
+      }
     }
   }
 
