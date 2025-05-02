@@ -23,66 +23,76 @@ type TelegramMessage = {
 // Telegram Bot'u için gerekli olan token
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
-// Singleton pattern to avoid multiple bot instances
-let botInstance: TelegramBot | null = null;
+// Singleton pattern: global module level variables
+let globalBotInstance: any | null = null;
+let globalServiceInstance: TelegramService | null = null;
 
-export class TelegramService {
-  private bot: TelegramBot | null = null;
-  private storage!: IStorage; // definite assignment assertion
+class TelegramService {
+  private bot: any | null = null;
+  private storage!: IStorage;
   private chatIdsToNotify: Set<string> = new Set<string>();
-  private static instance: TelegramService | null = null;
 
   constructor(storage: IStorage) {
-    // Singleton pattern implementation
-    if (TelegramService.instance) {
+    // Singleton enforcement
+    if (globalServiceInstance) {
       console.log('Reusing existing TelegramService instance');
-      return TelegramService.instance;
+      return globalServiceInstance;
     }
     
     this.storage = storage;
+    
+    // Önce token kontrolü yap
     if (!TELEGRAM_BOT_TOKEN) {
       console.warn('TELEGRAM_BOT_TOKEN not set, Telegram notifications are disabled');
-      TelegramService.instance = this;
+      globalServiceInstance = this;
       return;
     }
-
-    try {
-      // Always stop any existing bot polling
-      if (botInstance) {
-        try {
-          console.log('Stopping existing bot polling before creating new instance');
-          botInstance.stopPolling();
-          botInstance = null; // Reset the instance
-        } catch (err) {
-          console.warn('Error stopping previous bot polling:', err);
-        }
+    
+    // Çalışan bir bot instance varsa kapatalım
+    if (globalBotInstance) {
+      try {
+        console.log('Stopping existing bot polling');
+        globalBotInstance.stopPolling();
+        globalBotInstance = null;
+      } catch (err) {
+        console.warn('Error stopping previous bot polling:', err);
       }
-      
-      console.log('Creating new Telegram bot instance');
-      // Create new bot with polling
-      botInstance = new TelegramBot(TELEGRAM_BOT_TOKEN, { 
-        polling: {
-          interval: 2000, // Poll every 2 seconds
-          autoStart: true,
-          params: {
-            timeout: 10  // Wait 10 seconds for updates
-          }
-        }
-      });
-      
-      console.log('Telegram bot singleton instance created');
-      
-      this.bot = botInstance;
-      console.log('Telegram bot initialized successfully');
-      
-      // Bot komutlarını tanımlama
-      this.setupCommands();
-    } catch (error) {
-      console.error('Failed to initialize Telegram bot:', error);
-      this.bot = null;
     }
     
-    TelegramService.instance = this;
+    // Kısa bir bekleme süresi (1 saniye)
+    setTimeout(() => {
+      try {
+        console.log('Creating new Telegram bot instance');
+        // Yeni botu başlat
+        globalBotInstance = new TelegramBot(TELEGRAM_BOT_TOKEN, { 
+          polling: false // Başlangıçta polling'i devre dışı bırak
+        });
+        
+        // Servisi globalBotInstance'a bağla
+        this.bot = globalBotInstance;
+        console.log('Telegram bot singleton instance created');
+        
+        // Komutları tanımla
+        this.setupCommands();
+        
+        // Son olarak polling'i başlat
+        this.bot.startPolling({
+          restart: false,
+          interval: 2000,
+          limit: 100,
+          timeout: 10
+        });
+        
+        console.log('Telegram bot polling started successfully');
+      } catch (error) {
+        console.error('Failed to initialize Telegram bot:', error);
+        this.bot = null;
+        globalBotInstance = null;
+      }
+    }, 1000);
+    
+    // Servisi singleton olarak ayarla
+    globalServiceInstance = this;
   }
 
   // Token üretme - web arayüzünde kullanılır
@@ -118,14 +128,6 @@ export class TelegramService {
       
       // Token ile eşleşen kaydı ara
       console.log(`Verifying registration token: ${token} for chat ID: ${chatId}`);
-      
-      // Tüm settings'leri logla (debug)
-      const allSettings = await db.db.select().from(userSettings);
-      console.log('All settings:', allSettings.map(s => ({ 
-        userId: s.userId, 
-        token: s.telegramRegistrationToken,
-        expiry: s.telegramTokenExpiry
-      })));
       
       const [foundSetting] = await db.db
         .select()
@@ -439,145 +441,50 @@ export class TelegramService {
   // Chat ID'ye göre kullanıcı bulma veya oluşturma
   private async findOrCreateUserByChatId(chatId: string): Promise<number | null> {
     try {
-      // Veritabanında telegramChatId'ye göre kullanıcı ayarı ara
-      const db = await import('./db');
-      const { eq } = await import('drizzle-orm');
-      const { userSettings } = await import('@shared/schema');
-      
       console.log(`Looking for user settings with chatId: ${chatId}`);
       
-      // Direkt hesap kullanılacağı için, her zaman 1 numaralı kullanıcıyı döndür
-      // Telegram chat ID'yi ilk kullanıcıya bağla
+      // İyileştirilmiş basit yaklaşım:
+      // Bu demo sistemde her zaman ID=1 olan ana kullanıcı var.
+      // Tüm Telegram bildirimlerini bu kullanıcıya yönlendirelim.
+      
+      const userId = 1; // Sistemdeki birincil kullanıcının ID'si her zaman 1'dir
+      
+      // Önce kullanıcı ayarlarını alalım
+      const settings = await this.storage.getUserSettings(userId);
+      
       try {
-        // Tüm ayarları getir
-        const allSettings = await db.db.select().from(userSettings);
-        
-        // Sadece ilk kullanıcıyı bulmak için limit 1
-        if (allSettings.length > 0) {
-          const userId = 1; // Sistemdeki ilk kullanıcının ID'si genellikle 1'dir
-          
-          // Ayarları güncelle
-          await this.storage.updateUserSettings({
-            userId,
-            telegramChatId: chatId,
-            enableTelegramAlerts: true
-          });
-          
-          console.log(`Updated settings for user ${userId} with chat ID ${chatId}`);
-          
-          // chatIdsToNotify setine chatId'yi ekleyin
-          this.chatIdsToNotify.add(chatId);
-          
-          // Her zaman ilk kullanıcıyı döndür
-          return userId;
-        }
-      } catch (dbError) {
-        console.error('Error during direct database operations:', dbError);
-      }
-      
-      // YUKARIDAN SONUÇ GELMEDİYSE, ESKİ YÖNTEME DEVAM ET
-      // Log all user settings for debugging
-      const allSettings = await db.db.select().from(userSettings);
-      console.log('All user settings:', JSON.stringify(allSettings, null, 2));
-      
-      // Doğrudan veritabanı sorgusu ile ChatID'ye sahip olan kullanıcıyı bul
-      const [foundSetting] = await db.db
-        .select()
-        .from(userSettings)
-        .where(eq(userSettings.telegramChatId, chatId));
-      
-      if (foundSetting) {
-        console.log(`Found user with ID ${foundSetting.userId} for chat ID ${chatId}`);
-        
-        // Eğer bildirimler etkin değilse otomatik olarak aktif et
-        if (!foundSetting.enableTelegramAlerts) {
-          await this.storage.updateUserSettings({
-            userId: foundSetting.userId,
-            enableTelegramAlerts: true
-          });
-          console.log(`Enabled telegram alerts for user ${foundSetting.userId}`);
-        }
-        
-        // chatIdsToNotify setine chatId'yi ekleyin
-        this.chatIdsToNotify.add(chatId);
-        
-        return foundSetting.userId;
-      } else {
-        // Telegram chatId'yi içeren bir user var mı diye tüm ayarları teker teker kontrol et
-        for (const setting of allSettings) {
-          if (setting.telegramChatId === chatId) {
-            console.log(`Found user with ID ${setting.userId} for chat ID ${chatId} (direct compare)`);
-            
-            // chatIdsToNotify setine chatId'yi ekleyin
-            this.chatIdsToNotify.add(chatId);
-            
-            return setting.userId;
-          }
-        }
-        
-        // BU KULLANICI İÇİN HİÇBİR AYAR BULUNAMADI,
-        // ANCAK SİSTEMDE KAYITLI KULLANICI VAR MI KONTROL ET
-        if (allSettings.length > 0) {
-          const firstUser = allSettings[0];
-          console.log(`Linking chat ID ${chatId} to user ${firstUser.userId}`);
-          
-          await this.storage.updateUserSettings({
-            userId: firstUser.userId,
-            telegramChatId: chatId,
-            enableTelegramAlerts: true
-          });
-          
-          // chatIdsToNotify setine chatId'yi ekleyin
-          this.chatIdsToNotify.add(chatId);
-          
-          return firstUser.userId;
-        }
-      }
-      
-      // Eşleşen hesap bulunamadı - yine de 1 numaralı hesabı döndür
-      console.log(`No user found for chat ID ${chatId}, defaulting to user 1`);
-      
-      await this.storage.updateUserSettings({
-        userId: 1, // Default user
-        telegramChatId: chatId,
-        enableTelegramAlerts: true
-      });
-      
-      this.chatIdsToNotify.add(chatId);
-      return 1;
-    } catch (error) {
-      console.error('Error finding user by chat ID:', error);
-      
-      // Yine de 1 numaralı kullanıcıyı döndür - bu hızlı çözüm için
-      try {
+        // Kullanıcı ayarlarını chat ID ile güncelle
         await this.storage.updateUserSettings({
-          userId: 1, // Default user
+          userId: userId,
           telegramChatId: chatId,
           enableTelegramAlerts: true
         });
         
+        console.log(`[FORCED_LINK] Chat ID ${chatId} is now linked to user ${userId} for notifications`);
+        
+        // Bildirim listesine ekle
         this.chatIdsToNotify.add(chatId);
-        return 1;
-      } catch (innerError) {
-        console.error('Failed to assign default user:', innerError);
-        return null;
+        
+        // Kullanıcı ID'sini döndür
+        return userId;
+      } catch (storageError) {
+        console.error('Error updating user settings:', storageError);
       }
+      
+      return null;
+    } catch (error) {
+      console.error('Error in findOrCreateUserByChatId:', error);
+      return null;
     }
   }
-
-  // Durum emoji'si
+  
+  // Durum emojileri için yardımcı fonksiyon
   private getStatusEmoji(status: string): string {
-    switch (status.toLowerCase()) {
-      case 'online':
-        return '✅';
-      case 'offline':
-        return '❌';
-      case 'degraded':
-        return '⚠️';
-      default:
-        return '❓';
-    }
+    return status === 'online' ? '✅' : 
+           status === 'offline' ? '❌' : 
+           status === 'degraded' ? '⚠️' : '❓';
   }
 }
 
-export default TelegramService;
+// Modül dışa aktarımı
+export { TelegramService };

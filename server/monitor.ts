@@ -1,7 +1,7 @@
 import axios from "axios";
 import { IStorage } from "./storage";
 import { Service, Connection, Alert } from "@shared/schema";
-import TelegramService from "./telegram-service";
+import { TelegramService } from "./telegram-service";
 
 // Telegram servisini tanımla
 let telegramService: TelegramService | null = null;
@@ -41,7 +41,7 @@ export function setupMonitoring(storage: IStorage) {
 }
 
 // Telegram servisine erişim için dışa aktarılmış fonksiyon
-export function getTelegramService(): TelegramService | null {
+export function getTelegramService(): any | null {
   return telegramService;
 }
 
