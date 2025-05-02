@@ -5,7 +5,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { Lock, AlertTriangle, Clock, Eye, Server, Network } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
@@ -175,136 +174,139 @@ export default function ViewMapPage() {
 
   // Successfully loaded map with data
   return (
-    <div className="container py-8 animate-fadeIn">
-      <Card className="mb-8 border-primary/20">
-        <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5">
-          <div className="flex justify-between items-start">
-            <div>
-              <CardTitle className="text-2xl">{mapData.title}</CardTitle>
-              <CardDescription className="mt-1">
-                {mapData.description || "No description provided"}
-              </CardDescription>
+    <div className="w-full min-h-screen overflow-hidden animate-fadeIn flex flex-col">
+      <div className="bg-gradient-to-r from-primary/10 to-primary/5 p-4 shadow-sm">
+        <div className="container mx-auto flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-semibold">{mapData.title}</h1>
+            <p className="text-muted-foreground">
+              {mapData.description || "No description provided"}
+            </p>
+          </div>
+          <div className="flex items-center space-x-6 text-sm">
+            <div className="flex items-center">
+              <Server className="mr-1.5 h-4 w-4 text-muted-foreground" />
+              <span>{mapData.mapData?.services?.length || 0} Services</span>
             </div>
-            <div className="flex items-center space-x-4 text-sm">
-              <div className="flex items-center">
-                <Server className="mr-1 h-4 w-4 text-muted-foreground" />
-                <span>{mapData.mapData?.services?.length || 0} Services</span>
-              </div>
-              <div className="flex items-center">
-                <Network className="mr-1 h-4 w-4 text-muted-foreground" />
-                <span>{mapData.mapData?.connections?.length || 0} Connections</span>
-              </div>
-              <div className="flex items-center">
-                <Eye className="mr-1 h-4 w-4 text-muted-foreground" />
-                <span>{mapData.viewCount} Views</span>
-              </div>
-              <div className="flex items-center">
-                <Clock className="mr-1 h-4 w-4 text-muted-foreground" />
-                <span>{format(new Date(mapData.updatedAt), "MMM d, yyyy")}</span>
-              </div>
+            <div className="flex items-center">
+              <Network className="mr-1.5 h-4 w-4 text-muted-foreground" />
+              <span>{mapData.mapData?.connections?.length || 0} Connections</span>
+            </div>
+            <div className="flex items-center">
+              <Eye className="mr-1.5 h-4 w-4 text-muted-foreground" />
+              <span>{mapData.viewCount} Views</span>
+            </div>
+            <div className="flex items-center">
+              <Clock className="mr-1.5 h-4 w-4 text-muted-foreground" />
+              <span>{format(new Date(mapData.updatedAt), "MMM d, yyyy")}</span>
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="pt-6">
-          {/* Render service map visualization using ServiceCanvas */}
-          <div className="relative h-[500px] border rounded-md overflow-hidden">
-            {mapData?.mapData?.services && mapData?.mapData?.connections && (
-              <ServiceCanvas 
-                services={mapData.mapData.services} 
-                connections={mapData.mapData.connections}
-                agents={[]}
-                onAddService={() => {}} // Empty function since this is view-only mode
-                isLoading={false}
-              />
-            )}
-          </div>
-          <div className="flex justify-center mt-4">
-            <Button variant="outline" onClick={() => setLocation("/")}>
-              Return to Dashboard
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Services</CardTitle>
-            <CardDescription>
-              Services included in this network map
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {mapData.mapData?.services?.length > 0 ? (
-              <div className="space-y-4">
-                {mapData.mapData.services.map((service: any) => (
-                  <div key={service.id} className="flex items-center justify-between border-b pb-3">
-                    <div>
-                      <div className="font-medium">{service.name}</div>
-                      <div className="text-sm text-muted-foreground">{service.host}:{service.port}</div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className={`px-2 py-1 rounded-full text-xs ${
-                        service.status === "online" ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" :
-                        service.status === "offline" ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400" :
-                        "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
-                      }`}>
-                        {service.status}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                No services in this map
-              </div>
-            )}
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Connections</CardTitle>
-            <CardDescription>
-              Connections between services
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {mapData.mapData?.connections?.length > 0 ? (
-              <div className="space-y-4">
-                {mapData.mapData.connections.map((connection: any) => {
-                  const source = mapData.mapData.services.find((s: any) => s.id === connection.sourceId);
-                  const target = mapData.mapData.services.find((s: any) => s.id === connection.targetId);
-                  
-                  return (
-                    <div key={connection.id} className="flex items-center justify-between border-b pb-3">
+      {/* Render service map visualization using ServiceCanvas - Full screen */}
+      <div className="flex-grow relative h-[calc(100vh-12rem)] w-full overflow-hidden">
+        {mapData?.mapData?.services && mapData?.mapData?.connections && (
+          <ServiceCanvas 
+            services={mapData.mapData.services} 
+            connections={mapData.mapData.connections}
+            agents={[]}
+            onAddService={() => {}} // Empty function since this is view-only mode
+            isLoading={false}
+          />
+        )}
+      </div>
+      
+      <div className="py-3 bg-background w-full border-t border-border/30">
+        <div className="container mx-auto flex justify-center">
+          <Button variant="outline" onClick={() => setLocation("/")}>
+            Return to Dashboard
+          </Button>
+        </div>
+      </div>
+      
+      {/* Services and connections sections moved below map */}
+      <div className="container mx-auto py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Services</CardTitle>
+              <CardDescription>
+                Services included in this network map
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {mapData.mapData?.services?.length > 0 ? (
+                <div className="space-y-4">
+                  {mapData.mapData.services.map((service: any) => (
+                    <div key={service.id} className="flex items-center justify-between border-b pb-3">
                       <div>
-                        <div className="font-medium">
-                          {source?.name || 'Unknown'} → {target?.name || 'Unknown'}
-                        </div>
-                        <div className="text-sm text-muted-foreground">Connection ID: {connection.id}</div>
+                        <div className="font-medium">{service.name}</div>
+                        <div className="text-sm text-muted-foreground">{service.host}:{service.port}</div>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className={`px-2 py-1 rounded-full text-xs ${
-                          connection.status === "online" ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" :
-                          connection.status === "offline" ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400" :
+                          service.status === "online" ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" :
+                          service.status === "offline" ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400" :
                           "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
                         }`}>
-                          {connection.status}
+                          {service.status}
                         </div>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                No connections in this map
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No services in this map
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Connections</CardTitle>
+              <CardDescription>
+                Connections between services
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {mapData.mapData?.connections?.length > 0 ? (
+                <div className="space-y-4">
+                  {mapData.mapData.connections.map((connection: any) => {
+                    const source = mapData.mapData.services.find((s: any) => s.id === connection.sourceId);
+                    const target = mapData.mapData.services.find((s: any) => s.id === connection.targetId);
+                    
+                    return (
+                      <div key={connection.id} className="flex items-center justify-between border-b pb-3">
+                        <div>
+                          <div className="font-medium">
+                            {source?.name || 'Unknown'} → {target?.name || 'Unknown'}
+                          </div>
+                          <div className="text-sm text-muted-foreground">Connection ID: {connection.id}</div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className={`px-2 py-1 rounded-full text-xs ${
+                            connection.status === "online" ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" :
+                            connection.status === "offline" ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400" :
+                            "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
+                          }`}>
+                            {connection.status}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No connections in this map
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

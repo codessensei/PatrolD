@@ -1214,37 +1214,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type MapDataWithServices = { services: any[], connections: any[] };
         type MapDataWithServiceMapId = { serviceMapId: number };
         
-        // If mapData already contains services and connections arrays
-        if (Array.isArray((map.mapData as MapDataWithServices).services) && 
-            Array.isArray((map.mapData as MapDataWithServices).connections)) {
-          console.log("Using embedded services and connections from mapData");
-          services = (map.mapData as MapDataWithServices).services;
-          connections = (map.mapData as MapDataWithServices).connections;
-        } 
-        // If mapData contains a serviceMapId reference
-        else if ((map.mapData as MapDataWithServiceMapId).serviceMapId) {
-          console.log("Using referenced serviceMap data with ID:", (map.mapData as MapDataWithServiceMapId).serviceMapId);
-          const serviceMap = await storage.getServiceMapById((map.mapData as MapDataWithServiceMapId).serviceMapId);
+        // If mapData contains a serviceMapId reference - PRIORITIZE THIS FIRST
+        if ((map.mapData as MapDataWithServiceMapId).serviceMapId) {
+          const serviceMapId = (map.mapData as MapDataWithServiceMapId).serviceMapId;
+          console.log("Using referenced serviceMap data with ID:", serviceMapId);
+          
+          const serviceMap = await storage.getServiceMapById(serviceMapId);
           if (!serviceMap) {
             return res.status(404).json({ error: "Original service map not found" });
           }
           
           // Get all services for this map
-          const serviceItems = await storage.getServiceMapItems(serviceMap.id);
+          const serviceItems = await storage.getServiceMapItems(serviceMapId);
+          console.log(`Found ${serviceItems.length} service items for map ${serviceMapId}`);
           
-          // Get all service details
-          for (const item of serviceItems) {
-            const service = await storage.getServiceById(item.serviceId);
-            if (service) {
-              services.push({
-                ...service,
-                position: {
-                  x: item.positionX,
-                  y: item.positionY
-                }
-              });
+          // Get all service details with better error handling
+          const servicePromises = serviceItems.map(async (item) => {
+            try {
+              const service = await storage.getServiceById(item.serviceId);
+              if (service) {
+                return {
+                  ...service,
+                  position: {
+                    x: item.positionX,
+                    y: item.positionY
+                  }
+                };
+              }
+            } catch (err) {
+              console.error(`Failed to get service with ID ${item.serviceId}:`, err);
             }
-          }
+            return null;
+          });
+          
+          // Resolve all service promises
+          const serviceResults = await Promise.all(servicePromises);
+          services = serviceResults.filter(s => s !== null);
+          console.log(`Loaded ${services.length} valid services for shared map`);
           
           // Get all connections for the user
           const allConnections = await storage.getConnectionsByUserId(serviceMap.userId);
@@ -1254,6 +1260,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           connections = allConnections.filter(
             c => serviceIds.includes(c.sourceId) && serviceIds.includes(c.targetId)
           );
+          console.log(`Found ${connections.length} connections between services in this map`);
+        }
+        // If mapData already contains services and connections arrays
+        else if (Array.isArray((map.mapData as MapDataWithServices).services) && 
+            Array.isArray((map.mapData as MapDataWithServices).connections)) {
+          console.log("Using embedded services and connections from mapData");
+          services = (map.mapData as MapDataWithServices).services;
+          connections = (map.mapData as MapDataWithServices).connections;
         } else {
           console.log("Using direct mapData object:", Object.keys(map.mapData));
           // Use type casting for typesafety
