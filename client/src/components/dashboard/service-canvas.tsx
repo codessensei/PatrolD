@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Service, Connection, Agent } from "@shared/schema";
+import { Service as BaseService, Connection, Agent } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,8 +19,16 @@ import {
   PlusCircle
 } from "lucide-react";
 
+// Shared map servisleri farklı şekilde pozisyon bilgisine sahip olabilir
+interface ExtendedService extends BaseService {
+  position?: {
+    x: number;
+    y: number;
+  };
+}
+
 interface ServiceCanvasProps {
-  services: Service[];
+  services: ExtendedService[];
   connections: Connection[];
   agents?: any[]; // Adding agents property
   isLoading?: boolean;
@@ -88,12 +96,12 @@ export default function ServiceCanvas({
     services.forEach((service, index) => {
       // Check for position in different formats (supports both direct properties and position object)
       // First check if service has a position object (from shared maps)
-      if (service.position && typeof service.position === 'object' && 
+      if ('position' in service && service.position && typeof service.position === 'object' && 
           'x' in service.position && 'y' in service.position &&
-          (service.position.x !== 0 || service.position.y !== 0)) {
+          ((service.position.x as number) !== 0 || (service.position.y as number) !== 0)) {
         positions[service.id] = {
-          x: service.position.x,
-          y: service.position.y
+          x: service.position.x as number,
+          y: service.position.y as number
         };
       }
       // Then check if service has direct positionX/Y properties

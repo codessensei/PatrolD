@@ -73,34 +73,42 @@ export class TelegramService {
   // Token doğrulama ve chat ID ile ilişkilendirme
   async verifyRegistrationToken(token: string, chatId: string): Promise<number | null> {
     try {
-      // Tüm kullanıcıları getir
-      const allUsers = Array.from(this.storage.users.values());
+      // Veri tabanındaki tüm ayarları (settings) çek ve token ile eşleşeni bul
+      const db = await import('./db');
+      const { eq } = await import('drizzle-orm');
+      const { userSettings } = await import('@shared/schema');
       
-      for (const user of allUsers) {
-        const settings = await this.storage.getUserSettings(user.id);
-        
-        // Token kontrolü yap ve süresinin geçip geçmediğini kontrol et
-        if (settings && 
-            settings.telegramRegistrationToken === token && 
-            settings.telegramTokenExpiry && 
-            new Date(settings.telegramTokenExpiry) > new Date()) {
-          
-          // Token doğruysa, chatId'yi kullanıcı ayarlarına kaydet
-          await this.storage.updateUserSettings({
-            userId: user.id,
-            telegramChatId: chatId,
-            enableTelegramAlerts: true,
-            // Token bilgilerini temizle
-            telegramRegistrationToken: null,
-            telegramTokenExpiry: null
-          });
-          
-          console.log(`User ${user.id} verified with token and linked to chat ID ${chatId}`);
-          return user.id;
-        }
+      // Token ile eşleşen kaydı ara
+      const [foundSetting] = await db.db
+        .select()
+        .from(userSettings)
+        .where(eq(userSettings.telegramRegistrationToken, token));
+
+      if (!foundSetting) {
+        console.log('No user found with the provided token');
+        return null;
       }
       
-      return null;
+      // Token süresini kontrol et
+      if (foundSetting.telegramTokenExpiry && 
+          new Date(foundSetting.telegramTokenExpiry) > new Date()) {
+          
+        // Token doğruysa, chatId'yi kullanıcı ayarlarına kaydet
+        await this.storage.updateUserSettings({
+          userId: foundSetting.userId,
+          telegramChatId: chatId,
+          enableTelegramAlerts: true,
+          // Token bilgilerini temizle
+          telegramRegistrationToken: null,
+          telegramTokenExpiry: null
+        });
+        
+        console.log(`User ${foundSetting.userId} verified with token and linked to chat ID ${chatId}`);
+        return foundSetting.userId;
+      } else {
+        console.log('Token expired or invalid');
+        return null;
+      }
     } catch (error) {
       console.error('Error verifying registration token:', error);
       return null;
@@ -124,7 +132,7 @@ export class TelegramService {
     });
     
     // /register komutu ile web arayüzünden alınan token kullanılarak hesap bağlama
-    this.bot.onText(/\/register (.+)/, async (msg: TelegramMessage, match) => {
+    this.bot.onText(/\/register (.+)/, async (msg: TelegramMessage, match: RegExpExecArray | null) => {
       if (!match || !match[1]) {
         this.bot.sendMessage(msg.chat.id, "❌ Geçersiz komut. Doğru kullanım: /register <token>");
         return;
@@ -325,17 +333,24 @@ export class TelegramService {
   // Chat ID'ye göre kullanıcı bulma veya oluşturma
   private async findOrCreateUserByChatId(chatId: string): Promise<number | null> {
     try {
-      // Tüm kullanıcıları getir ve ayarlarına göre filtreleme yap
-      const allUsers = Array.from(this.storage.users.values());
+      // Veritabanında telegramChatId'ye göre kullanıcı ayarı ara
+      const db = await import('./db');
+      const { eq } = await import('drizzle-orm');
+      const { userSettings } = await import('@shared/schema');
       
-      for (const user of allUsers) {
-        const settings = await this.storage.getUserSettings(user.id);
-        if (settings && settings.telegramChatId === chatId) {
-          return user.id;
-        }
+      // Doğrudan veritabanı sorgusu ile ChatID'ye sahip olan kullanıcıyı bul
+      const [foundSetting] = await db.db
+        .select()
+        .from(userSettings)
+        .where(eq(userSettings.telegramChatId, chatId));
+      
+      if (foundSetting) {
+        console.log(`Found user with ID ${foundSetting.userId} for chat ID ${chatId}`);
+        return foundSetting.userId;
       }
       
       // Eşleşen hesap bulunamadı
+      console.log(`No user found for chat ID ${chatId}`);
       return null;
     } catch (error) {
       console.error('Error finding user by chat ID:', error);
