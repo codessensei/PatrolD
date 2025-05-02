@@ -38,7 +38,12 @@ function Router() {
       </Route>
       <ProtectedRoute path="/service-maps" component={ServiceMapsPage} />
       <ProtectedRoute path="/service-maps/:id" component={ServiceMapDetailPage} />
-      <Route path="/view-map/:shareKey" component={ViewMapPage} />
+      <Route path="/view-map/:shareKey">
+        {(params) => {
+          console.log("View map route accessed with params:", params);
+          return <ViewMapPage />;
+        }}
+      </Route>
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>

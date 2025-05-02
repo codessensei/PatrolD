@@ -267,7 +267,18 @@ export default function ServiceMapsPage() {
   
   // View shared map
   const viewSharedMap = (shareKey: string) => {
-    window.open(`/view-map/${shareKey}`, '_blank');
+    // Use direct navigation instead of opening in a new tab
+    // This helps ensure proper routing
+    if (shareKey) {
+      console.log("Opening shared map with key:", shareKey);
+      setLocation(`/view-map/${shareKey}`);
+    } else {
+      toast({
+        title: "Error",
+        description: "Invalid share key",
+        variant: "destructive"
+      });
+    }
   };
 
   return (

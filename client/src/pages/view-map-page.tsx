@@ -26,14 +26,27 @@ export default function ViewMapPage() {
   } = useQuery({
     queryKey: ["/api/view-map", shareKey],
     queryFn: async () => {
+      if (!shareKey) {
+        throw new Error("Missing share key");
+      }
+      
+      console.log("Fetching map data for shareKey:", shareKey);
       const url = password 
         ? `/api/view-map/${shareKey}?password=${encodeURIComponent(password)}` 
         : `/api/view-map/${shareKey}`;
       
-      const response = await apiRequest("GET", url);
-      return response.json();
+      try {
+        const response = await apiRequest("GET", url);
+        const data = await response.json();
+        console.log("Map data received:", data);
+        return data;
+      } catch (err) {
+        console.error("Error fetching map data:", err);
+        throw err;
+      }
     },
-    retry: false
+    retry: false,
+    enabled: !!shareKey
   });
 
   const isPasswordProtected = useMemo(() => {
