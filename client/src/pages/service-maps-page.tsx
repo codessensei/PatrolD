@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "../lib/queryClient";
-import { ServiceMap, InsertServiceMap, InsertSharedMap } from "@shared/schema";
+import { ServiceMap, InsertServiceMap, InsertSharedMap, SharedMap } from "@shared/schema";
 import Sidebar from "@/components/layout/sidebar";
 import Topbar from "@/components/layout/topbar";
 import { Button } from "@/components/ui/button";
@@ -80,9 +80,15 @@ export default function ServiceMapsPage() {
     serviceMapId: 0
   });
 
-  // Kullanıcının haritalarını getir
+  // Fetch service maps
   const { data: serviceMaps = [], isLoading } = useQuery<ServiceMap[]>({
     queryKey: ["/api/service-maps"],
+    enabled: !!user,
+  });
+  
+  // Fetch shared maps
+  const { data: sharedMaps = [], isLoading: isLoadingSharedMaps } = useQuery<SharedMap[]>({
+    queryKey: ["/api/shared-maps"],
     enabled: !!user,
   });
   
@@ -119,7 +125,7 @@ export default function ServiceMapsPage() {
     },
   });
 
-  // Harita sil
+  // Delete service map
   const deleteMapMutation = useMutation({
     mutationFn: async (id: number) => {
       await apiRequest("DELETE", `/api/service-maps/${id}`);
@@ -140,7 +146,7 @@ export default function ServiceMapsPage() {
     },
   });
 
-  // Haritayı varsayılan olarak işaretle
+  // Set default map
   const setDefaultMapMutation = useMutation({
     mutationFn: async (id: number) => {
       await apiRequest("PUT", `/api/service-maps/${id}/default`);
@@ -161,12 +167,12 @@ export default function ServiceMapsPage() {
     },
   });
 
-  // Haritaya git
+  // Go to map details
   const goToMap = (id: number) => {
     setLocation(`/service-maps/${id}`);
   };
 
-  // Yeni harita oluştur
+  // Create new map
   const handleCreateMap = () => {
     createMapMutation.mutate(newMap);
   };
@@ -177,7 +183,7 @@ export default function ServiceMapsPage() {
       const response = await apiRequest("POST", "/api/shared-maps", data);
       return await response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/shared-maps"] });
       setIsShareDialogOpen(false);
       setSelectedMapForShare(null);
@@ -198,6 +204,27 @@ export default function ServiceMapsPage() {
       toast({
         title: "Failed to share map",
         description: error.message || "An error occurred while sharing the map.",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Delete shared map
+  const deleteSharedMapMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/shared-maps/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/shared-maps"] });
+      toast({
+        title: "Shared map deleted",
+        description: "The shared map has been deleted.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to delete shared map",
+        description: error.message || "An error occurred while deleting the shared map.",
         variant: "destructive",
       });
     },
@@ -227,6 +254,11 @@ export default function ServiceMapsPage() {
       ...shareData,
       mapData: { serviceMapId: selectedMapForShare.id }
     });
+  };
+  
+  // View shared map
+  const viewSharedMap = (shareKey: string) => {
+    window.open(`/view-map/${shareKey}`, '_blank');
   };
 
   return (
@@ -390,140 +422,262 @@ export default function ServiceMapsPage() {
             </Dialog>
           </div>
           
-          {/* Map Content */}
-          <div className="glass-card p-6">
-            {isLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[1, 2, 3].map((i) => (
-                  <Card key={i} className="animate-pulse">
-                    <CardHeader className="bg-muted/30 h-32"></CardHeader>
-                    <CardContent className="pt-6 space-y-3">
-                      <div className="h-4 bg-muted/50 rounded"></div>
-                      <div className="h-3 bg-muted/30 rounded w-3/4"></div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : serviceMaps && serviceMaps.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {serviceMaps.map((map) => (
-                  <Card key={map.id} className="overflow-hidden group hover-card-effect">
-                    <CardHeader className={`relative pb-4`} style={{ background: `${map.color}10` }}>
-                      <div className="absolute top-3 right-3 flex gap-1">
-                        {!!map.isDefault && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <div className="p-1.5 rounded-full bg-background/80 text-green-600 dark:text-green-400">
-                                  <Check size={14} />
-                                </div>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Default Map</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                      </div>
-                      <div className="flex items-center mb-2">
-                        <div className="w-10 h-10 rounded-md flex items-center justify-center mr-3" 
-                          style={{ background: `${map.color}20` }}>
-                          <Map className="h-5 w-5" style={{ color: map.color }} />
-                        </div>
-                        <CardTitle className="text-xl">{map.name}</CardTitle>
-                      </div>
-                      {map.description && (
-                        <CardDescription className="text-sm">
-                          {map.description}
-                        </CardDescription>
-                      )}
-                      
-                      <div className="flex gap-2 mt-4">
-                        {mapItems[map.id]?.serviceItems && (
-                          <Badge variant="secondary" className="flex items-center gap-1.5">
-                            <Globe className="h-3 w-3" />
-                            {mapItems[map.id].serviceItems.length} services
-                          </Badge>
-                        )}
-                        
-                        {mapItems[map.id]?.agentItems && (
-                          <Badge variant="outline" className="flex items-center gap-1.5">
-                            <User className="h-3 w-3" />
-                            {mapItems[map.id].agentItems.length} agents
-                          </Badge>
-                        )}
-                      </div>
-                    </CardHeader>
-                    <CardContent className="pt-4 pb-2">
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="col-span-3">
-                          <Button 
-                            onClick={() => goToMap(map.id)}
-                            variant="default" 
-                            className="w-full" 
-                            size="sm"
-                          >
-                            View Map
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                    <CardFooter className="pt-0">
-                      <div className="flex w-full justify-between text-sm">
-                        <div className="flex gap-3">
-                          {!map.isDefault && (
-                            <button 
-                              onClick={() => setDefaultMapMutation.mutate(map.id)}
-                              className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors flex items-center gap-1"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                              <span>Set default</span>
-                            </button>
+          {/* Tabs Navigation */}
+          <Tabs defaultValue="service-maps" className="mb-6">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="service-maps">Service Maps</TabsTrigger>
+              <TabsTrigger value="shared-maps">Shared Maps</TabsTrigger>
+            </TabsList>
+            
+            {/* Service Maps Tab */}
+            <TabsContent value="service-maps" className="mt-6">
+              <div className="glass-card p-6">
+                {isLoading ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[1, 2, 3].map((i) => (
+                      <Card key={i} className="animate-pulse">
+                        <CardHeader className="bg-muted/30 h-32"></CardHeader>
+                        <CardContent className="pt-6 space-y-3">
+                          <div className="h-4 bg-muted/50 rounded"></div>
+                          <div className="h-3 bg-muted/30 rounded w-3/4"></div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : serviceMaps && serviceMaps.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {serviceMaps.map((map) => (
+                      <Card key={map.id} className="overflow-hidden group hover-card-effect">
+                        <CardHeader className={`relative pb-4`} style={{ background: `${map.color}10` }}>
+                          <div className="absolute top-3 right-3 flex gap-1">
+                            {!!map.isDefault && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="p-1.5 rounded-full bg-background/80 text-green-600 dark:text-green-400">
+                                      <Check size={14} />
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Default Map</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </div>
+                          <div className="flex items-center mb-2">
+                            <div className="w-10 h-10 rounded-md flex items-center justify-center mr-3" 
+                              style={{ background: `${map.color}20` }}>
+                              <Map className="h-5 w-5" style={{ color: map.color }} />
+                            </div>
+                            <CardTitle className="text-xl">{map.name}</CardTitle>
+                          </div>
+                          {map.description && (
+                            <CardDescription className="text-sm">
+                              {map.description}
+                            </CardDescription>
                           )}
-                        </div>
-                        <div className="flex gap-3">
-                          <button 
-                            onClick={() => openShareDialog(map)}
-                            className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors flex items-center gap-1"
-                          >
-                            <Share className="h-3.5 w-3.5" />
-                            <span>Share</span>
-                          </button>
                           
-                          {serviceMaps.length > 1 && !map.isDefault && (
+                          <div className="flex gap-2 mt-4">
+                            {mapItems[map.id]?.serviceItems && (
+                              <Badge variant="secondary" className="flex items-center gap-1.5">
+                                <Globe className="h-3 w-3" />
+                                {mapItems[map.id].serviceItems.length} services
+                              </Badge>
+                            )}
+                            
+                            {mapItems[map.id]?.agentItems && (
+                              <Badge variant="outline" className="flex items-center gap-1.5">
+                                <User className="h-3 w-3" />
+                                {mapItems[map.id].agentItems.length} agents
+                              </Badge>
+                            )}
+                          </div>
+                        </CardHeader>
+                        <CardContent className="pt-4 pb-2">
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="col-span-3">
+                              <Button 
+                                onClick={() => goToMap(map.id)}
+                                variant="default" 
+                                className="w-full" 
+                                size="sm"
+                              >
+                                View Map
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                        <CardFooter className="pt-0">
+                          <div className="flex w-full justify-between text-sm">
+                            <div className="flex gap-3">
+                              {!map.isDefault && (
+                                <button 
+                                  onClick={() => setDefaultMapMutation.mutate(map.id)}
+                                  className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors flex items-center gap-1"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                  <span>Set default</span>
+                                </button>
+                              )}
+                            </div>
+                            <div className="flex gap-3">
+                              <button 
+                                onClick={() => openShareDialog(map)}
+                                className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors flex items-center gap-1"
+                              >
+                                <Share className="h-3.5 w-3.5" />
+                                <span>Share</span>
+                              </button>
+                              
+                              {serviceMaps.length > 1 && !map.isDefault && (
+                                <button 
+                                  onClick={() => deleteMapMutation.mutate(map.id)}
+                                  className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors flex items-center gap-1"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  <span>Delete</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </CardFooter>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center my-12">
+                    <div className="mx-auto w-16 h-16 bg-muted/30 flex items-center justify-center rounded-full mb-4">
+                      <Map className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-xl font-medium mb-2">No service maps yet</h3>
+                    <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                      Create a service map to organize your services and agents into different project views
+                    </p>
+                    <Button 
+                      onClick={() => setIsCreateDialogOpen(true)}
+                      className="glass-button gap-1"
+                    >
+                      <Plus size={16} />
+                      Create Your First Map
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+            
+            {/* Shared Maps Tab */}
+            <TabsContent value="shared-maps" className="mt-6">
+              <div className="glass-card p-6">
+                {isLoadingSharedMaps ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[1, 2, 3].map((i) => (
+                      <Card key={i} className="animate-pulse">
+                        <CardHeader className="bg-muted/30 h-32"></CardHeader>
+                        <CardContent className="pt-6 space-y-3">
+                          <div className="h-4 bg-muted/50 rounded"></div>
+                          <div className="h-3 bg-muted/30 rounded w-3/4"></div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : sharedMaps && sharedMaps.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {sharedMaps.map((map) => (
+                      <Card key={map.id} className="overflow-hidden group hover-card-effect">
+                        <CardHeader className="relative pb-4 bg-gradient-to-br from-slate-200/10 to-slate-300/10 dark:from-slate-800/10 dark:to-slate-900/10">
+                          <div className="absolute top-3 right-3 flex gap-1">
+                            {map.isPublished && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="p-1.5 rounded-full bg-background/80 text-green-600 dark:text-green-400">
+                                      <Globe size={14} />
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Public Map</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                            {map.isPasswordProtected && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="p-1.5 rounded-full bg-background/80 text-amber-600 dark:text-amber-400">
+                                      <Lock size={14} />
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Password Protected</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </div>
+                          <div className="flex items-center mb-2">
+                            <div className="w-10 h-10 rounded-md flex items-center justify-center mr-3 bg-slate-200/20 dark:bg-slate-800/20">
+                              <Share size={18} className="text-primary" />
+                            </div>
+                            <CardTitle className="text-xl">{map.title}</CardTitle>
+                          </div>
+                          {map.description && (
+                            <CardDescription className="text-sm">
+                              {map.description}
+                            </CardDescription>
+                          )}
+                          
+                          <div className="flex gap-2 mt-4">
+                            <Badge variant="secondary" className="flex items-center gap-1.5">
+                              <Share className="h-3 w-3" />
+                              Share key: {map.shareKey.substring(0, 6)}...
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="pt-4 pb-2">
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="col-span-3">
+                              <Button 
+                                onClick={() => viewSharedMap(map.shareKey)}
+                                variant="default" 
+                                className="w-full flex items-center gap-2" 
+                                size="sm"
+                              >
+                                <ExternalLink size={14} />
+                                View Shared Map
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                        <CardFooter className="pt-0">
+                          <div className="flex w-full justify-end text-sm">
                             <button 
-                              onClick={() => deleteMapMutation.mutate(map.id)}
+                              onClick={() => deleteSharedMapMutation.mutate(map.id)}
                               className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors flex items-center gap-1"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                               <span>Delete</span>
                             </button>
-                          )}
-                        </div>
-                      </div>
-                    </CardFooter>
-                  </Card>
-                ))}
+                          </div>
+                        </CardFooter>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center my-12">
+                    <div className="mx-auto w-16 h-16 bg-muted/30 flex items-center justify-center rounded-full mb-4">
+                      <Share className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-xl font-medium mb-2">No shared maps yet</h3>
+                    <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                      Share your service maps with others by going to a map and clicking the "Share" button
+                    </p>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="text-center my-12">
-                <div className="mx-auto w-16 h-16 bg-muted/30 flex items-center justify-center rounded-full mb-4">
-                  <Map className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-xl font-medium mb-2">No service maps yet</h3>
-                <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                  Create a service map to organize your services and agents into different project views
-                </p>
-                <Button 
-                  onClick={() => setIsCreateDialogOpen(true)}
-                  className="glass-button gap-1"
-                >
-                  <Plus size={16} />
-                  Create Your First Map
-                </Button>
-              </div>
-            )}
-          </div>
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
     </div>
