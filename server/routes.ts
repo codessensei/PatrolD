@@ -1254,9 +1254,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Add a catch-all GET route for SPA client-side routing
   // This needs to come AFTER all other defined API routes
-  app.get('/view-map/*', (req, res) => {
+  app.get('/view-map*', (req, res) => {
     // For any client-side route like /view-map/:shareKey, serve the index.html
     res.sendFile(path.resolve(process.cwd(), './client/index.html'));
+  });
+  
+  // Add all other valid routes for SPA
+  const spaRoutes = ['/service-maps*', '/services*', '/agents*', '/alerts*', '/history*', '/settings*'];
+  spaRoutes.forEach(route => {
+    app.get(route, (req, res) => {
+      res.sendFile(path.resolve(process.cwd(), './client/index.html'));
+    });
   });
   
   const httpServer = createServer(app);
