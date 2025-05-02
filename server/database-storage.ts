@@ -15,6 +15,7 @@ import { db, pool } from "./db";
 import { eq, desc, and, lte, gte, ne } from "drizzle-orm";
 import connectPg from "connect-pg-simple";
 import session from "express-session";
+import { randomBytes } from "crypto";
 
 // Define our session store type to avoid SessionStore errors
 type SessionStore = session.Store;
@@ -168,7 +169,19 @@ export class DatabaseStorage implements IStorage {
   }
   
   async createAgent(agent: InsertAgent): Promise<Agent> {
-    const [createdAgent] = await db.insert(agents).values(agent).returning();
+    // Generate a unique API key
+    const apiKey = `agent_${randomBytes(8).toString('hex')}`;
+    
+    // Insert with complete type-safe values
+    const [createdAgent] = await db.insert(agents).values({
+      name: agent.name,
+      userId: agent.userId,
+      apiKey,
+      description: agent.description,
+      status: agent.status,
+      serverInfo: agent.serverInfo
+    }).returning();
+    
     return createdAgent;
   }
   
@@ -250,6 +263,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createSharedMap(map: InsertSharedMap): Promise<SharedMap> {
+    // Generate a unique share key if not provided
+    if (!map.shareKey || map.shareKey.trim() === '') {
+      map = {
+        ...map,
+        shareKey: `share_${randomBytes(8).toString('hex')}`
+      };
+    }
+    
     const [createdMap] = await db.insert(sharedMaps).values(map).returning();
     return createdMap;
   }
