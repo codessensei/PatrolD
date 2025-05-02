@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Service, Connection, Agent } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -124,17 +125,22 @@ export default function ServiceCanvas({
       
       // First we need to get the service map item ID
       const response = await apiRequest("GET", `/api/service-maps/${serviceMapId}/items`);
-      const items = await response.json();
+      const itemsData = await response.json();
       
       // Find the service map item for this service
-      const item = items.find((item: any) => item.serviceId === serviceId);
+      const item = itemsData.serviceItems.find((item: any) => item.serviceId === serviceId);
       if (!item) {
         console.error(`No service map item found for service ${serviceId} in map ${serviceMapId}`);
         return;
       }
       
-      // Update the position
-      await apiRequest("PUT", `/api/service-map-items/${item.id}/position`, { x, y });
+      // Update the position using the correct endpoint with expected format
+      await apiRequest("PUT", `/api/service-maps/${serviceMapId}/items/${item.id}/position`, { 
+        position: { x, y }
+      });
+      
+      // Invalidate queries to refresh the map data
+      queryClient.invalidateQueries({ queryKey: [`/api/service-maps/${serviceMapId}/items`] });
     },
     onError: (error) => {
       toast({
