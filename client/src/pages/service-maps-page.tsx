@@ -467,8 +467,8 @@ export default function ServiceMapsPage() {
                           </div>
                           <div className="flex items-center mb-2">
                             <div className="w-10 h-10 rounded-md flex items-center justify-center mr-3" 
-                              style={{ background: `${map.color}20` }}>
-                              <Map className="h-5 w-5" style={{ color: map.color }} />
+                              style={{ background: `${map.color || '#4f46e5'}20` }}>
+                              <Map className="h-5 w-5" style={{ color: map.color || '#4f46e5' }} />
                             </div>
                             <CardTitle className="text-xl">{map.name}</CardTitle>
                           </div>
