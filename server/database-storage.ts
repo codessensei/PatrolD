@@ -12,7 +12,7 @@ import {
 } from "@shared/schema";
 import { IStorage } from "./storage";
 import { db, pool } from "./db";
-import { eq, desc, and, lte, gte } from "drizzle-orm";
+import { eq, desc, and, lte, gte, ne } from "drizzle-orm";
 import connectPg from "connect-pg-simple";
 import session from "express-session";
 
@@ -377,14 +377,14 @@ export class DatabaseStorage implements IStorage {
     
     if (map?.isDefault) {
       // Find another map to set as default
-      const [otherMap] = await db
+      const maps = await db
         .select()
         .from(serviceMaps)
-        .where(and(
-          eq(serviceMaps.userId, map.userId),
-          ne(serviceMaps.id, id) // Not equal to the map being deleted
-        ))
-        .limit(1);
+        .where(eq(serviceMaps.userId, map.userId));
+      
+      // Filter out the map being deleted in JavaScript
+      const otherMaps = maps.filter(m => m.id !== id);
+      const otherMap = otherMaps.length > 0 ? otherMaps[0] : null;
       
       if (otherMap) {
         // Set another map as default
