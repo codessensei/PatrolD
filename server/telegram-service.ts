@@ -316,16 +316,66 @@ export class TelegramService {
 
   // Kullanıcıya bildirim gönderme
   async sendNotification(userId: number, message: string) {
-    if (!this.bot) return;
+    if (!this.bot) {
+      console.error("Bot instance is not initialized");
+      return false;
+    }
     
     try {
+      console.log(`Attempting to send notification to user ${userId}`);
+      
       // Kullanıcının Telegram Chat ID'sini bul
       const settings = await this.storage.getUserSettings(userId);
+      console.log(`User settings:`, settings ? {
+        userId: settings.userId,
+        enableTelegramAlerts: settings.enableTelegramAlerts,
+        telegramChatId: settings.telegramChatId
+      } : "No settings found");
       
-      if (settings && settings.enableTelegramAlerts && settings.telegramChatId) {
+      if (settings && settings.telegramChatId) {
+        // Bildirim özelliği kapalıysa otomatik olarak aç
+        if (!settings.enableTelegramAlerts) {
+          console.log(`Enabling Telegram alerts for user ${userId}`);
+          await this.storage.updateUserSettings({
+            userId,
+            enableTelegramAlerts: true
+          });
+        }
+        
+        // Her ihtimale karşı chatId'yi chat idsToNotify listesine ekle
+        this.chatIdsToNotify.add(settings.telegramChatId);
+        
+        // Mesajı gönder
+        console.log(`Sending Telegram message to chat ID: ${settings.telegramChatId}`);
+        console.log(`Message content: ${message}`);
         await this.bot.sendMessage(settings.telegramChatId, message);
-        console.log(`Telegram notification sent to user ${userId}`);
+        console.log(`Telegram notification successfully sent to user ${userId}`);
         return true;
+      } else if (settings) {
+        // Chat ID yoksa ama ayarlar varsa - bu durumda admin hesabına ata
+        console.log(`User ${userId} has settings but no telegramChatId, updating settings with default chat ID`);
+        
+        // chatIdsToNotify setinden ilk chat ID'yi al ve kullan
+        if (this.chatIdsToNotify.size > 0) {
+          const chatId = Array.from(this.chatIdsToNotify)[0];
+          
+          // Ayarları güncelle
+          await this.storage.updateUserSettings({
+            userId,
+            telegramChatId: chatId,
+            enableTelegramAlerts: true
+          });
+          
+          // Mesajı gönder
+          console.log(`Sending Telegram message to fallback chat ID: ${chatId}`);
+          await this.bot.sendMessage(chatId, message);
+          console.log(`Telegram notification sent to fallback chat ID for user ${userId}`);
+          return true;
+        } else {
+          console.error(`No chat IDs in the notification list for user ${userId}`);
+        }
+      } else {
+        console.error(`No user settings found for user ${userId}`);
       }
     } catch (error) {
       console.error(`Failed to send Telegram notification to user ${userId}:`, error);
