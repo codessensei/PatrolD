@@ -1172,143 +1172,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Public endpoint to view a shared map via its share key
   app.get("/api/view-map/:shareKey", async (req, res) => {
-    console.log("View map API called with shareKey:", req.params.shareKey);
     const shareKey = req.params.shareKey;
     
-    try {
-      const map = await storage.getSharedMapByShareKey(shareKey);
-      if (!map) {
-        console.log("Shared map not found for key:", shareKey);
-        return res.status(404).json({ error: "Shared map not found" });
-      }
-      
-      console.log("Found shared map:", map.title, "ID:", map.id);
-      
-      // If the map is password protected and no password provided, return limited data
-      if (map.isPasswordProtected && !req.query.password) {
-        console.log("Password protection active, no password provided");
-        return res.status(200).json({
-          id: map.id,
-          title: map.title,
-          description: map.description,
-          isPasswordProtected: true,
-          viewCount: map.viewCount,
-          createdAt: map.createdAt,
-          updatedAt: map.updatedAt,
-          isPublished: map.isPublished
+    const map = await storage.getSharedMapByShareKey(shareKey);
+    if (!map) {
+      return res.status(404).json({ error: "Shared map not found" });
+    }
+    
+    // If the map is password protected and no password provided, return limited data
+    if (map.isPasswordProtected && !req.query.password) {
+      return res.status(200).json({
+        id: map.id,
+        title: map.title,
+        description: map.description,
+        isPasswordProtected: true,
+        viewCount: map.viewCount,
+        createdAt: map.createdAt,
+        updatedAt: map.updatedAt,
+        isPublished: map.isPublished
+      });
+    }
+    
+    // If the map is password protected, verify the password
+    if (map.isPasswordProtected && req.query.password !== map.password) {
+      return res.status(401).json({ error: "Invalid password" });
+    }
+    
+    // Increment the view count
+    const updatedMap = await storage.incrementSharedMapViewCount(map.id);
+    
+    // Get the actual service map associated with this shared map
+    // Cast to known type structure with serviceMapId
+    type MapData = { serviceMapId: number };
+    const mapData = map.mapData as unknown as MapData;
+    
+    if (!mapData || typeof mapData !== 'object' || !mapData.serviceMapId) {
+      return res.status(404).json({ error: "Invalid map data" });
+    }
+    
+    const serviceMap = await storage.getServiceMapById(mapData.serviceMapId);
+    if (!serviceMap) {
+      return res.status(404).json({ error: "Original service map not found" });
+    }
+    
+    // Get all services for this map
+    const serviceItems = await storage.getServiceMapItems(serviceMap.id);
+    const services = [];
+    
+    // Get all service details
+    for (const item of serviceItems) {
+      const service = await storage.getServiceById(item.serviceId);
+      if (service) {
+        services.push({
+          ...service,
+          position: {
+            x: item.positionX,
+            y: item.positionY
+          }
         });
       }
-      
-      // If the map is password protected, verify the password
-      if (map.isPasswordProtected && req.query.password !== map.password) {
-        console.log("Invalid password provided");
-        return res.status(401).json({ error: "Invalid password" });
-      }
-      
-      console.log("Password valid or not required, proceeding to fetch map data");
-      
-      // Increment the view count
-      const updatedMap = await storage.incrementSharedMapViewCount(map.id);
-      
-      // Get the actual service map associated with this shared map
-      // Cast to known type structure with serviceMapId
-      type MapData = { serviceMapId: number };
-      const mapData = map.mapData as unknown as MapData;
-      
-      if (!mapData || typeof mapData !== 'object' || !mapData.serviceMapId) {
-        console.log("Invalid map data found:", mapData);
-        return res.status(404).json({ error: "Invalid map data" });
-      }
-      
-      console.log("Service map ID from mapData:", mapData.serviceMapId);
-      
-      const serviceMap = await storage.getServiceMapById(mapData.serviceMapId);
-      if (!serviceMap) {
-        console.log("Original service map not found:", mapData.serviceMapId);
-        return res.status(404).json({ error: "Original service map not found" });
-      }
-      
-      console.log("Found service map:", serviceMap.name);
-      
-      // Get all services for this map
-      const serviceItems = await storage.getServiceMapItems(serviceMap.id);
-      console.log("Service items count:", serviceItems.length);
-      const services = [];
-      
-      // Get all service details
-      for (const item of serviceItems) {
-        const service = await storage.getServiceById(item.serviceId);
-        if (service) {
-          services.push({
-            ...service,
-            position: {
-              x: item.positionX,
-              y: item.positionY
-            }
-          });
-        }
-      }
-      
-      console.log("Services processed:", services.length);
-      
-      // Get all connections for the user
-      const allConnections = await storage.getConnectionsByUserId(serviceMap.userId);
-      console.log("All user connections:", allConnections.length);
-      
-      // Filter connections that are between services in this map
-      const serviceIds = services.map(s => s.id);
-      const connections = allConnections.filter(
-        c => serviceIds.includes(c.sourceId) && serviceIds.includes(c.targetId)
-      );
-      
-      console.log("Filtered connections:", connections.length);
-      
-      // Return the full map data with services and connections
-      const responseData = {
-        ...updatedMap,
-        mapData: {
-          services,
-          connections
-        }
-      };
-      
-      console.log("Sending complete map data");
-      res.status(200).json(responseData);
-      
-    } catch (error) {
-      console.error("Error in view-map API:", error);
-      res.status(500).json({ error: "An error occurred while retrieving the map data" });
     }
+    
+    // Get all connections for the user
+    const allConnections = await storage.getConnectionsByUserId(serviceMap.userId);
+    
+    // Filter connections that are between services in this map
+    const serviceIds = services.map(s => s.id);
+    const connections = allConnections.filter(
+      c => serviceIds.includes(c.sourceId) && serviceIds.includes(c.targetId)
+    );
+    
+    // Return the full map data with services and connections
+    res.status(200).json({
+      ...updatedMap,
+      mapData: {
+        services,
+        connections
+      }
+    });
   });
 
-  // Add specific route for view-map to ensure it's handled correctly
-  app.get('/view-map/:shareKey', (req, res) => {
-    console.log(`View map route accessed directly with shareKey: ${req.params.shareKey}`);
+  // Add a catch-all GET route for SPA client-side routing
+  // This needs to come AFTER all other defined API routes
+  app.get('/view-map*', (req, res) => {
+    // For any client-side route like /view-map/:shareKey, serve the index.html
     res.sendFile(path.resolve(process.cwd(), './client/index.html'));
   });
   
-  // Test route to check if basic serving works
-  app.get('/test', (req, res) => {
-    console.log('Test route accessed');
-    res.sendFile(path.resolve(process.cwd(), './client/test-app.html'));
-  });
-
-  // Add a general catch-all route for other SPA client-side routing
-  // This needs to come AFTER all other defined API routes
-  app.get(['/',
-    '/auth*',
-    '/service-maps*', 
-    '/services*', 
-    '/agents*', 
-    '/alerts*', 
-    '/history*', 
-    '/settings*'
-  ], (req, res) => {
-    // Log the request path to help with debugging
-    console.log(`SPA route accessed: ${req.path}`);
-    
-    // For any client-side route, serve the index.html
-    res.sendFile(path.resolve(process.cwd(), './client/index.html'));
+  // Add all other valid routes for SPA
+  const spaRoutes = ['/service-maps*', '/services*', '/agents*', '/alerts*', '/history*', '/settings*'];
+  spaRoutes.forEach(route => {
+    app.get(route, (req, res) => {
+      res.sendFile(path.resolve(process.cwd(), './client/index.html'));
+    });
   });
   
   const httpServer = createServer(app);

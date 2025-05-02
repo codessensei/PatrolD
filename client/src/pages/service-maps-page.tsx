@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Pencil, Trash2, Globe, Map, Share, ExternalLink, User, Check, Lock, AlertTriangle } from "lucide-react";
+import { Plus, Pencil, Trash2, Globe, Map, Share, ExternalLink, User, Check, Lock } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -7,7 +7,6 @@ import { queryClient, apiRequest } from "../lib/queryClient";
 import { ServiceMap, InsertServiceMap, InsertSharedMap, SharedMap } from "@shared/schema";
 import Sidebar from "@/components/layout/sidebar";
 import Topbar from "@/components/layout/topbar";
-import ServiceCanvas from "@/components/dashboard/service-canvas";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -18,7 +17,6 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useLocation } from "wouter";
 
 // Type for map items
@@ -267,83 +265,19 @@ export default function ServiceMapsPage() {
     });
   };
   
-  // State for viewing shared map in modal
-  const [viewingMap, setViewingMap] = useState<SharedMap | null>(null);
-  const [mapPassword, setMapPassword] = useState("");
-  const [mapData, setMapData] = useState<any | null>(null);
-  const [isMapLoading, setIsMapLoading] = useState(false);
-  const [mapError, setMapError] = useState<string | null>(null);
-
   // View shared map
-  const viewSharedMap = async (shareKey: string) => {
-    if (!shareKey) {
+  const viewSharedMap = (shareKey: string) => {
+    // Use direct navigation instead of opening in a new tab
+    // This helps ensure proper routing
+    if (shareKey) {
+      console.log("Opening shared map with key:", shareKey);
+      setLocation(`/view-map/${shareKey}`);
+    } else {
       toast({
         title: "Error",
         description: "Invalid share key",
         variant: "destructive"
       });
-      return;
-    }
-
-    // Find map in our existing shared maps
-    const map = sharedMaps.find(m => m.shareKey === shareKey);
-    if (map) {
-      setViewingMap(map);
-      setMapPassword("");
-      setMapData(null);
-      setMapError(null);
-      
-      // If not password protected, fetch data immediately
-      if (!map.isPasswordProtected) {
-        fetchMapData(shareKey);
-      }
-    } else {
-      toast({
-        title: "Error",
-        description: "Map not found",
-        variant: "destructive"
-      });
-    }
-  };
-  
-  // Fetch map data
-  const fetchMapData = async (shareKey: string, password?: string) => {
-    setIsMapLoading(true);
-    setMapError(null);
-    
-    try {
-      const url = password 
-        ? `/api/view-map/${shareKey}?password=${encodeURIComponent(password)}` 
-        : `/api/view-map/${shareKey}`;
-      
-      const response = await fetch(url);
-      const data = await response.json();
-      
-      if (response.ok) {
-        if (data.error) {
-          setMapError(data.error);
-        } else if (data.isPasswordProtected && !data.mapData) {
-          // Still need password
-          setMapData(null);
-        } else {
-          // Successfully got map data
-          setMapData(data);
-        }
-      } else {
-        setMapError(data.error || "Failed to load map data");
-      }
-    } catch (err) {
-      setMapError("An error occurred while loading the map");
-      console.error(err);
-    } finally {
-      setIsMapLoading(false);
-    }
-  };
-  
-  // Handle submit password
-  const handleSubmitPassword = () => {
-    if (viewingMap && viewingMap.shareKey) {
-      fetchMapData(viewingMap.shareKey, mapPassword);
     }
   };
 
@@ -764,158 +698,6 @@ export default function ServiceMapsPage() {
               </div>
             </TabsContent>
           </Tabs>
-          
-          {/* View Shared Map Dialog */}
-          <Dialog open={!!viewingMap} onOpenChange={(open) => !open && setViewingMap(null)}>
-            <DialogContent className="max-w-4xl w-full">
-              <DialogHeader>
-                <DialogTitle>{viewingMap?.title || "View Shared Map"}</DialogTitle>
-                <DialogDescription>
-                  {viewingMap?.description || "Viewing shared service map"}
-                </DialogDescription>
-              </DialogHeader>
-              
-              {isMapLoading ? (
-                <div className="py-12">
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
-                  </div>
-                </div>
-              ) : mapError ? (
-                <div className="py-8">
-                  <Alert variant="destructive">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>Error</AlertTitle>
-                    <AlertDescription>{mapError}</AlertDescription>
-                  </Alert>
-                </div>
-              ) : viewingMap && viewingMap.isPasswordProtected && !mapData ? (
-                <div className="py-8 space-y-4">
-                  <Card className="border-primary/20">
-                    <CardContent className="pt-6 space-y-4">
-                      <div className="flex justify-center pb-4">
-                        <div className="bg-primary/10 p-3 rounded-full">
-                          <Lock className="h-6 w-6 text-primary" />
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="map-password">Enter Password</Label>
-                          <Input
-                            id="map-password"
-                            type="password"
-                            placeholder="Enter map password"
-                            value={mapPassword}
-                            onChange={(e) => setMapPassword(e.target.value)}
-                          />
-                        </div>
-                        <Button className="w-full" onClick={handleSubmitPassword}>
-                          View Map
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              ) : mapData ? (
-                <div className="py-4 space-y-6">
-                  {/* Map Canvas */}
-                  <div className="relative h-[400px] border rounded-md overflow-hidden">
-                    {mapData?.mapData?.services && mapData?.mapData?.connections && (
-                      <ServiceCanvas 
-                        services={mapData.mapData.services} 
-                        connections={mapData.mapData.connections}
-                        agents={[]}
-                        onAddService={() => {}} // Empty function since this is view-only mode
-                        isLoading={false}
-                      />
-                    )}
-                  </div>
-                  
-                  {/* Services & Connections Summary */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-base">Services</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {mapData.mapData?.services?.length > 0 ? (
-                          <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2">
-                            {mapData.mapData.services.map((service: any) => (
-                              <div key={service.id} className="flex items-center justify-between border-b pb-2">
-                                <div>
-                                  <div className="font-medium">{service.name}</div>
-                                  <div className="text-xs text-muted-foreground">{service.host}</div>
-                                </div>
-                                <Badge className={
-                                  service.status === "online" ? "bg-green-600" : 
-                                  service.status === "offline" ? "bg-red-600" : 
-                                  "bg-yellow-600"
-                                }>
-                                  {service.status}
-                                </Badge>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-center py-4 text-muted-foreground">
-                            No services in this map
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                    
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-base">Connections</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {mapData.mapData?.connections?.length > 0 ? (
-                          <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2">
-                            {mapData.mapData.connections.map((connection: any) => {
-                              const source = mapData.mapData.services.find((s: any) => s.id === connection.sourceId);
-                              const target = mapData.mapData.services.find((s: any) => s.id === connection.targetId);
-                              
-                              return (
-                                <div key={connection.id} className="flex items-center justify-between border-b pb-2">
-                                  <div>
-                                    <div className="font-medium">
-                                      {source?.name || 'Unknown'} → {target?.name || 'Unknown'}
-                                    </div>
-                                  </div>
-                                  <Badge className={
-                                    connection.status === "online" ? "bg-green-600" : 
-                                    connection.status === "offline" ? "bg-red-600" : 
-                                    "bg-yellow-600"
-                                  }>
-                                    {connection.status}
-                                  </Badge>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <div className="text-center py-4 text-muted-foreground">
-                            No connections in this map
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </div>
-                </div>
-              ) : (
-                <div className="py-8 text-center text-muted-foreground">
-                  No map data available
-                </div>
-              )}
-              
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setViewingMap(null)}>
-                  Close
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
         </div>
       </main>
     </div>

@@ -11,6 +11,7 @@ import AlertsPage from "@/pages/alerts-page";
 import HistoryPage from "@/pages/history-page";
 import SettingsPage from "@/pages/settings-page";
 import AgentsPage from "@/pages/agents-page";
+import SharedMapsPage from "@/pages/shared-maps-page";
 import ViewMapPage from "@/pages/view-map-page";
 import ServiceMapsPage from "@/pages/service-maps-page";
 import ServiceMapDetailPage from "@/pages/service-map-detail-page";
@@ -30,13 +31,19 @@ function Router() {
       <Route path="/shared-maps">
         {() => {
           // Redirect from /shared-maps to /service-maps with 'shared-maps' tab pre-selected
+          console.log("Redirecting from /shared-maps to /service-maps");
           window.location.href = "/service-maps#shared-maps";
           return null;
         }}
       </Route>
       <ProtectedRoute path="/service-maps" component={ServiceMapsPage} />
       <ProtectedRoute path="/service-maps/:id" component={ServiceMapDetailPage} />
-      <Route path="/view-map/:shareKey" component={ViewMapPage} />
+      <Route path="/view-map/:shareKey">
+        {(params) => {
+          console.log("View map route accessed with params:", params);
+          return <ViewMapPage />;
+        }}
+      </Route>
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>
@@ -44,6 +51,7 @@ function Router() {
 }
 
 function App() {
+  console.log("App component rendering");
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
