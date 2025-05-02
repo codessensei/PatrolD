@@ -1228,7 +1228,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Original service map not found" });
       }
       
-      console.log("Found service map:", serviceMap.title);
+      console.log("Found service map:", serviceMap.name);
       
       // Get all services for this map
       const serviceItems = await storage.getServiceMapItems(serviceMap.id);
@@ -1281,11 +1281,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Add a general catch-all route for SPA client-side routing
+  // Add specific route for view-map to ensure it's handled correctly
+  app.get('/view-map/:shareKey', (req, res) => {
+    console.log(`View map route accessed directly with shareKey: ${req.params.shareKey}`);
+    res.sendFile(path.resolve(process.cwd(), './client/index.html'));
+  });
+
+  // Add a general catch-all route for other SPA client-side routing
   // This needs to come AFTER all other defined API routes
   app.get(['/',
     '/auth*',
-    '/view-map*',
     '/service-maps*', 
     '/services*', 
     '/agents*', 
