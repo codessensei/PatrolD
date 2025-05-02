@@ -276,6 +276,14 @@ async function checkService(storage: IStorage, service: Service) {
 // Servis durum değişikliği için uyarı oluştur ve bildirim gönder
 export async function createStatusChangeAlert(storage: IStorage, service: Service, oldStatus: string, newStatus: string) {
   try {
+    console.log(`Creating status change alert for service ${service.id} (${service.name}): ${oldStatus} -> ${newStatus}`);
+    
+    // Basit kontroller - eski ve yeni durum aynı ise bildirim gönderme
+    if (oldStatus === newStatus) {
+      console.log(`Status didn't change (${oldStatus} -> ${newStatus}), skipping notification`);
+      return null;
+    }
+    
     // Duruma göre alert tipini belirle
     let alertType = 'status_change';
     let message = `Service ${service.name} changed status from ${oldStatus} to ${newStatus}`;
@@ -291,7 +299,9 @@ export async function createStatusChangeAlert(storage: IStorage, service: Servic
       message = `Service ${service.name} is experiencing performance issues`;
     }
     
-    // Alert oluştur
+    // Alert oluştur ve veritabanına kaydet
+    console.log(`Creating alert in database: ${alertType} - ${message}`);
+    
     const alert = await storage.createAlert({
       userId: service.userId,
       serviceId: service.id,
@@ -300,8 +310,12 @@ export async function createStatusChangeAlert(storage: IStorage, service: Servic
       timestamp: new Date()
     });
     
+    console.log(`Alert created successfully with ID: ${alert ? alert.id : 'unknown'}`);
+    
     // Telegram üzerinden bildirim gönder
     if (telegramService) {
+      console.log(`Sending Telegram notification for service ${service.id} (${service.name})`);
+      
       try {
         const statusEmoji = 
           newStatus === 'online' ? '✅' : 
@@ -312,17 +326,47 @@ export async function createStatusChangeAlert(storage: IStorage, service: Servic
           oldStatus === 'online' ? '✅' : 
           oldStatus === 'offline' ? '❌' : 
           oldStatus === 'degraded' ? '⚠️' : '❓';
+        
+        // Daha dikkat çekici başlıklar kullan  
+        let alertTitleEmoji = '';
+        let alertTitle = '';
+        
+        if (newStatus === 'online' && (oldStatus === 'offline' || oldStatus === 'unknown')) {
+          alertTitleEmoji = '🟢';
+          alertTitle = 'SERVİS TEKRAR ÇALIŞIYOR';
+        } else if (newStatus === 'offline') {
+          alertTitleEmoji = '🔴';
+          alertTitle = 'SERVİS ÇALIŞMIYOR';
+        } else if (newStatus === 'degraded') {
+          alertTitleEmoji = '🟠';
+          alertTitle = 'SERVİS YAVAŞLAMASI';
+        } else {
+          alertTitleEmoji = '🔄';
+          alertTitle = 'SERVİS DURUM DEĞİŞİKLİĞİ';
+        }
           
-        const message = 
-          `${statusEmoji} SERVİS DURUM DEĞİŞİKLİĞİ\n\n` +
-          `${service.name} (${service.host}:${service.port})\n` +
-          `${oldStatusEmoji} ${oldStatus.toUpperCase()} → ${statusEmoji} ${newStatus.toUpperCase()}\n\n` +
+        const notificationMessage = 
+          `${alertTitleEmoji} ${alertTitle}\n\n` +
+          `Servis: ${service.name}\n` +
+          `Adres: ${service.host}:${service.port}\n` +
+          `Değişim: ${oldStatusEmoji} ${oldStatus.toUpperCase()} → ${statusEmoji} ${newStatus.toUpperCase()}\n\n` +
           `Zaman: ${new Date().toLocaleString()}`;
         
-        await telegramService.sendNotification(service.userId, message);
+        console.log(`Notification message: ${notificationMessage}`);
+        console.log(`Sending to user ID: ${service.userId}`);
+        
+        // Hem doğrudan göndermeyi dene hem de aracı hizmeti kullan
+        const notificationSent = await telegramService.sendNotification(service.userId, notificationMessage);
+        console.log(`Notification sent: ${notificationSent}`);
+        
+        // Yedek olarak notifyServiceStatusChange metodunu da çağır
+        await telegramService.notifyServiceStatusChange(service, oldStatus, newStatus);
+        console.log(`Backup notification method also called`);
       } catch (error) {
         console.error(`Error sending Telegram notification for service ${service.id}:`, error);
       }
+    } else {
+      console.error(`Telegram service is not initialized, cannot send notification`);
     }
     
     return alert;
