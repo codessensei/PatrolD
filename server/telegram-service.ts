@@ -24,10 +24,10 @@ type TelegramMessage = {
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 // Singleton pattern to avoid multiple bot instances
-let botInstance: TelegramBot | null = null;
+let botInstance: any | null = null;
 
 export class TelegramService {
-  private bot: TelegramBot | null = null;
+  private bot: any | null = null;
   private storage: IStorage;
   private chatIdsToNotify: Set<string> = new Set();
   private static instance: TelegramService | null = null;
@@ -114,6 +114,16 @@ export class TelegramService {
       const { userSettings } = await import('@shared/schema');
       
       // Token ile eşleşen kaydı ara
+      console.log(`Verifying registration token: ${token} for chat ID: ${chatId}`);
+      
+      // Tüm settings'leri logla (debug)
+      const allSettings = await db.db.select().from(userSettings);
+      console.log('All settings:', allSettings.map(s => ({ 
+        userId: s.userId, 
+        token: s.telegramRegistrationToken,
+        expiry: s.telegramTokenExpiry
+      })));
+      
       const [foundSetting] = await db.db
         .select()
         .from(userSettings)
@@ -124,21 +134,29 @@ export class TelegramService {
         return null;
       }
       
+      console.log('Found setting with token:', foundSetting);
+      
       // Token süresini kontrol et
       if (foundSetting.telegramTokenExpiry && 
           new Date(foundSetting.telegramTokenExpiry) > new Date()) {
+          
+        console.log(`Token valid until ${foundSetting.telegramTokenExpiry}, proceeding with registration`);
           
         // Token doğruysa, chatId'yi kullanıcı ayarlarına kaydet
         await this.storage.updateUserSettings({
           userId: foundSetting.userId,
           telegramChatId: chatId,
-          enableTelegramAlerts: true,
+          enableTelegramAlerts: true, 
           // Token bilgilerini temizle
           telegramRegistrationToken: null,
           telegramTokenExpiry: null
         });
         
         console.log(`User ${foundSetting.userId} verified with token and linked to chat ID ${chatId}`);
+        
+        // chatIdsToNotify setine chatId'yi ekleyin
+        this.chatIdsToNotify.add(chatId);
+        
         return foundSetting.userId;
       } else {
         console.log('Token expired or invalid');
@@ -373,6 +391,16 @@ export class TelegramService {
       const { eq } = await import('drizzle-orm');
       const { userSettings } = await import('@shared/schema');
       
+      console.log(`Looking for user settings with chatId: ${chatId}`);
+      
+      // Log all user settings for debugging
+      const allSettings = await db.db.select().from(userSettings);
+      console.log('All user settings:', allSettings.map(s => ({
+        userId: s.userId,
+        chatId: s.telegramChatId,
+        enabled: s.enableTelegramAlerts
+      })));
+      
       // Doğrudan veritabanı sorgusu ile ChatID'ye sahip olan kullanıcıyı bul
       const [foundSetting] = await db.db
         .select()
@@ -381,6 +409,19 @@ export class TelegramService {
       
       if (foundSetting) {
         console.log(`Found user with ID ${foundSetting.userId} for chat ID ${chatId}`);
+        
+        // Eğer bildirimler etkin değilse otomatik olarak aktif et
+        if (!foundSetting.enableTelegramAlerts) {
+          await this.storage.updateUserSettings({
+            userId: foundSetting.userId,
+            enableTelegramAlerts: true
+          });
+          console.log(`Enabled telegram alerts for user ${foundSetting.userId}`);
+        }
+        
+        // chatIdsToNotify setine chatId'yi ekleyin
+        this.chatIdsToNotify.add(chatId);
+        
         return foundSetting.userId;
       }
       
