@@ -92,6 +92,15 @@ export default function ServiceMapsPage() {
     enabled: !!user,
   });
   
+  // Determine default tab based on URL hash
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    // Check if URL contains #shared-maps
+    if (typeof window !== 'undefined' && window.location.hash === '#shared-maps') {
+      return 'shared-maps';
+    }
+    return 'service-maps';
+  });
+  
   // Use our custom hook to fetch map items
   const mapItems = useMapItems(serviceMaps);
 
@@ -423,7 +432,7 @@ export default function ServiceMapsPage() {
           </div>
           
           {/* Tabs Navigation */}
-          <Tabs defaultValue="service-maps" className="mb-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="service-maps">Service Maps</TabsTrigger>
               <TabsTrigger value="shared-maps">Shared Maps</TabsTrigger>

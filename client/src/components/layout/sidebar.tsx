@@ -24,7 +24,6 @@ const navItems = [
   { label: "Alerts", icon: <AlertTriangle className="h-5 w-5" />, href: "/alerts" },
   { label: "Agents", icon: <Cpu className="h-5 w-5" />, href: "/agents" },
   { label: "Service Maps", icon: <Map className="h-5 w-5" />, href: "/service-maps" },
-  { label: "Shared Maps", icon: <Share className="h-5 w-5" />, href: "/shared-maps" },
   { label: "History", icon: <History className="h-5 w-5" />, href: "/history" },
   { label: "Settings", icon: <Settings className="h-5 w-5" />, href: "/settings" },
 ];

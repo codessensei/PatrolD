@@ -28,7 +28,14 @@ function Router() {
       <ProtectedRoute path="/agents" component={AgentsPage} />
       <ProtectedRoute path="/history" component={HistoryPage} />
       <ProtectedRoute path="/settings" component={SettingsPage} />
-      <ProtectedRoute path="/shared-maps" component={SharedMapsPage} />
+      <Route path="/shared-maps">
+        {() => {
+          // Redirect from /shared-maps to /service-maps with 'shared-maps' tab pre-selected
+          console.log("Redirecting from /shared-maps to /service-maps");
+          window.location.href = "/service-maps#shared-maps";
+          return null;
+        }}
+      </Route>
       <ProtectedRoute path="/service-maps" component={ServiceMapsPage} />
       <ProtectedRoute path="/service-maps/:id" component={ServiceMapDetailPage} />
       <Route path="/view-map/:shareKey" component={ViewMapPage} />
