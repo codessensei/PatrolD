@@ -387,9 +387,9 @@ export default function DashboardPage() {
             </div>
           </div>
           
-          {/* Service Canvas with Glassmorphism */}
+          {/* Service Canvas with Glassmorphism - Full Screen */}
           <div className="glass-card mb-8 p-1">
-            <div className="rounded-lg overflow-hidden">
+            <div className="rounded-lg overflow-hidden h-[70vh] min-h-[500px]">
               <ServiceCanvas 
                 key={`canvas-${selectedMapId || 'default'}`}
                 services={filteredServices} 
@@ -397,6 +397,66 @@ export default function DashboardPage() {
                 isLoading={isLoadingServices || isLoadingConnections}
                 onAddService={() => setIsAddServiceModalOpen(true)}
               />
+            </div>
+          </div>
+          
+          {/* Map-specific Statistics */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+            {/* Online Services */}
+            <div className="glass-card hover-card-effect">
+              <div className="p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  <h3 className="text-sm font-medium text-slate-900 dark:text-white">Online</h3>
+                </div>
+                <p className="text-2xl font-bold text-green-500">{onlineServices}</p>
+              </div>
+            </div>
+            
+            {/* Offline Services */}
+            <div className="glass-card hover-card-effect">
+              <div className="p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <AlertCircle className="h-5 w-5 text-red-500" />
+                  <h3 className="text-sm font-medium text-slate-900 dark:text-white">Offline</h3>
+                </div>
+                <p className="text-2xl font-bold text-red-500">{offlineServices}</p>
+              </div>
+            </div>
+            
+            {/* Degraded Services */}
+            <div className="glass-card hover-card-effect">
+              <div className="p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <AlertTriangle className="h-5 w-5 text-amber-500" />
+                  <h3 className="text-sm font-medium text-slate-900 dark:text-white">Degraded</h3>
+                </div>
+                <p className="text-2xl font-bold text-amber-500">{degradedServices}</p>
+              </div>
+            </div>
+            
+            {/* Response Time */}
+            <div className="glass-card hover-card-effect">
+              <div className="p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Clock className="h-5 w-5 text-blue-500" />
+                  <h3 className="text-sm font-medium text-slate-900 dark:text-white">Avg Response</h3>
+                </div>
+                <p className="text-2xl font-bold text-blue-500">
+                  {typeof avgResponseTime === 'number' ? `${avgResponseTime.toFixed(0)}ms` : 'N/A'}
+                </p>
+              </div>
+            </div>
+            
+            {/* Total Services */}
+            <div className="glass-card hover-card-effect">
+              <div className="p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Network className="h-5 w-5 text-indigo-500" />
+                  <h3 className="text-sm font-medium text-slate-900 dark:text-white">Total</h3>
+                </div>
+                <p className="text-2xl font-bold text-indigo-500">{filteredServices.length}</p>
+              </div>
             </div>
           </div>
           
