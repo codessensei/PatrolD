@@ -86,8 +86,18 @@ export default function ServiceCanvas({
     
     // Use stored positions if available or create a centralized grid layout
     services.forEach((service, index) => {
-      // Check if the service already has a position stored
-      if (service.positionX !== null && service.positionY !== null && 
+      // Check for position in different formats (supports both direct properties and position object)
+      // First check if service has a position object (from shared maps)
+      if (service.position && typeof service.position === 'object' && 
+          'x' in service.position && 'y' in service.position &&
+          (service.position.x !== 0 || service.position.y !== 0)) {
+        positions[service.id] = {
+          x: service.position.x,
+          y: service.position.y
+        };
+      }
+      // Then check if service has direct positionX/Y properties
+      else if (service.positionX !== null && service.positionY !== null && 
           (service.positionX !== 0 || service.positionY !== 0)) {
         // Use stored positions
         positions[service.id] = { 
