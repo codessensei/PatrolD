@@ -109,7 +109,43 @@ export default function ServiceCanvas({
     setServicePositions(positions);
   }, [services, canvasRef.current?.clientWidth, canvasRef.current?.clientHeight]);
 
-  // Mutation to update service position
+  // Get the current service map ID from the URL if any
+  const location = useLocation()[0];
+  const serviceMapIdMatch = location.match(/\/service-maps\/(\d+)/);
+  const serviceMapId = serviceMapIdMatch ? parseInt(serviceMapIdMatch[1]) : null;
+
+  // Mutation to update service position in service map item (if on a service map page)
+  const updateServiceMapItemPosition = useMutation({
+    mutationFn: async (data: { serviceId: number, x: number, y: number }) => {
+      if (!serviceMapId) return; // Only update map item positions if on a service map page
+      
+      const { serviceId, x, y } = data;
+      console.log(`Updating position for service ${serviceId} in map ${serviceMapId} to x:${x}, y:${y}`);
+      
+      // First we need to get the service map item ID
+      const response = await apiRequest("GET", `/api/service-maps/${serviceMapId}/items`);
+      const items = await response.json();
+      
+      // Find the service map item for this service
+      const item = items.find((item: any) => item.serviceId === serviceId);
+      if (!item) {
+        console.error(`No service map item found for service ${serviceId} in map ${serviceMapId}`);
+        return;
+      }
+      
+      // Update the position
+      await apiRequest("PUT", `/api/service-map-items/${item.id}/position`, { x, y });
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to save position in map",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Mutation to update service position (legacy fallback)
   const updateServicePosition = useMutation({
     mutationFn: async (data: { id: number, x: number, y: number }) => {
       const { id, x, y } = data;
@@ -231,12 +267,24 @@ export default function ServiceCanvas({
     if (draggingService !== null) {
       const position = servicePositions[draggingService];
       if (position) {
-        // Save position to server
+        // Save position to both the service and the service map item (if applicable)
+        console.log(`Saving position for service ${draggingService} to x:${position.x}, y:${position.y}`);
+        
+        // Update service position (legacy)
         updateServicePosition.mutate({
           id: draggingService,
           x: position.x,
           y: position.y
         });
+        
+        // Also update service map item position if on a service map page
+        if (serviceMapId) {
+          updateServiceMapItemPosition.mutate({
+            serviceId: draggingService,
+            x: position.x,
+            y: position.y
+          });
+        }
       }
       setDraggingService(null);
     }
@@ -246,7 +294,7 @@ export default function ServiceCanvas({
       // For now, just clear the dragging state
       setDraggingAgent(null);
     }
-  }, [draggingService, draggingAgent, servicePositions, updateServicePosition]);
+  }, [draggingService, draggingAgent, servicePositions, updateServicePosition, updateServiceMapItemPosition, serviceMapId]);
 
   // Set up global event listeners for drag
   useEffect(() => {
