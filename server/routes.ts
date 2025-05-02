@@ -1204,55 +1204,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Increment the view count
     const updatedMap = await storage.incrementSharedMapViewCount(map.id);
     
-    // Get the actual service map associated with this shared map
-    // Cast to known type structure with serviceMapId
-    type MapData = { serviceMapId: number };
-    const mapData = map.mapData as unknown as MapData;
-    
-    if (!mapData || typeof mapData !== 'object' || !mapData.serviceMapId) {
-      return res.status(404).json({ error: "Invalid map data" });
-    }
-    
-    const serviceMap = await storage.getServiceMapById(mapData.serviceMapId);
-    if (!serviceMap) {
-      return res.status(404).json({ error: "Original service map not found" });
-    }
-    
-    // Get all services for this map
-    const serviceItems = await storage.getServiceMapItems(serviceMap.id);
-    const services = [];
-    
-    // Get all service details
-    for (const item of serviceItems) {
-      const service = await storage.getServiceById(item.serviceId);
-      if (service) {
-        services.push({
-          ...service,
-          position: {
-            x: item.positionX,
-            y: item.positionY
+    // Determine what type of map data we have
+    try {
+      let services = [];
+      let connections = [];
+            
+      if (map.mapData && typeof map.mapData === 'object') {
+        // Type assertion for mapData
+        type MapDataWithServices = { services: any[], connections: any[] };
+        type MapDataWithServiceMapId = { serviceMapId: number };
+        
+        // If mapData already contains services and connections arrays
+        if (Array.isArray((map.mapData as MapDataWithServices).services) && 
+            Array.isArray((map.mapData as MapDataWithServices).connections)) {
+          console.log("Using embedded services and connections from mapData");
+          services = (map.mapData as MapDataWithServices).services;
+          connections = (map.mapData as MapDataWithServices).connections;
+        } 
+        // If mapData contains a serviceMapId reference
+        else if ((map.mapData as MapDataWithServiceMapId).serviceMapId) {
+          console.log("Using referenced serviceMap data with ID:", (map.mapData as MapDataWithServiceMapId).serviceMapId);
+          const serviceMap = await storage.getServiceMapById((map.mapData as MapDataWithServiceMapId).serviceMapId);
+          if (!serviceMap) {
+            return res.status(404).json({ error: "Original service map not found" });
           }
-        });
+          
+          // Get all services for this map
+          const serviceItems = await storage.getServiceMapItems(serviceMap.id);
+          
+          // Get all service details
+          for (const item of serviceItems) {
+            const service = await storage.getServiceById(item.serviceId);
+            if (service) {
+              services.push({
+                ...service,
+                position: {
+                  x: item.positionX,
+                  y: item.positionY
+                }
+              });
+            }
+          }
+          
+          // Get all connections for the user
+          const allConnections = await storage.getConnectionsByUserId(serviceMap.userId);
+          
+          // Filter connections that are between services in this map
+          const serviceIds = services.map(s => s.id);
+          connections = allConnections.filter(
+            c => serviceIds.includes(c.sourceId) && serviceIds.includes(c.targetId)
+          );
+        } else {
+          console.log("Using direct mapData object:", Object.keys(map.mapData));
+          // Use type casting for typesafety
+          const mapDataObj = map.mapData as Record<string, any>;
+          if (mapDataObj.services) services = mapDataObj.services;
+          if (mapDataObj.connections) connections = mapDataObj.connections;
+        }
+      } else {
+        return res.status(404).json({ error: "Invalid map data format" });
       }
+      
+      // Return the full map data with services and connections
+      res.status(200).json({
+        ...updatedMap,
+        mapData: {
+          services,
+          connections
+        }
+      });
+    } catch (error) {
+      console.error("Error processing view-map request:", error);
+      res.status(500).json({ error: "Failed to process shared map data" });
     }
-    
-    // Get all connections for the user
-    const allConnections = await storage.getConnectionsByUserId(serviceMap.userId);
-    
-    // Filter connections that are between services in this map
-    const serviceIds = services.map(s => s.id);
-    const connections = allConnections.filter(
-      c => serviceIds.includes(c.sourceId) && serviceIds.includes(c.targetId)
-    );
-    
-    // Return the full map data with services and connections
-    res.status(200).json({
-      ...updatedMap,
-      mapData: {
-        services,
-        connections
-      }
-    });
   });
 
   // Add a catch-all GET route for SPA client-side routing

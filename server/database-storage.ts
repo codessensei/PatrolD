@@ -271,13 +271,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async incrementSharedMapViewCount(id: number): Promise<SharedMap> {
+    // First get the current map to get its view count
+    const [currentMap] = await db.select().from(sharedMaps).where(eq(sharedMaps.id, id));
+    
+    if (!currentMap) {
+      throw new Error("Shared map not found");
+    }
+    
+    // Now increment the view count using the actual number
     const [map] = await db
       .update(sharedMaps)
       .set({
-        viewCount: (currentMap: any) => `${currentMap.view_count} + 1`
+        viewCount: (currentMap.viewCount || 0) + 1,
+        updatedAt: new Date()
       })
       .where(eq(sharedMaps.id, id))
       .returning();
+    
     return map;
   }
 
@@ -372,7 +382,7 @@ export class DatabaseStorage implements IStorage {
         .from(serviceMaps)
         .where(and(
           eq(serviceMaps.userId, map.userId),
-          eq(serviceMaps.id, id, true) // Not equal to the map being deleted
+          ne(serviceMaps.id, id) // Not equal to the map being deleted
         ))
         .limit(1);
       
