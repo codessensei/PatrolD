@@ -23,20 +23,53 @@ type TelegramMessage = {
 // Telegram Bot'u için gerekli olan token
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
+// Singleton pattern to avoid multiple bot instances
+let botInstance: TelegramBot | null = null;
+
 export class TelegramService {
-  private bot: any | null = null;
+  private bot: TelegramBot | null = null;
   private storage: IStorage;
   private chatIdsToNotify: Set<string> = new Set();
+  private static instance: TelegramService | null = null;
 
   constructor(storage: IStorage) {
+    // Singleton pattern implementation
+    if (TelegramService.instance) {
+      return TelegramService.instance;
+    }
+    
     this.storage = storage;
     if (!TELEGRAM_BOT_TOKEN) {
       console.warn('TELEGRAM_BOT_TOKEN not set, Telegram notifications are disabled');
+      TelegramService.instance = this;
       return;
     }
 
     try {
-      this.bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
+      // Reuse existing bot instance or create a new one
+      if (!botInstance) {
+        // Stop any existing polling before creating a new bot
+        try {
+          if (this.bot) {
+            this.bot.stopPolling();
+          }
+        } catch (err) {
+          console.warn('Error stopping previous bot polling:', err);
+        }
+        
+        // Create new bot with polling
+        botInstance = new TelegramBot(TELEGRAM_BOT_TOKEN, { 
+          polling: true,
+          // Add polling options to handle conflicts
+          onlyFirstMatch: true,
+          params: {
+            timeout: 30
+          }
+        });
+        console.log('Telegram bot singleton instance created');
+      }
+      
+      this.bot = botInstance;
       console.log('Telegram bot initialized successfully');
       
       // Bot komutlarını tanımlama
@@ -45,6 +78,8 @@ export class TelegramService {
       console.error('Failed to initialize Telegram bot:', error);
       this.bot = null;
     }
+    
+    TelegramService.instance = this;
   }
 
   // Token üretme - web arayüzünde kullanılır
