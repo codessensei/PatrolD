@@ -1286,6 +1286,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`View map route accessed directly with shareKey: ${req.params.shareKey}`);
     res.sendFile(path.resolve(process.cwd(), './client/index.html'));
   });
+  
+  // Test route to check if basic serving works
+  app.get('/test', (req, res) => {
+    console.log('Test route accessed');
+    res.sendFile(path.resolve(process.cwd(), './client/test-app.html'));
+  });
 
   // Add a general catch-all route for other SPA client-side routing
   // This needs to come AFTER all other defined API routes
