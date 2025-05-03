@@ -1,0 +1,76 @@
+name: Deploy PatrolD
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build client
+        run: npm run build
+      
+      - name: Setup PostgreSQL Client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      
+      - name: Run migrations
+        run: npm run db:push
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PGUSER: ${{ secrets.PGUSER }}
+          PGPASSWORD: ${{ secrets.PGPASSWORD }}
+          PGHOST: ${{ secrets.PGHOST }}
+          PGPORT: ${{ secrets.PGPORT }}
+          PGDATABASE: ${{ secrets.PGDATABASE }}
+      
+      - name: Deploy to production server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            cd ~/patrold
+            git pull
+            npm ci
+            npm run build
+            pm2 restart patrold || pm2 start npm --name "patrold" -- start
+      
+      - name: Create Debian package
+        run: |
+          ./build_deb.sh
+      
+      - name: Upload Debian package
+        uses: actions/upload-artifact@v3
+        with:
+          name: patrold-package
+          path: patrold_1.0.0_all.deb
+      
+      - name: Notify deployment completion
+        if: success()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: |
+            🚀 PatrolD başarıyla deploy edildi!
+            
+            Commit: ${{ github.event.head_commit.message }}
+            Branch: ${{ github.ref_name }}
+            Zaman: ${{ github.event.head_commit.timestamp }}

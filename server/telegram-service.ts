@@ -1,5 +1,5 @@
 import TelegramBot from 'node-telegram-bot-api';
-import { IStorage } from './storage';
+import type { IStorage } from './storage-types';
 import { randomBytes } from 'crypto';
 import { addDays } from 'date-fns';
 
@@ -306,9 +306,9 @@ class TelegramService {
           return;
         }
         
-        const onlineCount = services.filter(s => s.status === 'online').length;
-        const offlineCount = services.filter(s => s.status === 'offline').length;
-        const unknownCount = services.filter(s => s.status === 'unknown').length;
+        const onlineCount = services.filter((s: any) => s.status === 'online').length;
+        const offlineCount = services.filter((s: any) => s.status === 'offline').length;
+        const unknownCount = services.filter((s: any) => s.status === 'unknown').length;
         
         let message = `📊 Servis Durumu\n\n`;
         message += `Toplam: ${services.length} servis\n`;

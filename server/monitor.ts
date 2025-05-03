@@ -1,5 +1,5 @@
 import axios from "axios";
-import { IStorage } from "./storage";
+import type { IStorage } from "./storage-types";
 import { Service, Connection, Alert } from "@shared/schema";
 import { TelegramService } from "./telegram-service";
 

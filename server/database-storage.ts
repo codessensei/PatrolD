@@ -10,7 +10,7 @@ import {
   ServiceMapItem, InsertServiceMapItem, serviceMapItems,
   AgentMapItem, InsertAgentMapItem, agentMapItems
 } from "@shared/schema";
-import { IStorage, SessionStore } from "./storage-types";
+import type { IStorage, SessionStore } from "./storage-types";
 import { db, pool } from "./db";
 import { eq, desc, and, lte, gte, ne } from "drizzle-orm";
 import connectPg from "connect-pg-simple";
