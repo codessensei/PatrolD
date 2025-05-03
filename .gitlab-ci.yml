@@ -1,0 +1,44 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  NODE_VERSION: "20"
+
+build:
+  stage: build
+  image: node:${NODE_VERSION}
+  tags:
+    - self-hosted
+  script:
+    - npm ci
+    - npm run build
+    - ./build_deb.sh
+  artifacts:
+    paths:
+      - dist/
+      - patrold_1.0.0_all.deb
+    expire_in: 1 week
+
+deploy:
+  stage: deploy
+  image: node:${NODE_VERSION}
+  tags:
+    - self-hosted
+  script:
+    - export DATABASE_URL="${DATABASE_URL}"
+    - export PGUSER="${PGUSER}"
+    - export PGPASSWORD="${PGPASSWORD}"
+    - export PGHOST="${PGHOST}"
+    - export PGPORT="${PGPORT}"
+    - export PGDATABASE="${PGDATABASE}"
+    - export TELEGRAM_BOT_TOKEN="${TELEGRAM_TOKEN}"
+    - export SESSION_SECRET="${SESSION_SECRET}"
+    - npm ci
+    - npm run db:push
+    - cp patrold_1.0.0_all.deb /var/www/html/ || echo "Warning: Failed to copy Debian package to web directory"
+    - npm install -g pm2
+    - pm2 restart patrold || pm2 start npm --name "patrold" -- start
+    - pm2 save
+  only:
+    - main
