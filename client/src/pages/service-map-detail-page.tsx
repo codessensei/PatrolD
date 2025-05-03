@@ -27,7 +27,15 @@ import {
   Check, 
   Clipboard, 
   Share,
-  Divide 
+  Divide,
+  ChevronRight,
+  ChevronLeft,
+  Globe,
+  Database,
+  MonitorPlay,
+  AlertTriangle,
+  FileText,
+  Layers
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ServiceCanvas from "@/components/dashboard/service-canvas";
@@ -43,6 +51,19 @@ export default function ServiceMapDetailPage() {
   const [isAddAgentDialogOpen, setIsAddAgentDialogOpen] = useState(false);
   const [selectedServiceId, setSelectedServiceId] = useState<number | undefined>(undefined);
   const [selectedAgentId, setSelectedAgentId] = useState<number | undefined>(undefined);
+  
+  // Step-by-step service addition
+  const [addServiceStep, setAddServiceStep] = useState(1);
+  const [serviceType, setServiceType] = useState<string>("website");
+  const [servicePosition, setServicePosition] = useState<{ x: number, y: number } | undefined>();
+  const [newServiceData, setNewServiceData] = useState({
+    name: "",
+    host: "",
+    port: "80",
+    path: "/",
+    protocol: "http",
+    interval: "60"
+  });
 
   // Harita detaylarını getir
   const { data: map, isLoading: isMapLoading } = useQuery<ServiceMap>({
@@ -74,7 +95,7 @@ export default function ServiceMapDetailPage() {
     enabled: !!user && !!mapId,
   });
 
-  // Servis ekle
+  // Add existing service to map
   const addServiceMutation = useMutation({
     mutationFn: async (serviceId: number) => {
       await apiRequest("POST", `/api/service-maps/${mapId}/services`, { serviceId });
@@ -82,8 +103,7 @@ export default function ServiceMapDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/service-maps/${mapId}/services`] });
       queryClient.invalidateQueries({ queryKey: [`/api/service-maps/${mapId}/available-services`] });
-      setIsAddServiceDialogOpen(false);
-      setSelectedServiceId(undefined);
+      resetServiceModal();
       toast({
         title: "Service added",
         description: "Service has been added to the map.",
@@ -93,6 +113,43 @@ export default function ServiceMapDetailPage() {
       toast({
         title: "Failed to add service",
         description: error.message || "An error occurred while adding the service.",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Create new service and add to map
+  const createServiceMutation = useMutation({
+    mutationFn: async (serviceData: any) => {
+      // First create a new service
+      const response = await apiRequest("POST", "/api/services", {
+        ...serviceData,
+        type: serviceType
+      });
+      const service = await response.json();
+      
+      // Then add it to the map with position if provided
+      await apiRequest("POST", `/api/service-maps/${mapId}/services`, { 
+        serviceId: service.id,
+        position: servicePosition 
+      });
+      
+      return service;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/services"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/service-maps/${mapId}/services`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/service-maps/${mapId}/available-services`] });
+      resetServiceModal();
+      toast({
+        title: "Service created",
+        description: "New service has been created and added to the map.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to create service",
+        description: error.message || "An error occurred while creating the service.",
         variant: "destructive",
       });
     },
@@ -164,16 +221,75 @@ export default function ServiceMapDetailPage() {
     },
   });
 
+  // Handle service selection from existing services or create new
   const handleAddService = () => {
-    if (selectedServiceId) {
-      addServiceMutation.mutate(selectedServiceId);
+    if (addServiceStep === 2) {
+      // If adding existing service
+      if (selectedServiceId) {
+        addServiceMutation.mutate(selectedServiceId);
+      } else {
+        // If no service selected in selection mode
+        toast({
+          title: "No service selected",
+          description: "Please select a service to add to the map.",
+          variant: "destructive",
+        });
+      }
+    } else if (addServiceStep === 4) {
+      // If creating new service
+      if (!newServiceData.name || !newServiceData.host) {
+        toast({
+          title: "Missing information",
+          description: "Please provide at least a name and host for the service.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Create service with the collected data
+      createServiceMutation.mutate({
+        name: newServiceData.name,
+        host: newServiceData.host,
+        port: parseInt(newServiceData.port) || 80,
+        path: newServiceData.path,
+        protocol: newServiceData.protocol,
+        checkInterval: parseInt(newServiceData.interval) || 60
+      });
     } else {
+      // Unexpected state
       toast({
-        title: "No service selected",
-        description: "Please select a service to add to the map.",
+        title: "Action not available",
+        description: "Please complete all steps before adding the service.",
         variant: "destructive",
       });
     }
+  };
+  
+  // Reset service modal state
+  const resetServiceModal = () => {
+    setAddServiceStep(1);
+    setSelectedServiceId(undefined);
+    setServiceType("website");
+    setServicePosition(undefined);
+    setNewServiceData({
+      name: "",
+      host: "",
+      port: "80",
+      path: "/",
+      protocol: "http",
+      interval: "60"
+    });
+    setIsAddServiceDialogOpen(false);
+  };
+  
+  // Move to next step in add service flow
+  const nextServiceStep = () => {
+    setAddServiceStep(prev => prev + 1);
+  };
+  
+  // Move to previous step in add service flow
+  const prevServiceStep = () => {
+    setAddServiceStep(prev => Math.max(1, prev - 1));
   };
 
   const handleAddAgent = () => {
@@ -321,58 +437,281 @@ export default function ServiceMapDetailPage() {
                     Share Map
                   </Button>
                 
-                  <Dialog open={isAddServiceDialogOpen} onOpenChange={setIsAddServiceDialogOpen}>
+                  <Dialog open={isAddServiceDialogOpen} onOpenChange={(open) => {
+                    if (!open) resetServiceModal();
+                    setIsAddServiceDialogOpen(open);
+                  }}>
                     <DialogTrigger asChild>
                       <Button variant="outline" className="flex items-center gap-2">
                         <Server size={14} />
                         Add Service
                       </Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent className="sm:max-w-[550px]">
                       <DialogHeader>
-                        <DialogTitle>Add Service to Map</DialogTitle>
-                        <DialogDescription>
-                          Select a service to add to this map
-                        </DialogDescription>
+                        <div className="flex items-center">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mr-3">
+                            <span className="text-primary font-medium">{addServiceStep}</span>
+                          </div>
+                          <div>
+                            <DialogTitle>
+                              {addServiceStep === 1 && "Choose Service Addition Method"}
+                              {addServiceStep === 2 && "Select Existing Service"}
+                              {addServiceStep === 3 && "Service Configuration"}
+                              {addServiceStep === 4 && "Service Location"}
+                            </DialogTitle>
+                            <DialogDescription>
+                              {addServiceStep === 1 && "Choose how you want to add a service to the map"}
+                              {addServiceStep === 2 && "Select an existing service to add to this map"}
+                              {addServiceStep === 3 && "Configure the service details"}
+                              {addServiceStep === 4 && "Specify where to place the service on the map"}
+                            </DialogDescription>
+                          </div>
+                        </div>
                       </DialogHeader>
                       
-                      <div className="my-4 space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="service-select">Select Service</Label>
-                          <Select onValueChange={(value) => setSelectedServiceId(Number(value))}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a service" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {isAvailableServicesLoading ? (
-                                <SelectItem value="loading" disabled>Loading...</SelectItem>
-                              ) : availableServices && availableServices.length > 0 ? (
-                                availableServices.map((service) => (
-                                  <SelectItem key={service.id} value={service.id.toString()}>
-                                    {service.name} - {service.type}
-                                  </SelectItem>
-                                ))
-                              ) : (
-                                <SelectItem value="none" disabled>No services available</SelectItem>
-                              )}
-                            </SelectContent>
-                          </Select>
+                      {/* Step 1: Choose addition method */}
+                      {addServiceStep === 1 && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+                          <Card className="cursor-pointer transition-all hover:shadow-md" onClick={() => {
+                            setAddServiceStep(2);
+                          }}>
+                            <CardContent className="p-6 flex flex-col items-center text-center">
+                              <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-4">
+                                <Layers className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                              </div>
+                              <CardTitle className="text-lg mb-2">Use Existing Service</CardTitle>
+                              <p className="text-sm text-muted-foreground">
+                                Add a service you've already created to this map
+                              </p>
+                            </CardContent>
+                          </Card>
+                          
+                          <Card className="cursor-pointer transition-all hover:shadow-md" onClick={() => {
+                            setAddServiceStep(3);
+                          }}>
+                            <CardContent className="p-6 flex flex-col items-center text-center">
+                              <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-4">
+                                <Globe className="h-6 w-6 text-green-600 dark:text-green-400" />
+                              </div>
+                              <CardTitle className="text-lg mb-2">Create New Service</CardTitle>
+                              <p className="text-sm text-muted-foreground">
+                                Create a new service and add it to this map
+                              </p>
+                            </CardContent>
+                          </Card>
                         </div>
-                      </div>
+                      )}
                       
-                      <DialogFooter>
-                        <Button 
-                          variant="outline" 
-                          onClick={() => setIsAddServiceDialogOpen(false)}
-                        >
-                          Cancel
-                        </Button>
-                        <Button 
-                          onClick={handleAddService} 
-                          disabled={!selectedServiceId || addServiceMutation.isPending}
-                        >
-                          Add to Map
-                        </Button>
+                      {/* Step 2: Select existing service */}
+                      {addServiceStep === 2 && (
+                        <div className="py-4 space-y-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="service-select">Select Service</Label>
+                            <Select onValueChange={(value) => setSelectedServiceId(Number(value))}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a service" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {isAvailableServicesLoading ? (
+                                  <SelectItem value="loading" disabled>Loading...</SelectItem>
+                                ) : availableServices && availableServices.length > 0 ? (
+                                  availableServices.map((service) => (
+                                    <SelectItem key={service.id} value={service.id.toString()}>
+                                      {service.name} - {service.type}
+                                    </SelectItem>
+                                  ))
+                                ) : (
+                                  <SelectItem value="none" disabled>No services available</SelectItem>
+                                )}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Step 3: Configure new service */}
+                      {addServiceStep === 3 && (
+                        <div className="py-4 space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="service-name">Service Name</Label>
+                              <Input 
+                                id="service-name" 
+                                placeholder="My Website"
+                                value={newServiceData.name}
+                                onChange={(e) => setNewServiceData({...newServiceData, name: e.target.value})}
+                              />
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <Label htmlFor="service-type">Service Type</Label>
+                              <Select 
+                                onValueChange={(value) => setServiceType(value)}
+                                defaultValue={serviceType}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="website">
+                                    <div className="flex items-center">
+                                      <Globe className="h-4 w-4 mr-2" />
+                                      <span>Website</span>
+                                    </div>
+                                  </SelectItem>
+                                  <SelectItem value="database">
+                                    <div className="flex items-center">
+                                      <Database className="h-4 w-4 mr-2" />
+                                      <span>Database</span>
+                                    </div>
+                                  </SelectItem>
+                                  <SelectItem value="api">
+                                    <div className="flex items-center">
+                                      <FileText className="h-4 w-4 mr-2" />
+                                      <span>API Endpoint</span>
+                                    </div>
+                                  </SelectItem>
+                                  <SelectItem value="stream">
+                                    <div className="flex items-center">
+                                      <MonitorPlay className="h-4 w-4 mr-2" />
+                                      <span>Stream/Media</span>
+                                    </div>
+                                  </SelectItem>
+                                  <SelectItem value="custom">
+                                    <div className="flex items-center">
+                                      <Server className="h-4 w-4 mr-2" />
+                                      <span>Custom Service</span>
+                                    </div>
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="service-host">Host/IP</Label>
+                              <Input 
+                                id="service-host" 
+                                placeholder="example.com"
+                                value={newServiceData.host}
+                                onChange={(e) => setNewServiceData({...newServiceData, host: e.target.value})}
+                              />
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <Label htmlFor="service-port">Port</Label>
+                              <Input 
+                                id="service-port" 
+                                placeholder="80"
+                                value={newServiceData.port}
+                                onChange={(e) => setNewServiceData({...newServiceData, port: e.target.value})}
+                              />
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <Label htmlFor="service-protocol">Protocol</Label>
+                              <Select 
+                                onValueChange={(value) => setNewServiceData({...newServiceData, protocol: value})}
+                                defaultValue={newServiceData.protocol}
+                              >
+                                <SelectTrigger id="service-protocol">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="http">HTTP</SelectItem>
+                                  <SelectItem value="https">HTTPS</SelectItem>
+                                  <SelectItem value="tcp">TCP</SelectItem>
+                                  <SelectItem value="udp">UDP</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="service-path">Path</Label>
+                              <Input 
+                                id="service-path" 
+                                placeholder="/"
+                                value={newServiceData.path}
+                                onChange={(e) => setNewServiceData({...newServiceData, path: e.target.value})}
+                              />
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <Label htmlFor="service-interval">Check Interval (sec)</Label>
+                              <Input 
+                                id="service-interval" 
+                                type="number"
+                                placeholder="60"
+                                value={newServiceData.interval}
+                                onChange={(e) => setNewServiceData({...newServiceData, interval: e.target.value})}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Step 4: Configure position */}
+                      {addServiceStep === 4 && (
+                        <div className="py-4 space-y-4">
+                          <p className="text-muted-foreground">
+                            The service will be added to the map. You can drag it to position it exactly where you want.
+                          </p>
+                          <div className="bg-secondary/40 dark:bg-secondary/20 rounded-md p-6 flex items-center justify-center">
+                            <div className="text-center">
+                              <Server className="h-16 w-16 mx-auto mb-4 text-primary/60" />
+                              <p className="font-medium">{newServiceData.name || "New Service"}</p>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {serviceType} - {newServiceData.host}:{newServiceData.port}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      <DialogFooter className="flex items-center justify-between mt-4">
+                        <div>
+                          {addServiceStep > 1 && (
+                            <Button 
+                              variant="outline" 
+                              onClick={prevServiceStep}
+                              className="flex items-center gap-1"
+                            >
+                              <ChevronLeft className="h-4 w-4" />
+                              Back
+                            </Button>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            onClick={resetServiceModal}
+                          >
+                            Cancel
+                          </Button>
+                          
+                          {addServiceStep < 4 ? (
+                            <Button 
+                              onClick={nextServiceStep}
+                              disabled={(addServiceStep === 2 && !selectedServiceId) || 
+                                      (addServiceStep === 3 && (!newServiceData.name || !newServiceData.host))}
+                              className="flex items-center gap-1"
+                            >
+                              Next
+                              <ChevronRight className="h-4 w-4" />
+                            </Button>
+                          ) : (
+                            <Button 
+                              onClick={handleAddService}
+                              disabled={addServiceMutation.isPending}
+                            >
+                              Add Service
+                            </Button>
+                          )}
+                        </div>
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
