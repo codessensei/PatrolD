@@ -538,6 +538,7 @@ export class MemStorage implements IStorage {
       }
     }
     
+    // Create an empty map (no automatic service/agent assignment)
     this.serviceMaps.set(id, map);
     return map;
   }
