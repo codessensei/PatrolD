@@ -32,9 +32,14 @@ async function getAllServices(storage: IStorage): Promise<Service[]> {
 const REQUEST_TIMEOUT = 5000;
 
 export function setupMonitoring(storage: IStorage) {
-  // Telegram servisi oluştur
-  telegramService = new TelegramService(storage);
-  console.log("Telegram notification service initialized");
+  // Only create the Telegram service if it doesn't already exist
+  // This prevents multiple instances from being created
+  if (!telegramService) {
+    telegramService = new TelegramService(storage);
+    console.log("Telegram notification service initialized");
+  } else {
+    console.log("Reusing existing Telegram notification service");
+  }
   
   // Start monitoring process
   startMonitoring(storage);
