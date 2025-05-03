@@ -352,13 +352,15 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    // Insert new map
+    // Insert new map (empty by default - no automatic agent or service addition)
     const [createdMap] = await db.insert(serviceMaps).values({
       ...map,
       // If this is the first map, make it default regardless of input
       isDefault: isFirst ? true : map.isDefault
     }).returning();
     
+    // Return the newly created empty map - don't auto-populate with agents or services
+    // This matches the behavior in the MemStorage implementation
     return createdMap;
   }
 
