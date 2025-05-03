@@ -863,6 +863,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: req.user!.id
       });
       
+      // Create empty map without automatically adding default services or agents
       const map = await storage.createServiceMap(data);
       res.status(201).json(map);
     } catch (error) {
