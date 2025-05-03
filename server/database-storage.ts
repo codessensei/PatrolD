@@ -10,15 +10,14 @@ import {
   ServiceMapItem, InsertServiceMapItem, serviceMapItems,
   AgentMapItem, InsertAgentMapItem, agentMapItems
 } from "@shared/schema";
-import { IStorage } from "./storage";
+import { IStorage, SessionStore } from "./storage-types";
 import { db, pool } from "./db";
 import { eq, desc, and, lte, gte, ne } from "drizzle-orm";
 import connectPg from "connect-pg-simple";
 import session from "express-session";
 import { randomBytes } from "crypto";
 
-// Define our session store type to avoid SessionStore errors
-type SessionStore = session.Store;
+// Create the PostgreSQL-based session store
 const PostgresSessionStore = connectPg(session);
 
 export class DatabaseStorage implements IStorage {
