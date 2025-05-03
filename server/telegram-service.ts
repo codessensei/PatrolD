@@ -51,45 +51,58 @@ class TelegramService {
     // Çalışan bir bot instance varsa kapatalım
     if (globalBotInstance) {
       try {
-        console.log('Stopping existing bot polling');
-        globalBotInstance.stopPolling();
-        globalBotInstance = null;
-      } catch (err) {
-        console.warn('Error stopping previous bot polling:', err);
-      }
-    }
-    
-    // Kısa bir bekleme süresi (1 saniye)
-    setTimeout(() => {
-      try {
-        console.log('Creating new Telegram bot instance');
-        // Yeni botu başlat
-        globalBotInstance = new TelegramBot(TELEGRAM_BOT_TOKEN, { 
-          polling: false // Başlangıçta polling'i devre dışı bırak
-        });
-        
-        // Servisi globalBotInstance'a bağla
+        console.log('Reusing existing bot instance, not creating a new one');
         this.bot = globalBotInstance;
-        console.log('Telegram bot singleton instance created');
         
         // Komutları tanımla
         this.setupCommands();
         
-        // Son olarak polling'i başlat
+        console.log('Telegram bot reused successfully');
+        return;
+      } catch (err) {
+        console.warn('Error reusing previous bot instance:', err);
+        // Continue to create a new instance
+      }
+    }
+    
+    try {
+      console.log('Creating new Telegram bot instance');
+      // Yeni botu başlat - This time with polling disabled by default
+      globalBotInstance = new TelegramBot(TELEGRAM_BOT_TOKEN, { 
+        polling: false // Başlangıçta polling'i devre dışı bırak
+      });
+      
+      // Servisi globalBotInstance'a bağla
+      this.bot = globalBotInstance;
+      console.log('Telegram bot singleton instance created');
+      
+      // Komutları tanımla
+      this.setupCommands();
+      
+      // Start polling with our single instance
+      // Using a try/catch to handle potential polling conflicts
+      try {
         this.bot.startPolling({
           restart: false,
-          interval: 2000,
+          interval: 3000, // Slightly longer interval
           limit: 100,
           timeout: 10
         });
-        
         console.log('Telegram bot polling started successfully');
-      } catch (error) {
-        console.error('Failed to initialize Telegram bot:', error);
-        this.bot = null;
-        globalBotInstance = null;
+      } catch (error: any) {
+        // If we get a conflict error, we can safely ignore it
+        if (error && error.code === 'ETELEGRAM' && error.message.includes('terminated by other getUpdates request')) {
+          console.log('Another bot instance is already polling, skipping polling start');
+        } else {
+          // Log other errors
+          console.error('Failed to start polling:', error);
+        }
       }
-    }, 1000);
+    } catch (error) {
+      console.error('Failed to initialize Telegram bot:', error);
+      this.bot = null;
+      globalBotInstance = null;
+    }
     
     // Servisi singleton olarak ayarla
     globalServiceInstance = this;
