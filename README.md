@@ -169,7 +169,7 @@ Nginx yapılandırma dosyasına şu içeriği ekleyin:
 ```nginx
 server {
     listen 80;
-    server_name patrold.alanadi.com; # Alan adınızı buraya girin
+    server_name beta.patrold.com; # Default URL beta.patrold.com
     
     location / {
         proxy_pass http://localhost:5000;
@@ -204,7 +204,7 @@ HTTPS için SSL sertifikası kurun:
 
 ```bash
 # Let's Encrypt sertifikası alın
-sudo certbot --nginx -d patrold.alanadi.com
+sudo certbot --nginx -d beta.patrold.com
 
 # Certbot otomatik yenilemeyi etkinleştirin
 sudo certbot renew --dry-run
@@ -236,7 +236,7 @@ sudo ufw status
 
 ```bash
 # Debian package kullanarak agent kurulumu
-wget https://patrold.alanadi.com/patrold_1.0.0_all.deb
+wget https://beta.patrold.com/patrold_1.0.0_all.deb
 sudo dpkg -i patrold_1.0.0_all.deb
 
 # Agent yapılandırması
@@ -247,7 +247,7 @@ Agent yapılandırma dosyasına API anahtarını ekleyin:
 
 ```conf
 API_KEY=agent_xxxxxxxxxx
-SERVER_URL=https://patrold.alanadi.com
+SERVER_URL=https://beta.patrold.com
 ```
 
 Agent'ı başlatın ve otomatik başlamasını sağlayın:

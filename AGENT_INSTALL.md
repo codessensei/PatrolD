@@ -9,7 +9,7 @@ This guide provides instructions for installing and configuring the Patrol Monit
 1. Download the DEB package:
 
 ```bash
-wget https://example.com/patrold_1.0.0_all.deb
+wget https://beta.patrold.com/patrold_1.0.0_all.deb
 ```
 
 2. Install the package:
@@ -33,7 +33,7 @@ sudo apt-get install -f
 1. Download the agent script:
 
 ```bash
-wget https://example.com/patrold -O /usr/local/bin/patrold
+wget https://beta.patrold.com/api/agents/download/script -O /usr/local/bin/patrold
 chmod +x /usr/local/bin/patrold
 ```
 
@@ -48,7 +48,7 @@ mkdir -p /etc/patrold
 ```bash
 cat > /etc/patrold/config.json << EOF
 {
-  "api_url": "https://your-service-monitor-url.com/api",
+  "api_url": "https://beta.patrold.com/api",
   "api_key": "your-api-key-from-agents-page",
   "check_interval": 1,
   "heartbeat_interval": 1,
