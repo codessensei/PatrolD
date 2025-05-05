@@ -79,34 +79,23 @@ class TelegramService {
       // Komutları tanımla
       this.setupCommands();
       
-      // In development environment, we'll skip polling to avoid conflicts
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Development environment detected, skipping Telegram polling to avoid conflicts');
-        // We'll still keep the bot instance for command handling
-      } else {
-        // Only start polling in production
-        try {
-          // Debounce polling start with a small delay
-          setTimeout(() => {
-            try {
-              console.log('Starting Telegram polling in production mode');
-              this.bot.startPolling({
-                restart: false,
-                interval: 10000, // Even longer interval to reduce conflicts
-                limit: 100,
-                timeout: 60
-              });
-              console.log('Telegram bot polling started successfully');
-            } catch (pollError: any) {
-              if (pollError && typeof pollError === 'object' && 'code' in pollError && pollError.code === 'ETELEGRAM') {
-                console.warn('Unable to start Telegram polling, another instance probably running');
-              } else {
-                console.error('Failed to start Telegram polling:', pollError);
-              }
-            }
-          }, 5000); // 5 second delay to prevent race conditions
-        } catch (error: any) {
-          console.error('Failed to setup polling:', error);
+      // Start polling with our single instance
+      // Using a try/catch to handle potential polling conflicts
+      try {
+        this.bot.startPolling({
+          restart: false,
+          interval: 3000, // Slightly longer interval
+          limit: 100,
+          timeout: 10
+        });
+        console.log('Telegram bot polling started successfully');
+      } catch (error: any) {
+        // If we get a conflict error, we can safely ignore it
+        if (error && error.code === 'ETELEGRAM' && error.message.includes('terminated by other getUpdates request')) {
+          console.log('Another bot instance is already polling, skipping polling start');
+        } else {
+          // Log other errors
+          console.error('Failed to start polling:', error);
         }
       }
     } catch (error) {

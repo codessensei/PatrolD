@@ -42,79 +42,11 @@ jobs:
         
     - name: Run database migrations
       run: |
-        # Set environment variables for database from secrets
-        export PGPASSWORD=${{ secrets.PGPASSWORD }}
-        export PGHOST=${{ secrets.PGHOST }}
-        export PGPORT=${{ secrets.PGPORT }}
-        export PGUSER=${{ secrets.PGUSER }}
-        export PGDATABASE=${{ secrets.PGDATABASE }}
-        export DATABASE_URL=${{ secrets.DATABASE_URL }}
+        # First create the database and necessary tables if they don't exist
+        PGPASSWORD=${{ secrets.PGPASSWORD }} psql -h ${{ secrets.PGHOST }} -p ${{ secrets.PGPORT }} -U ${{ secrets.PGUSER }} -d ${{ secrets.PGDATABASE }} -c "CREATE SCHEMA IF NOT EXISTS public;"
         
-        # Check if postgresql-client is installed, install if not
-        which psql || sudo apt-get update && sudo apt-get install -y postgresql-client
-        
-        # 1. Attempt to connect to PostgreSQL
-        echo "Attempting to connect to PostgreSQL server..."
-        if ! psql -c "SELECT 1;" > /dev/null 2>&1; then
-          echo "Could not connect to PostgreSQL server. Checking if database exists..."
-          
-          # 2. Create database if it doesn't exist (using template1 which should always exist)
-          if ! psql -d template1 -c "SELECT 1 FROM pg_database WHERE datname = '$PGDATABASE'" | grep -q 1; then
-            echo "Database $PGDATABASE does not exist. Attempting to create..."
-            psql -d template1 -c "CREATE DATABASE $PGDATABASE;" || echo "Failed to create database, but continuing..."
-          else
-            echo "Database $PGDATABASE exists."
-          fi
-        fi
-        
-        # 3. Create schema if it doesn't exist (with proper error handling)
-        echo "Creating schema if it doesn't exist..."
-        psql -c "CREATE SCHEMA IF NOT EXISTS public;" || echo "Schema creation failed, but continuing..."
-        
-        # 4. Instead of creating drizzle.config.ts, just make sure it exists
-        if [ ! -f "drizzle.config.ts" ]; then
-          echo "drizzle.config.ts not found. Continuing anyway, will use DATABASE_URL from environment."
-        fi
-        
-        # 5. Create a custom migration script that handles the DATABASE_URL check
-        echo "Creating temporary database migration script..."
-        cat > run-migrations.js << 'EOF'
-const { execSync } = require('child_process');
-
-try {
-  // Check if DATABASE_URL is set
-  if (!process.env.DATABASE_URL) {
-    console.error("ERROR: DATABASE_URL environment variable is not set");
-    console.error("Setting up DATABASE_URL from individual PostgreSQL variables");
-    
-    // Construct from individual parts
-    const pgUser = process.env.PGUSER || 'postgres';
-    const pgPassword = process.env.PGPASSWORD || '';
-    const pgHost = process.env.PGHOST || 'localhost';
-    const pgPort = process.env.PGPORT || '5432';
-    const pgDatabase = process.env.PGDATABASE || 'postgres';
-    
-    process.env.DATABASE_URL = `postgres://${pgUser}:${pgPassword}@${pgHost}:${pgPort}/${pgDatabase}`;
-    console.log(`Using constructed DATABASE_URL: postgres://${pgUser}:***@${pgHost}:${pgPort}/${pgDatabase}`);
-  } else {
-    console.log("Using provided DATABASE_URL");
-  }
-  
-  // Run the migrations
-  console.log("Running database migrations...");
-  execSync('npx drizzle-kit push', { stdio: 'inherit' });
-  console.log("Migrations completed successfully");
-  process.exit(0);
-} catch (error) {
-  console.error("Migration failed:", error.message);
-  console.error("Continuing deployment despite migration failure");
-  process.exit(0); // Exit with success to continue pipeline
-}
-EOF
-
-        # 6. Run our custom migration script
-        echo "Running database migrations with error handling..."
-        node run-migrations.js
+        # Now run the database migrations
+        npm run db:push
 
     - name: Build application
       run: npm run build
