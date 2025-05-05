@@ -71,21 +71,9 @@ jobs:
         echo "Creating schema if it doesn't exist..."
         psql -c "CREATE SCHEMA IF NOT EXISTS public;" || echo "Schema creation failed, but continuing..."
         
-        # 4. Verify drizzle.config.ts exists and has proper DATABASE_URL
+        # 4. Instead of creating drizzle.config.ts, just make sure it exists
         if [ ! -f "drizzle.config.ts" ]; then
-          echo "drizzle.config.ts not found. Creating it..."
-          cat > drizzle.config.ts << 'EOFDRIZZLE'
-          import { defineConfig } from "drizzle-kit";
-
-          export default defineConfig({
-            out: "./migrations",
-            schema: "./shared/schema.ts",
-            dialect: "postgresql",
-            dbCredentials: {
-              url: process.env.DATABASE_URL,
-            },
-          });
-EOFDRIZZLE
+          echo "drizzle.config.ts not found. Continuing anyway, will use DATABASE_URL from environment."
         fi
         
         # 5. Create a custom migration script that handles the DATABASE_URL check
