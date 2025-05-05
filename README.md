@@ -132,7 +132,15 @@ module.exports = {
     max_memory_restart: "500M",
     env: {
       NODE_ENV: "production",
-      PORT: 5000
+      PORT: 5000,
+      DATABASE_URL: "postgres://patrold:güçlü_şifre_belirleyin@localhost:5432/patrold",
+      PGUSER: "patrold",
+      PGPASSWORD: "güçlü_şifre_belirleyin",
+      PGHOST: "localhost",
+      PGPORT: "5432",
+      PGDATABASE: "patrold",
+      TELEGRAM_BOT_TOKEN: "bot_token_buraya",
+      SESSION_SECRET: "rastgele_güvenli_bir_dize"
     }
   }]
 };

@@ -45,20 +45,9 @@ deploy:
     - npm run db:push
     - cp patrold_1.0.0_all.deb /var/www/html/ || echo "Warning: Failed to copy Debian package to web directory"
     - npm install -g pm2
-    # PM2 için .env.pm2 dosyası oluştur
-    - echo "export DATABASE_URL=\"${DATABASE_URL}\"" > .env.pm2
-    - echo "export PGUSER=\"${PGUSER}\"" >> .env.pm2
-    - echo "export PGPASSWORD=\"${PGPASSWORD}\"" >> .env.pm2
-    - echo "export PGHOST=\"${PGHOST}\"" >> .env.pm2
-    - echo "export PGPORT=\"${PGPORT}\"" >> .env.pm2
-    - echo "export PGDATABASE=\"${PGDATABASE}\"" >> .env.pm2
-    - echo "export TELEGRAM_BOT_TOKEN=\"${TELEGRAM_TOKEN}\"" >> .env.pm2
-    - echo "export SESSION_SECRET=\"${SESSION_SECRET}\"" >> .env.pm2
-    - echo "export PORT=5000" >> .env.pm2
-    
-    # PM2 ecosystem.config.js oluştur
+    # PM2 ecosystem.config.js oluştur (çevre değişkenlerini doğrudan ekle)
     - |
-      cat > ecosystem.config.js << 'EOL'
+      cat > ecosystem.config.js << EOL
       module.exports = {
         apps: [{
           name: "patrold",
@@ -68,13 +57,25 @@ deploy:
           autorestart: true,
           watch: false,
           max_memory_restart: "500M",
-          env_file: ".env.pm2"
+          env: {
+            NODE_ENV: "production",
+            PORT: 5000,
+            DATABASE_URL: "${DATABASE_URL}",
+            PGUSER: "${PGUSER}",
+            PGPASSWORD: "${PGPASSWORD}",
+            PGHOST: "${PGHOST}",
+            PGPORT: "${PGPORT}",
+            PGDATABASE: "${PGDATABASE}",
+            TELEGRAM_BOT_TOKEN: "${TELEGRAM_TOKEN}",
+            SESSION_SECRET: "${SESSION_SECRET}"
+          }
         }]
       };
       EOL
     
     # PM2 ile uygulamayı başlat
-    - pm2 restart patrold || pm2 start ecosystem.config.js
+    - pm2 delete patrold || true
+    - pm2 start ecosystem.config.js
     - pm2 save
   only:
     - main
