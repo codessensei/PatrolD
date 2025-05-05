@@ -97,8 +97,8 @@ class TelegramService {
                 timeout: 60
               });
               console.log('Telegram bot polling started successfully');
-            } catch (pollError) {
-              if (pollError && pollError.code === 'ETELEGRAM') {
+            } catch (pollError: any) {
+              if (pollError && typeof pollError === 'object' && 'code' in pollError && pollError.code === 'ETELEGRAM') {
                 console.warn('Unable to start Telegram polling, another instance probably running');
               } else {
                 console.error('Failed to start Telegram polling:', pollError);
