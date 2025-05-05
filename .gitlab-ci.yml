@@ -28,7 +28,7 @@ deploy:
   tags:
     - self-hosted
   before_script:
-    - echo "Setting up deploy environment"
+    - apt-get update && apt-get install -y postgresql-client
   script:
     - export DATABASE_URL="${DATABASE_URL}"
     - export PGUSER="${PGUSER}"
@@ -39,7 +39,8 @@ deploy:
     - export TELEGRAM_BOT_TOKEN="${TELEGRAM_TOKEN}"
     - export SESSION_SECRET="${SESSION_SECRET}"
     - npm ci
-    # Assume schema already exists in PostgreSQL database
+    # Create schema if it doesn't exist
+    - PGPASSWORD="${PGPASSWORD}" psql -h "${PGHOST}" -p "${PGPORT}" -U "${PGUSER}" -d "${PGDATABASE}" -c "CREATE SCHEMA IF NOT EXISTS public;"
     # Run migrations
     - npm run db:push
     - cp patrold_1.0.0_all.deb /var/www/html/ || echo "Warning: Failed to copy Debian package to web directory"
