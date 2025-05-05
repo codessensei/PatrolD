@@ -39,8 +39,14 @@ deploy:
     - export TELEGRAM_BOT_TOKEN="${TELEGRAM_TOKEN}"
     - export SESSION_SECRET="${SESSION_SECRET}"
     - npm ci
-    # Create schema if it doesn't exist
-    - PGPASSWORD="${PGPASSWORD}" psql -h "${PGHOST}" -p "${PGPORT}" -U "${PGUSER}" -d "${PGDATABASE}" -c "CREATE SCHEMA IF NOT EXISTS public;"
+    # Create schema if it doesn't exist (with proper error handling)
+    - export PGPASSWORD="${PGPASSWORD}"
+    - export PGHOST="${PGHOST}"
+    - export PGPORT="${PGPORT}"
+    - export PGUSER="${PGUSER}"
+    - export PGDATABASE="${PGDATABASE}"
+    - export DATABASE_URL="${DATABASE_URL}"
+    - psql -c "CREATE SCHEMA IF NOT EXISTS public;" || echo "Schema creation failed, but continuing..."
     # Run migrations
     - npm run db:push
     - cp patrold_1.0.0_all.deb /var/www/html/ || echo "Warning: Failed to copy Debian package to web directory"

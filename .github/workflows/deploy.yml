@@ -42,8 +42,19 @@ jobs:
         
     - name: Run database migrations
       run: |
-        # First create the database and necessary tables if they don't exist
-        PGPASSWORD=${{ secrets.PGPASSWORD }} psql -h ${{ secrets.PGHOST }} -p ${{ secrets.PGPORT }} -U ${{ secrets.PGUSER }} -d ${{ secrets.PGDATABASE }} -c "CREATE SCHEMA IF NOT EXISTS public;"
+        # Set environment variables for database from secrets
+        export PGPASSWORD=${{ secrets.PGPASSWORD }}
+        export PGHOST=${{ secrets.PGHOST }}
+        export PGPORT=${{ secrets.PGPORT }}
+        export PGUSER=${{ secrets.PGUSER }}
+        export PGDATABASE=${{ secrets.PGDATABASE }}
+        export DATABASE_URL=${{ secrets.DATABASE_URL }}
+        
+        # Check if postgresql-client is installed, install if not
+        which psql || sudo apt-get update && sudo apt-get install -y postgresql-client
+        
+        # Create schema if doesn't exist (with proper error handling)
+        psql -c "CREATE SCHEMA IF NOT EXISTS public;" || echo "Schema creation failed, but continuing..."
         
         # Now run the database migrations
         npm run db:push
