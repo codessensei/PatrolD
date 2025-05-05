@@ -48,18 +48,10 @@ npm install -g pm2
 ### 2. PostgreSQL Kurulumu ve Konfigürasyonu
 
 ```bash
-# PostgreSQL kurulumu
-sudo apt install -y postgresql postgresql-contrib
-
-# PostgreSQL servisini başlatın ve otomatik başlatılmasını sağlayın
-sudo systemctl start postgresql
-sudo systemctl enable postgresql
-
-# PostgreSQL'de kullanıcı ve veritabanı oluşturma
-sudo -u postgres psql -c "CREATE USER patrold WITH PASSWORD 'güçlü_şifre_belirleyin';"
-sudo -u postgres psql -c "CREATE DATABASE patrold;"
-sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE patrold TO patrold;"
-sudo -u postgres psql -c "ALTER USER patrold WITH SUPERUSER;"
+# PatrolD için .env dosyasındaki veritabanı bilgilerini doldurabilmek için
+# halihazırda bir PostgreSQL veritabanı kurulu olmalıdır
+# Veritabanı mevcut değilse kurulum talimatları için 
+# PostgreSQL resmi dokümantasyonuna bakabilirsiniz: https://www.postgresql.org/download/
 ```
 
 ### 3. PatrolD Uygulamasını İndirme ve Kurma
