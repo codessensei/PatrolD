@@ -120,7 +120,7 @@ PM2, Node.js uygulamalarını yönetmek için güçlü bir araçtır:
 
 ```bash
 # PM2 yapılandırma dosyası oluşturun
-cat > ecosystem.config.js << 'EOL'
+cat > ecosystem.config.cjs << 'EOL'
 module.exports = {
   apps: [{
     name: "patrold",
@@ -147,7 +147,7 @@ module.exports = {
 EOL
 
 # PM2 ile uygulamayı başlatın
-pm2 start ecosystem.config.js
+pm2 start ecosystem.config.cjs
 
 # PM2'nin sistem başlangıcında otomatik başlamasını sağlayın
 pm2 startup

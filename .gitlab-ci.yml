@@ -47,7 +47,7 @@ deploy:
     - npm install -g pm2
     # PM2 ecosystem.config.js oluştur (çevre değişkenlerini doğrudan ekle)
     - |
-      cat > ecosystem.config.js << EOL
+      cat > ecosystem.config.cjs << 'EOL'
       module.exports = {
         apps: [{
           name: "patrold",
@@ -73,9 +73,19 @@ deploy:
       };
       EOL
     
+    # Değişkenleri doğrudan dosyaya yerleştir
+    - sed -i "s#\${DATABASE_URL}#${DATABASE_URL}#g" ecosystem.config.cjs
+    - sed -i "s#\${PGUSER}#${PGUSER}#g" ecosystem.config.cjs
+    - sed -i "s#\${PGPASSWORD}#${PGPASSWORD}#g" ecosystem.config.cjs
+    - sed -i "s#\${PGHOST}#${PGHOST}#g" ecosystem.config.cjs
+    - sed -i "s#\${PGPORT}#${PGPORT}#g" ecosystem.config.cjs
+    - sed -i "s#\${PGDATABASE}#${PGDATABASE}#g" ecosystem.config.cjs
+    - sed -i "s#\${TELEGRAM_TOKEN}#${TELEGRAM_TOKEN}#g" ecosystem.config.cjs
+    - sed -i "s#\${SESSION_SECRET}#${SESSION_SECRET}#g" ecosystem.config.cjs
+    
     # PM2 ile uygulamayı başlat
     - pm2 delete patrold || true
-    - pm2 start ecosystem.config.js
+    - pm2 start ecosystem.config.cjs
     - pm2 save
   only:
     - main
