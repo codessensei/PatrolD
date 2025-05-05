@@ -28,7 +28,7 @@ deploy:
   tags:
     - self-hosted
   before_script:
-    - apt-get update && apt-get install -y postgresql-client
+    - echo "PostgreSQL Client zaten kurulu olduğunu varsayıyoruz"
   script:
     - export DATABASE_URL="${DATABASE_URL}"
     - export PGUSER="${PGUSER}"
