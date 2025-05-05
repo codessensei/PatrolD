@@ -52,7 +52,35 @@ jobs:
 
     - name: Restart PM2 service
       run: |
-        pm2 restart patrold || pm2 start npm --name "patrold" -- start
+        # PM2 için .env.pm2 dosyası oluştur
+        echo "export DATABASE_URL=\"${{ secrets.DATABASE_URL }}\"" > .env.pm2
+        echo "export PGUSER=\"${{ secrets.PGUSER }}\"" >> .env.pm2
+        echo "export PGPASSWORD=\"${{ secrets.PGPASSWORD }}\"" >> .env.pm2
+        echo "export PGHOST=\"${{ secrets.PGHOST }}\"" >> .env.pm2
+        echo "export PGPORT=\"${{ secrets.PGPORT }}\"" >> .env.pm2
+        echo "export PGDATABASE=\"${{ secrets.PGDATABASE }}\"" >> .env.pm2
+        echo "export TELEGRAM_BOT_TOKEN=\"${{ secrets.TELEGRAM_TOKEN }}\"" >> .env.pm2
+        echo "export SESSION_SECRET=\"${{ secrets.SESSION_SECRET }}\"" >> .env.pm2
+        echo "export PORT=5000" >> .env.pm2
+        
+        # PM2 ecosystem.config.js oluştur
+        cat > ecosystem.config.js << 'EOL'
+        module.exports = {
+          apps: [{
+            name: "patrold",
+            script: "npm",
+            args: "start",
+            instances: 1,
+            autorestart: true,
+            watch: false,
+            max_memory_restart: "500M",
+            env_file: ".env.pm2"
+          }]
+        };
+        EOL
+        
+        # PM2 ile uygulamayı başlat
+        pm2 restart patrold || pm2 start ecosystem.config.js
         pm2 save
 
     - name: Package Debian
