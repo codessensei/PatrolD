@@ -82,13 +82,19 @@ class TelegramService {
       // Start polling with our single instance
       // Using a try/catch to handle potential polling conflicts
       try {
-        this.bot.startPolling({
-          restart: false,
-          interval: 3000, // Slightly longer interval
-          limit: 100,
-          timeout: 10
-        });
-        console.log('Telegram bot polling started successfully');
+        // Only start polling if we don't have too many instances running already
+        try {
+          this.bot.startPolling({
+            restart: false,
+            interval: 5000, // Even longer interval to reduce conflicts
+            limit: 100,
+            timeout: 30
+          });
+          console.log('Telegram bot polling started successfully');
+        } catch (pollError) {
+          console.error('Failed to start Telegram polling, probably already running:', pollError);
+          // Continue anyway as commands will still work
+        }
       } catch (error: any) {
         // If we get a conflict error, we can safely ignore it
         if (error && error.code === 'ETELEGRAM' && error.message.includes('terminated by other getUpdates request')) {

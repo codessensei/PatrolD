@@ -74,7 +74,7 @@ jobs:
         # 4. Verify drizzle.config.ts exists and has proper DATABASE_URL
         if [ ! -f "drizzle.config.ts" ]; then
           echo "drizzle.config.ts not found. Creating it..."
-          cat > drizzle.config.ts << EOF
+          cat > drizzle.config.ts << 'EOFDRIZZLE'
 import { defineConfig } from "drizzle-kit";
 
 export default defineConfig({
@@ -85,7 +85,7 @@ export default defineConfig({
     url: process.env.DATABASE_URL,
   },
 });
-EOF
+EOFDRIZZLE
         fi
         
         # 5. Create a custom migration script that handles the DATABASE_URL check
