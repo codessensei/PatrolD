@@ -36,6 +36,10 @@ export function setupAuth(app: Express) {
     store: storage.sessionStore,
     cookie: {
       maxAge: 24 * 60 * 60 * 1000, // 1 day
+      httpOnly: true,
+      sameSite: 'lax',  // Allows cookies to be sent in cross-site requests
+      secure: process.env.NODE_ENV === 'production', // Only in production
+      path: '/',
     }
   };
 
