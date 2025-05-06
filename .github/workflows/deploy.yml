@@ -53,31 +53,31 @@ jobs:
     - name: Restart PM2 service
       run: |
         # PM2 ecosystem.config.js oluştur
-        cat > ecosystem.config.cjs << EOL
-module.exports = {
-  apps: [{
-    name: "patrold",
-    script: "npm",
-    args: "start",
-    instances: 1,
-    autorestart: true,
-    watch: false,
-    max_memory_restart: "500M",
-    env: {
-      NODE_ENV: "production",
-      PORT: 5000,
-      DATABASE_URL: "${{ secrets.DATABASE_URL }}",
-      PGUSER: "${{ secrets.PGUSER }}",
-      PGPASSWORD: "${{ secrets.PGPASSWORD }}",
-      PGHOST: "${{ secrets.PGHOST }}",
-      PGPORT: "${{ secrets.PGPORT }}",
-      PGDATABASE: "${{ secrets.PGDATABASE }}",
-      TELEGRAM_BOT_TOKEN: "${{ secrets.TELEGRAM_TOKEN }}",
-      SESSION_SECRET: "${{ secrets.SESSION_SECRET }}"
-    }
-  }]
-};
-EOL
+        cat > ecosystem.config.cjs << 'EOF'
+        module.exports = {
+          apps: [{
+            name: "patrold",
+            script: "npm",
+            args: "start",
+            instances: 1,
+            autorestart: true,
+            watch: false,
+            max_memory_restart: "500M",
+            env: {
+              NODE_ENV: "production",
+              PORT: 5000,
+              DATABASE_URL: "${{ secrets.DATABASE_URL }}",
+              PGUSER: "${{ secrets.PGUSER }}",
+              PGPASSWORD: "${{ secrets.PGPASSWORD }}",
+              PGHOST: "${{ secrets.PGHOST }}",
+              PGPORT: "${{ secrets.PGPORT }}",
+              PGDATABASE: "${{ secrets.PGDATABASE }}",
+              TELEGRAM_BOT_TOKEN: "${{ secrets.TELEGRAM_TOKEN }}",
+              SESSION_SECRET: "${{ secrets.SESSION_SECRET }}"
+            }
+          }]
+        };
+        EOF
         
         # PM2 ile uygulamayı başlat
         pm2 delete patrold || true
