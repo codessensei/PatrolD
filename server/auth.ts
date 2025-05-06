@@ -35,11 +35,12 @@ export function setupAuth(app: Express) {
     saveUninitialized: false,
     store: storage.sessionStore,
     cookie: {
-      maxAge: 24 * 60 * 60 * 1000, // 1 day
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
       httpOnly: true,
       sameSite: 'lax',  // Allows cookies to be sent in cross-site requests
-      secure: false, // Set to false for now to debug issues
+      secure: false, // Set to false to ensure it works on HTTP
       path: '/',
+      domain: undefined // Don't specify a domain to ensure it works on all environments
     }
   };
 
