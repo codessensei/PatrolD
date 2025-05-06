@@ -1,0 +1,90 @@
+requests.js:1 
+            
+            
+           POST http://94.20.88.27:5000/api/register 500 (Internal Server Error)
+(anonymous) @ requests.js:1
+(anonymous) @ traffic.js:1
+fetch @ traffic.js:1
+Le @ index-BOB1QfGg.js:48
+mutationFn @ index-BOB1QfGg.js:398
+fn @ index-BOB1QfGg.js:48
+w @ index-BOB1QfGg.js:48
+start @ index-BOB1QfGg.js:48
+execute @ index-BOB1QfGg.js:48
+await in execute
+mutate @ index-BOB1QfGg.js:48
+(anonymous) @ index-BOB1QfGg.js:48
+f @ index-BOB1QfGg.js:398
+(anonymous) @ index-BOB1QfGg.js:398
+await in (anonymous)
+MM @ index-BOB1QfGg.js:37
+RM @ index-BOB1QfGg.js:37
+IM @ index-BOB1QfGg.js:37
+Uv @ index-BOB1QfGg.js:37
+eN @ index-BOB1QfGg.js:37
+(anonymous) @ index-BOB1QfGg.js:37
+Bp @ index-BOB1QfGg.js:40
+Sj @ index-BOB1QfGg.js:37
+Ff @ index-BOB1QfGg.js:37
+gp @ index-BOB1QfGg.js:37
+ZM @ index-BOB1QfGg.js:37Understand this error
+index-BOB1QfGg.js:48 API Response: POST /api/register - Status: 500
+index-BOB1QfGg.js:48 API Error for POST /api/register: Error: 500: {"message":"Invalid URL"}
+    at AS (index-BOB1QfGg.js:48:42890)
+    at async Le (index-BOB1QfGg.js:48:43194)
+    at async Object.mutationFn (index-BOB1QfGg.js:398:71361)
+Le @ index-BOB1QfGg.js:48
+await in Le
+mutationFn @ index-BOB1QfGg.js:398
+fn @ index-BOB1QfGg.js:48
+w @ index-BOB1QfGg.js:48
+start @ index-BOB1QfGg.js:48
+execute @ index-BOB1QfGg.js:48
+await in execute
+mutate @ index-BOB1QfGg.js:48
+(anonymous) @ index-BOB1QfGg.js:48
+f @ index-BOB1QfGg.js:398
+(anonymous) @ index-BOB1QfGg.js:398
+await in (anonymous)
+MM @ index-BOB1QfGg.js:37
+RM @ index-BOB1QfGg.js:37
+IM @ index-BOB1QfGg.js:37
+Uv @ index-BOB1QfGg.js:37
+eN @ index-BOB1QfGg.js:37
+(anonymous) @ index-BOB1QfGg.js:37
+Bp @ index-BOB1QfGg.js:40
+Sj @ index-BOB1QfGg.js:37
+Ff @ index-BOB1QfGg.js:37
+gp @ index-BOB1QfGg.js:37
+ZM @ index-BOB1QfGg.js:37Understand this error
+index-BOB1QfGg.js:398 Registration error: Error: 500: {"message":"Invalid URL"}
+    at AS (index-BOB1QfGg.js:48:42890)
+    at async Le (index-BOB1QfGg.js:48:43194)
+    at async Object.mutationFn (index-BOB1QfGg.js:398:71361)
+mutationFn @ index-BOB1QfGg.js:398
+await in mutationFn
+fn @ index-BOB1QfGg.js:48
+w @ index-BOB1QfGg.js:48
+start @ index-BOB1QfGg.js:48
+execute @ index-BOB1QfGg.js:48
+await in execute
+mutate @ index-BOB1QfGg.js:48
+(anonymous) @ index-BOB1QfGg.js:48
+f @ index-BOB1QfGg.js:398
+(anonymous) @ index-BOB1QfGg.js:398
+await in (anonymous)
+MM @ index-BOB1QfGg.js:37
+RM @ index-BOB1QfGg.js:37
+IM @ index-BOB1QfGg.js:37
+Uv @ index-BOB1QfGg.js:37
+eN @ index-BOB1QfGg.js:37
+(anonymous) @ index-BOB1QfGg.js:37
+Bp @ index-BOB1QfGg.js:40
+Sj @ index-BOB1QfGg.js:37
+Ff @ index-BOB1QfGg.js:37
+gp @ index-BOB1QfGg.js:37
+ZM @ index-BOB1QfGg.js:37Understand this error
+index-BOB1QfGg.js:398 Registration mutation error handler: Error: 500: {"message":"Invalid URL"}
+    at AS (index-BOB1QfGg.js:48:42890)
+    at async Le (index-BOB1QfGg.js:48:43194)
+    at async Object.mutationFn (index-BOB1QfGg.js:398:71361)

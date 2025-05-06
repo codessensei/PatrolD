@@ -395,24 +395,37 @@ export async function createStatusChangeAlert(storage: IStorage, service: Servic
 
 function buildServiceUrl(service: Service): string {
   try {
-    // Check if host is defined
-    if (!service.host) {
-      console.error(`Invalid service configuration: Missing host for service ${service.id} (${service.name})`);
+    // Check if required fields are missing or invalid
+    if (!service || !service.host || typeof service.host !== 'string') {
+      console.error(`Invalid service configuration: Missing or invalid host for service ${service?.id || 'unknown'} (${service?.name || 'unknown'})`);
+      return '';
+    }
+    
+    if (service.port === undefined || service.port === null || typeof service.port !== 'number') {
+      console.error(`Invalid service configuration: Missing or invalid port for service ${service.id} (${service.name})`);
       return '';
     }
     
     // Determine protocol based on port
     const protocol = service.port === 443 ? "https" : "http";
     
+    // Sanitize host by removing any protocol prefixes if mistakenly included
+    let host = service.host;
+    host = host.replace(/^https?:\/\//, '');
+    
     // Construct URL
-    const url = `${protocol}://${service.host}${service.port ? `:${service.port}` : ''}`;
+    const url = `${protocol}://${host}:${service.port}`;
     
-    // Validate URL by trying to create a URL object
-    new URL(url);
-    
-    return url;
+    try {
+      // Validate URL by trying to create a URL object
+      new URL(url);
+      return url;
+    } catch (urlError) {
+      console.error(`Invalid URL format for service ${service.id} (${service.name}): ${url}`);
+      return '';
+    }
   } catch (error) {
-    console.error(`Invalid URL generated for service ${service.id} (${service.name}):`, error);
+    console.error(`Error building URL for service ${service?.id || 'unknown'} (${service?.name || 'unknown'}):`, error);
     return '';
   }
 }
