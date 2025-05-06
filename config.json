@@ -1,0 +1,21 @@
+{
+  "database": {
+    "host": "ep-quiet-wave-a4jjmiez.us-east-1.aws.neon.tech",
+    "port": "5432",
+    "database": "neondb",
+    "username": "neondb_owner",
+    "password": "npg_f8oi7lapvSCK",
+    "ssl": true
+  },
+  "telegram": {
+    "botToken": "8198490049:AAGaNmSwUxMYfUcgTEkEjm2W9AtkvRaVlqw"
+  },
+  "admin": {
+    "username": "admin",
+    "password": "de3c7ff1e3677f2e2f0c22aad353308406b47de4ffd234d8d8799719e4987e3ec9dbf9b631a5590000447de327a34d0955b0b4b4215b22d2ed72754fd689a633.7a8420eceeb90d9497dce37aae2f346f",
+    "email": "admin@example.com",
+    "terms": true
+  },
+  "configured": true,
+  "setupDate": "2025-05-06T13:23:37.487Z"
+}
