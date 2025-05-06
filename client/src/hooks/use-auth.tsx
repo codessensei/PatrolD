@@ -34,14 +34,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
-      console.log("Login mutation called with:", credentials);
+      console.log("Login mutation called with:", { 
+        username: credentials.username, 
+        password: credentials.password ? "[REDACTED]" : undefined 
+      });
+      
       try {
+        console.log("About to make login request to /api/login");
         const res = await apiRequest("POST", "/api/login", credentials);
+        console.log("Login response received with status:", res.status);
+        
         const userData = await res.json();
         console.log("Login successful, user data:", userData);
         return userData;
       } catch (error) {
         console.error("Login error:", error);
+        // More detailed error logging
+        if (error instanceof Error) {
+          console.error("Error message:", error.message);
+          console.error("Error stack:", error.stack);
+        }
         throw error;
       }
     },
@@ -68,14 +80,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const registerMutation = useMutation({
     mutationFn: async (credentials: InsertUser) => {
-      console.log("Register mutation called with:", credentials);
+      console.log("Register mutation called with:", {
+        ...credentials,
+        password: credentials.password ? "[REDACTED]" : undefined
+      });
+      
       try {
+        console.log("About to make registration request to /api/register");
         const res = await apiRequest("POST", "/api/register", credentials);
+        console.log("Registration response received with status:", res.status);
+        
         const userData = await res.json();
         console.log("Registration successful, user data:", userData);
         return userData;
       } catch (error) {
         console.error("Registration error:", error);
+        // More detailed error logging
+        if (error instanceof Error) {
+          console.error("Error message:", error.message);
+          console.error("Error stack:", error.stack);
+        }
         throw error;
       }
     },

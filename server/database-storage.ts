@@ -33,18 +33,74 @@ export class DatabaseStorage implements IStorage {
   
   // User methods
   async getUser(id: number): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    try {
+      console.log(`DatabaseStorage: Looking up user with ID: ${id}`);
+      const [user] = await db.select().from(users).where(eq(users.id, id));
+      
+      if (user) {
+        console.log(`DatabaseStorage: Found user with ID: ${id}, username: ${user.username}`);
+        // Update the users map to keep it in sync
+        this.users.set(user.id, user);
+      } else {
+        console.log(`DatabaseStorage: No user found with ID: ${id}`);
+      }
+      
+      return user;
+    } catch (error) {
+      console.error(`DatabaseStorage: Error finding user with ID: ${id}`, error);
+      return undefined;
+    }
   }
   
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user;
+    try {
+      console.log(`DatabaseStorage: Looking up user with username: ${username}`);
+      const [user] = await db.select().from(users).where(eq(users.username, username));
+      
+      if (user) {
+        console.log(`DatabaseStorage: Found user with username: ${username}, ID: ${user.id}`);
+        // Update the users map to keep it in sync
+        this.users.set(user.id, user);
+      } else {
+        console.log(`DatabaseStorage: No user found with username: ${username}`);
+      }
+      
+      return user;
+    } catch (error) {
+      console.error(`DatabaseStorage: Error finding user with username: ${username}`, error);
+      return undefined;
+    }
   }
   
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
-    return user;
+    try {
+      console.log("DatabaseStorage: Creating user with data:", { 
+        ...insertUser, 
+        password: insertUser.password ? "[REDACTED]" : undefined 
+      });
+      
+      // Make sure we only insert fields that are in our schema
+      const userData: InsertUser = {
+        username: insertUser.username,
+        password: insertUser.password,
+      };
+      
+      // Only add email if it exists and is not empty
+      if (insertUser.email && insertUser.email.trim() !== '') {
+        userData.email = insertUser.email;
+      }
+      
+      const [user] = await db.insert(users).values(userData).returning();
+      console.log("DatabaseStorage: User created successfully with ID:", user.id);
+      
+      // Add to the users map as well
+      this.users.set(user.id, user);
+      
+      return user;
+    } catch (error) {
+      console.error("DatabaseStorage: Error creating user:", error);
+      throw error;
+    }
   }
   
   // Service methods
