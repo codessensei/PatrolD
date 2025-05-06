@@ -15,6 +15,7 @@ import {
 import { randomBytes } from "crypto";
 import * as fs from 'fs';
 import * as path from 'path';
+import { checkDatabaseConnection } from "./db";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
@@ -22,6 +23,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Setup monitoring
   setupMonitoring(storage);
+  
+  // Veritabanı durumu kontrol endpoint'i
+  app.get("/api/db-status", async (req, res) => {
+    try {
+      const status = await checkDatabaseConnection();
+      res.status(200).json(status);
+    } catch (error) {
+      console.error("Error checking database status:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Veritabanı durumu kontrol edilirken hata oluştu",
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
 
   // API Routes
   // Services

@@ -38,6 +38,12 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Uygulama başlangıcında veritabanı durumunu kontrol et
+  console.log("\n=== VERİTABANI DURUM KONTROLÜ ===");
+  const dbStatus = await checkDatabaseConnection();
+  console.log(`=== VERİTABANI DURUM SONUCU: ${dbStatus.success ? 'BAŞARILI ✅' : 'BAŞARISIZ ❌'} ===\n`);
+  
+  // Uygulama rotalarını kaydet
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

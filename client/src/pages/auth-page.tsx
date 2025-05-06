@@ -12,7 +12,9 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { insertUserSchema } from "@shared/schema";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Activity, HeartPulse, ServerIcon } from "lucide-react";
+import { Activity, HeartPulse, ServerIcon, Database, CheckCircle2, AlertCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 const loginSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
@@ -44,6 +46,12 @@ export default function AuthPage() {
   const [activeTab, setActiveTab] = useState<string>("login");
   const [location, navigate] = useLocation();
   const { user, loginMutation, registerMutation, isLoading } = useAuth();
+
+  // Veritabanı durumunu kontrol et
+  const { data: dbStatus, isLoading: dbStatusLoading } = useQuery({
+    queryKey: ['/api/db-status'],
+    refetchInterval: 30000, // 30 saniyede bir güncelle
+  });
 
   console.log("AuthPage auth state:", { user, isLoading, location });
 
@@ -120,6 +128,31 @@ export default function AuthPage() {
               : "Get started with monitoring your services in minutes"}
           </p>
         </div>
+
+        {/* Veritabanı durumu göstergesi */}
+        {dbStatus && (
+          <Alert className={`mb-4 ${dbStatus.success ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'}`}>
+            <div className="flex items-center">
+              {dbStatus.success ? (
+                <CheckCircle2 className="h-5 w-5 text-green-500 mr-2" />
+              ) : (
+                <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
+              )}
+              <div className="flex-1">
+                <AlertTitle className={dbStatus.success ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}>
+                  {dbStatus.success ? 'Veritabanı bağlantısı aktif' : 'Veritabanı bağlantı hatası'}
+                </AlertTitle>
+                <AlertDescription className={dbStatus.success ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                  {dbStatus.success 
+                    ? `PostgreSQL ${dbStatus.version?.split(' ')[1] || ''} bağlantısı kuruldu`
+                    : `Hata: ${dbStatus.message}`
+                  }
+                </AlertDescription>
+              </div>
+              <Database className={`h-5 w-5 ${dbStatus.success ? 'text-green-500' : 'text-red-500'}`} />
+            </div>
+          </Alert>
+        )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-6">
