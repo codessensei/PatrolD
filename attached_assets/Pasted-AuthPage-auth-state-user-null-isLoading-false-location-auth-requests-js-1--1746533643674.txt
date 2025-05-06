@@ -1,0 +1,101 @@
+AuthPage auth state: {user: null, isLoading: false, location: '/auth'}
+requests.js:1 
+            
+            
+           POST http://94.20.88.27:5000/api/login net::ERR_EMPTY_RESPONSE
+(anonymous) @ requests.js:1
+(anonymous) @ traffic.js:1
+fetch @ traffic.js:1
+Le @ index-BOB1QfGg.js:48
+mutationFn @ index-BOB1QfGg.js:398
+fn @ index-BOB1QfGg.js:48
+w @ index-BOB1QfGg.js:48
+start @ index-BOB1QfGg.js:48
+execute @ index-BOB1QfGg.js:48
+await in execute
+mutate @ index-BOB1QfGg.js:48
+(anonymous) @ index-BOB1QfGg.js:48
+d @ index-BOB1QfGg.js:398
+(anonymous) @ index-BOB1QfGg.js:398
+await in (anonymous)
+MM @ index-BOB1QfGg.js:37
+RM @ index-BOB1QfGg.js:37
+IM @ index-BOB1QfGg.js:37
+Uv @ index-BOB1QfGg.js:37
+eN @ index-BOB1QfGg.js:37
+(anonymous) @ index-BOB1QfGg.js:37
+Bp @ index-BOB1QfGg.js:40
+Sj @ index-BOB1QfGg.js:37
+Ff @ index-BOB1QfGg.js:37
+gp @ index-BOB1QfGg.js:37
+ZM @ index-BOB1QfGg.js:37Understand this error
+index-BOB1QfGg.js:398 Login error: TypeError: Failed to fetch
+    at requests.js:1:3217
+    at traffic.js:1:1746
+    at new Promise (<anonymous>)
+    at fetch (traffic.js:1:1717)
+    at Le (index-BOB1QfGg.js:48:42999)
+    at Object.mutationFn (index-BOB1QfGg.js:398:70781)
+    at Object.fn (index-BOB1QfGg.js:48:19650)
+    at w (index-BOB1QfGg.js:48:10076)
+    at Object.start (index-BOB1QfGg.js:48:10535)
+    at i0.execute (index-BOB1QfGg.js:48:20455)
+mutationFn @ index-BOB1QfGg.js:398
+await in mutationFn
+fn @ index-BOB1QfGg.js:48
+w @ index-BOB1QfGg.js:48
+start @ index-BOB1QfGg.js:48
+execute @ index-BOB1QfGg.js:48
+await in execute
+mutate @ index-BOB1QfGg.js:48
+(anonymous) @ index-BOB1QfGg.js:48
+d @ index-BOB1QfGg.js:398
+(anonymous) @ index-BOB1QfGg.js:398
+await in (anonymous)
+MM @ index-BOB1QfGg.js:37
+RM @ index-BOB1QfGg.js:37
+IM @ index-BOB1QfGg.js:37
+Uv @ index-BOB1QfGg.js:37
+eN @ index-BOB1QfGg.js:37
+(anonymous) @ index-BOB1QfGg.js:37
+Bp @ index-BOB1QfGg.js:40
+Sj @ index-BOB1QfGg.js:37
+Ff @ index-BOB1QfGg.js:37
+gp @ index-BOB1QfGg.js:37
+ZM @ index-BOB1QfGg.js:37Understand this error
+index-BOB1QfGg.js:398 Login mutation error handler: TypeError: Failed to fetch
+    at requests.js:1:3217
+    at traffic.js:1:1746
+    at new Promise (<anonymous>)
+    at fetch (traffic.js:1:1717)
+    at Le (index-BOB1QfGg.js:48:42999)
+    at Object.mutationFn (index-BOB1QfGg.js:398:70781)
+    at Object.fn (index-BOB1QfGg.js:48:19650)
+    at w (index-BOB1QfGg.js:48:10076)
+    at Object.start (index-BOB1QfGg.js:48:10535)
+    at i0.execute (index-BOB1QfGg.js:48:20455)
+onError @ index-BOB1QfGg.js:398
+execute @ index-BOB1QfGg.js:48
+await in execute
+mutate @ index-BOB1QfGg.js:48
+(anonymous) @ index-BOB1QfGg.js:48
+d @ index-BOB1QfGg.js:398
+(anonymous) @ index-BOB1QfGg.js:398
+await in (anonymous)
+MM @ index-BOB1QfGg.js:37
+RM @ index-BOB1QfGg.js:37
+IM @ index-BOB1QfGg.js:37
+Uv @ index-BOB1QfGg.js:37
+eN @ index-BOB1QfGg.js:37
+(anonymous) @ index-BOB1QfGg.js:37
+Bp @ index-BOB1QfGg.js:40
+Sj @ index-BOB1QfGg.js:37
+Ff @ index-BOB1QfGg.js:37
+gp @ index-BOB1QfGg.js:37
+ZM @ index-BOB1QfGg.js:37Understand this error
+index-BOB1QfGg.js:398 AuthProvider initializing
+index-BOB1QfGg.js:398 AuthPage component rendering
+index-BOB1QfGg.js:398 AuthPage auth state: {user: null, isLoading: false, location: '/auth'}
+index-BOB1QfGg.js:398 AuthProvider initializing
+index-BOB1QfGg.js:398 AuthPage component rendering
+index-BOB1QfGg.js:398 AuthPage auth state: {user: null, isLoading: false, location: '/auth'}

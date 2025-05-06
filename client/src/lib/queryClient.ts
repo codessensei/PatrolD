@@ -7,29 +7,48 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+// Helper to get the base API URL, accounting for different environments
+function getApiBaseUrl(): string {
+  // Check if we're in a specific environment that needs special handling
+  const isProduction = import.meta.env.PROD;
+  const hostname = window.location.hostname;
+  
+  // If on the actual production server (not localhost), use the absolute URL
+  if (isProduction && hostname !== 'localhost' && hostname !== '127.0.0.1') {
+    // Use window.location to construct the API base URL
+    return `${window.location.protocol}//${window.location.host}`;
+  }
+  
+  // For development or localhost in production, use relative URLs
+  return '';
+}
+
 export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  // Log the request for debugging
-  console.log(`API Request: ${method} ${url}`);
+  // Make sure URL has the correct base
+  const apiUrl = url.startsWith('http') ? url : `${getApiBaseUrl()}${url}`;
   
-  const res = await fetch(url, {
-    method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
-    credentials: "include", // This ensures cookies are sent with the request
-  });
-
-  // Log the response status for debugging
-  console.log(`API Response: ${method} ${url} - Status: ${res.status}`);
+  // Log the request for debugging
+  console.log(`API Request: ${method} ${apiUrl}`);
   
   try {
+    const res = await fetch(apiUrl, {
+      method,
+      headers: data ? { "Content-Type": "application/json" } : {},
+      body: data ? JSON.stringify(data) : undefined,
+      credentials: "include", // This ensures cookies are sent with the request
+    });
+
+    // Log the response status for debugging
+    console.log(`API Response: ${method} ${apiUrl} - Status: ${res.status}`);
+    
     await throwIfResNotOk(res);
     return res;
   } catch (error) {
-    console.error(`API Error for ${method} ${url}:`, error);
+    console.error(`API Error for ${method} ${apiUrl}:`, error);
     throw error;
   }
 }
@@ -40,26 +59,30 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    console.log(`Query Function: GET ${queryKey[0]}`);
+    const url = queryKey[0] as string;
+    // Make sure URL has the correct base
+    const apiUrl = url.startsWith('http') ? url : `${getApiBaseUrl()}${url}`;
     
-    const res = await fetch(queryKey[0] as string, {
-      credentials: "include",
-    });
-
-    console.log(`Query Response: GET ${queryKey[0]} - Status: ${res.status}`);
+    console.log(`Query Function: GET ${apiUrl}`);
     
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      console.log(`Returning null for 401 response to ${queryKey[0]}`);
-      return null;
-    }
-
     try {
+      const res = await fetch(apiUrl, {
+        credentials: "include",
+      });
+
+      console.log(`Query Response: GET ${apiUrl} - Status: ${res.status}`);
+      
+      if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+        console.log(`Returning null for 401 response to ${apiUrl}`);
+        return null;
+      }
+
       await throwIfResNotOk(res);
       const data = await res.json();
-      console.log(`Query Data for ${queryKey[0]}:`, data);
+      console.log(`Query Data for ${apiUrl}:`, data);
       return data;
     } catch (error) {
-      console.error(`Query Error for ${queryKey[0]}:`, error);
+      console.error(`Query Error for ${apiUrl}:`, error);
       throw error;
     }
   };
