@@ -52,42 +52,32 @@ jobs:
 
     - name: Restart PM2 service
       run: |
-        # PM2 ecosystem.config.js oluştur (çevre değişkenlerini doğrudan ekle)
-        cat > ecosystem.config.cjs << 'EOL'
-        module.exports = {
-          apps: [{
-            name: "patrold",
-            script: "npm",
-            args: "start",
-            instances: 1,
-            autorestart: true,
-            watch: false,
-            max_memory_restart: "500M",
-            env: {
-              NODE_ENV: "production",
-              PORT: 5000,
-              DATABASE_URL: "${{ secrets.DATABASE_URL }}",
-              PGUSER: "${{ secrets.PGUSER }}",
-              PGPASSWORD: "${{ secrets.PGPASSWORD }}",
-              PGHOST: "${{ secrets.PGHOST }}",
-              PGPORT: "${{ secrets.PGPORT }}",
-              PGDATABASE: "${{ secrets.PGDATABASE }}",
-              TELEGRAM_BOT_TOKEN: "${{ secrets.TELEGRAM_TOKEN }}",
-              SESSION_SECRET: "${{ secrets.SESSION_SECRET }}"
-            }
-          }]
-        };
-        EOL
-        
-        # Değişkenleri doğrudan dosyaya yerleştir
-        sed -i "s#\${{ secrets.DATABASE_URL }}#${{ secrets.DATABASE_URL }}#g" ecosystem.config.cjs
-        sed -i "s#\${{ secrets.PGUSER }}#${{ secrets.PGUSER }}#g" ecosystem.config.cjs
-        sed -i "s#\${{ secrets.PGPASSWORD }}#${{ secrets.PGPASSWORD }}#g" ecosystem.config.cjs
-        sed -i "s#\${{ secrets.PGHOST }}#${{ secrets.PGHOST }}#g" ecosystem.config.cjs
-        sed -i "s#\${{ secrets.PGPORT }}#${{ secrets.PGPORT }}#g" ecosystem.config.cjs
-        sed -i "s#\${{ secrets.PGDATABASE }}#${{ secrets.PGDATABASE }}#g" ecosystem.config.cjs
-        sed -i "s#\${{ secrets.TELEGRAM_TOKEN }}#${{ secrets.TELEGRAM_TOKEN }}#g" ecosystem.config.cjs
-        sed -i "s#\${{ secrets.SESSION_SECRET }}#${{ secrets.SESSION_SECRET }}#g" ecosystem.config.cjs
+        # PM2 ecosystem.config.js oluştur
+        cat > ecosystem.config.cjs << EOL
+module.exports = {
+  apps: [{
+    name: "patrold",
+    script: "npm",
+    args: "start",
+    instances: 1,
+    autorestart: true,
+    watch: false,
+    max_memory_restart: "500M",
+    env: {
+      NODE_ENV: "production",
+      PORT: 5000,
+      DATABASE_URL: "${{ secrets.DATABASE_URL }}",
+      PGUSER: "${{ secrets.PGUSER }}",
+      PGPASSWORD: "${{ secrets.PGPASSWORD }}",
+      PGHOST: "${{ secrets.PGHOST }}",
+      PGPORT: "${{ secrets.PGPORT }}",
+      PGDATABASE: "${{ secrets.PGDATABASE }}",
+      TELEGRAM_BOT_TOKEN: "${{ secrets.TELEGRAM_TOKEN }}",
+      SESSION_SECRET: "${{ secrets.SESSION_SECRET }}"
+    }
+  }]
+};
+EOL
         
         # PM2 ile uygulamayı başlat
         pm2 delete patrold || true
