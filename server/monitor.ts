@@ -237,6 +237,18 @@ async function checkService(storage: IStorage, service: Service) {
     
     // For directly monitored services, proceed with HTTP check
     const url = buildServiceUrl(service);
+    
+    // Skip checking if URL is empty or invalid
+    if (!url) {
+      console.error(`Skipping check for service ${service.id} (${service.name}) due to invalid URL`);
+      // Mark service as offline due to configuration error
+      if (previousStatus !== "offline") {
+        await storage.updateServiceStatus(service.id, "offline");
+        await createStatusChangeAlert(storage, service, previousStatus, "offline");
+      }
+      return;
+    }
+    
     const startTime = Date.now();
     
     try {
@@ -382,8 +394,27 @@ export async function createStatusChangeAlert(storage: IStorage, service: Servic
 }
 
 function buildServiceUrl(service: Service): string {
-  const protocol = service.port === 443 ? "https" : "http";
-  return `${protocol}://${service.host}:${service.port}`;
+  try {
+    // Check if host is defined
+    if (!service.host) {
+      console.error(`Invalid service configuration: Missing host for service ${service.id} (${service.name})`);
+      return '';
+    }
+    
+    // Determine protocol based on port
+    const protocol = service.port === 443 ? "https" : "http";
+    
+    // Construct URL
+    const url = `${protocol}://${service.host}${service.port ? `:${service.port}` : ''}`;
+    
+    // Validate URL by trying to create a URL object
+    new URL(url);
+    
+    return url;
+  } catch (error) {
+    console.error(`Invalid URL generated for service ${service.id} (${service.name}):`, error);
+    return '';
+  }
 }
 
 // Helper function to get all connections from all users
