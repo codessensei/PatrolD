@@ -23,7 +23,7 @@ const loginSchema = z.object({
 const registerSchema = insertUserSchema.extend({
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string(),
-  email: z.string().email("Please enter a valid email"),
+  email: z.string().email("Please enter a valid email").optional(),
   terms: z.boolean().refine(value => value === true, {
     message: "You must accept the terms and conditions",
   }),
@@ -80,11 +80,17 @@ export default function AuthPage() {
   };
 
   const onRegisterSubmit = (data: RegisterFormValues) => {
-    registerMutation.mutate({
+    // Only include email if it's provided (to match our optional schema change)
+    const userData: any = {
       username: data.username,
       password: data.password,
-      email: data.email,
-    });
+    };
+    
+    if (data.email) {
+      userData.email = data.email;
+    }
+    
+    registerMutation.mutate(userData);
   };
 
   return (
