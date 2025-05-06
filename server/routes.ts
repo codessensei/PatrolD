@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { setupMonitoring, getTelegramService, createStatusChangeAlert } from "./monitor";
+import { setupSetupRoutes } from "./setup";
 import { z } from "zod";
 import { 
   insertConnectionSchema, 
@@ -23,6 +24,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Setup monitoring
   setupMonitoring(storage);
+  
+  // Setup wizard routes
+  setupSetupRoutes(app, storage);
   
   // Veritabanı durumu kontrol endpoint'i
   app.get("/api/db-status", async (req, res) => {

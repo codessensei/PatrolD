@@ -133,22 +133,20 @@ export default function SetupWizard() {
   // Kurulum durumunu kontrol et
   const { data: setupStatus, isLoading: setupStatusLoading } = useQuery<{configured: boolean}>({
     queryKey: ['/api/setup/status'],
-    refetchInterval: false,
-    onSuccess: (data) => {
-      if (data?.configured) {
-        setIsConfigured(true);
-        // Eğer kurulum tamamlanmışsa ana sayfaya yönlendir
-        navigate("/");
-      } else {
-        // İlerleme çubuğunu güncelle
-        updateProgress();
-      }
-    },
-    onError: () => {
-      // Setup endpointi olmadığında bile devam et
-      setIsConfigured(false);
-    }
+    refetchInterval: false
   });
+  
+  // Kurulum durumu değiştiğinde
+  useEffect(() => {
+    if (setupStatus?.configured) {
+      setIsConfigured(true);
+      // Eğer kurulum tamamlanmışsa ana sayfaya yönlendir
+      setLocation("/");
+    } else {
+      // İlerleme çubuğunu güncelle
+      updateProgress();
+    }
+  }, [setupStatus, setLocation]);
 
   // Form tanımlamaları
   const databaseForm = useForm<DatabaseFormValues>({
@@ -359,13 +357,13 @@ export default function SetupWizard() {
     });
     
     setTimeout(() => {
-      navigate("/");
+      setLocation("/");
     }, 2000);
   };
   
   // Bitiş butonuna tıklandığında
   const finishSetup = () => {
-    navigate("/");
+    setLocation("/");
   };
   
   // Welcome adımını tamamla
@@ -408,7 +406,7 @@ export default function SetupWizard() {
           </CardContent>
           <CardFooter>
             <Button 
-              onClick={() => navigate("/")} 
+              onClick={() => setLocation("/")} 
               className="w-full"
             >
               Ana Sayfaya Git
