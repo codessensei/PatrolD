@@ -5,20 +5,35 @@ import * as schema from "@shared/schema";
 
 neonConfig.webSocketConstructor = ws;
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
-}
+// DATABASE_URL'i kontrol et ve gerekirse oluştur
+const constructDatabaseUrl = () => {
+  // Eğer tam URL zaten varsa, onu kullan
+  if (process.env.DATABASE_URL && process.env.DATABASE_URL.includes('://')) {
+    return process.env.DATABASE_URL;
+  }
+  
+  // Ayrı bileşenlerden URL oluştur
+  const host = process.env.PGHOST || 'localhost';
+  const port = process.env.PGPORT || '5432';
+  const user = process.env.PGUSER || 'postgres';
+  const password = process.env.PGPASSWORD || '';
+  const database = process.env.PGDATABASE || 'postgres';
+  
+  return `postgresql://${user}:${password}@${host}:${port}/${database}`;
+};
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const databaseUrl = constructDatabaseUrl();
+console.log("Oluşturulan veritabanı URL'i:", databaseUrl.replace(/\/\/.*:.*@/, '//[credentials_hidden]@'));
+
+export const pool = new Pool({ connectionString: databaseUrl });
 export const db = drizzle({ client: pool, schema });
 
 // Bağlantı durumunu kontrol etme fonksiyonu
 export async function checkDatabaseConnection() {
   try {
     console.log("Veritabanı bağlantısı test ediliyor...");
-    console.log("Bağlantı URL:", process.env.DATABASE_URL?.replace(/\/\/.*:.*@/, '//[credentials_hidden]@'));
+    console.log("Oluşturulan bağlantı URL:", databaseUrl.replace(/\/\/.*:.*@/, '//[credentials_hidden]@'));
+    console.log("Orijinal DATABASE_URL:", process.env.DATABASE_URL);
     console.log("PGHOST:", process.env.PGHOST);
     console.log("PGPORT:", process.env.PGPORT);
     console.log("PGDATABASE:", process.env.PGDATABASE);

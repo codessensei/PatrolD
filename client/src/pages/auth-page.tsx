@@ -48,7 +48,15 @@ export default function AuthPage() {
   const { user, loginMutation, registerMutation, isLoading } = useAuth();
 
   // Veritabanı durumunu kontrol et
-  const { data: dbStatus, isLoading: dbStatusLoading } = useQuery({
+  interface DbStatus {
+    success: boolean;
+    version?: string;
+    tables?: string[];
+    message: string;
+    error?: any;
+  }
+  
+  const { data: dbStatus, isLoading: dbStatusLoading } = useQuery<DbStatus>({
     queryKey: ['/api/db-status'],
     refetchInterval: 30000, // 30 saniyede bir güncelle
   });
