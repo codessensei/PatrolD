@@ -1,0 +1,141 @@
+requests.js:1 
+            
+            
+           POST http://94.20.88.27:5000/api/register 400 (Bad Request)
+(anonymous) @ requests.js:1
+(anonymous) @ traffic.js:1
+fetch @ traffic.js:1
+Le @ index-DDmEgXFK.js:48
+mutationFn @ index-DDmEgXFK.js:398
+fn @ index-DDmEgXFK.js:48
+w @ index-DDmEgXFK.js:48
+start @ index-DDmEgXFK.js:48
+execute @ index-DDmEgXFK.js:48
+await in execute
+mutate @ index-DDmEgXFK.js:48
+(anonymous) @ index-DDmEgXFK.js:48
+f @ index-DDmEgXFK.js:398
+(anonymous) @ index-DDmEgXFK.js:398
+await in (anonymous)
+AM @ index-DDmEgXFK.js:37
+IM @ index-DDmEgXFK.js:37
+DM @ index-DDmEgXFK.js:37
+Uv @ index-DDmEgXFK.js:37
+eN @ index-DDmEgXFK.js:37
+(anonymous) @ index-DDmEgXFK.js:37
+Bp @ index-DDmEgXFK.js:40
+Sj @ index-DDmEgXFK.js:37
+Ff @ index-DDmEgXFK.js:37
+gp @ index-DDmEgXFK.js:37
+YM @ index-DDmEgXFK.js:37Understand this error
+index-DDmEgXFK.js:48 API Response: POST /api/register - Status: 400
+index-DDmEgXFK.js:48 API Error for POST /api/register: Error: 400: {"message":"Invalid URL format in service configuration. Please check host and port values."}
+    at AS (index-DDmEgXFK.js:48:42890)
+    at async Le (index-DDmEgXFK.js:48:43262)
+    at async Object.mutationFn (index-DDmEgXFK.js:398:71756)
+Le @ index-DDmEgXFK.js:48
+await in Le
+mutationFn @ index-DDmEgXFK.js:398
+fn @ index-DDmEgXFK.js:48
+w @ index-DDmEgXFK.js:48
+start @ index-DDmEgXFK.js:48
+execute @ index-DDmEgXFK.js:48
+await in execute
+mutate @ index-DDmEgXFK.js:48
+(anonymous) @ index-DDmEgXFK.js:48
+f @ index-DDmEgXFK.js:398
+(anonymous) @ index-DDmEgXFK.js:398
+await in (anonymous)
+AM @ index-DDmEgXFK.js:37
+IM @ index-DDmEgXFK.js:37
+DM @ index-DDmEgXFK.js:37
+Uv @ index-DDmEgXFK.js:37
+eN @ index-DDmEgXFK.js:37
+(anonymous) @ index-DDmEgXFK.js:37
+Bp @ index-DDmEgXFK.js:40
+Sj @ index-DDmEgXFK.js:37
+Ff @ index-DDmEgXFK.js:37
+gp @ index-DDmEgXFK.js:37
+YM @ index-DDmEgXFK.js:37Understand this error
+index-DDmEgXFK.js:398 Registration error: Error: 400: {"message":"Invalid URL format in service configuration. Please check host and port values."}
+    at AS (index-DDmEgXFK.js:48:42890)
+    at async Le (index-DDmEgXFK.js:48:43262)
+    at async Object.mutationFn (index-DDmEgXFK.js:398:71756)
+mutationFn @ index-DDmEgXFK.js:398
+await in mutationFn
+fn @ index-DDmEgXFK.js:48
+w @ index-DDmEgXFK.js:48
+start @ index-DDmEgXFK.js:48
+execute @ index-DDmEgXFK.js:48
+await in execute
+mutate @ index-DDmEgXFK.js:48
+(anonymous) @ index-DDmEgXFK.js:48
+f @ index-DDmEgXFK.js:398
+(anonymous) @ index-DDmEgXFK.js:398
+await in (anonymous)
+AM @ index-DDmEgXFK.js:37
+IM @ index-DDmEgXFK.js:37
+DM @ index-DDmEgXFK.js:37
+Uv @ index-DDmEgXFK.js:37
+eN @ index-DDmEgXFK.js:37
+(anonymous) @ index-DDmEgXFK.js:37
+Bp @ index-DDmEgXFK.js:40
+Sj @ index-DDmEgXFK.js:37
+Ff @ index-DDmEgXFK.js:37
+gp @ index-DDmEgXFK.js:37
+YM @ index-DDmEgXFK.js:37Understand this error
+index-DDmEgXFK.js:398 Error message: 400: {"message":"Invalid URL format in service configuration. Please check host and port values."}
+mutationFn @ index-DDmEgXFK.js:398
+await in mutationFn
+fn @ index-DDmEgXFK.js:48
+w @ index-DDmEgXFK.js:48
+start @ index-DDmEgXFK.js:48
+execute @ index-DDmEgXFK.js:48
+await in execute
+mutate @ index-DDmEgXFK.js:48
+(anonymous) @ index-DDmEgXFK.js:48
+f @ index-DDmEgXFK.js:398
+(anonymous) @ index-DDmEgXFK.js:398
+await in (anonymous)
+AM @ index-DDmEgXFK.js:37
+IM @ index-DDmEgXFK.js:37
+DM @ index-DDmEgXFK.js:37
+Uv @ index-DDmEgXFK.js:37
+eN @ index-DDmEgXFK.js:37
+(anonymous) @ index-DDmEgXFK.js:37
+Bp @ index-DDmEgXFK.js:40
+Sj @ index-DDmEgXFK.js:37
+Ff @ index-DDmEgXFK.js:37
+gp @ index-DDmEgXFK.js:37
+YM @ index-DDmEgXFK.js:37Understand this error
+index-DDmEgXFK.js:398 Error stack: Error: 400: {"message":"Invalid URL format in service configuration. Please check host and port values."}
+    at AS (http://94.20.88.27:5000/assets/index-DDmEgXFK.js:48:42890)
+    at async Le (http://94.20.88.27:5000/assets/index-DDmEgXFK.js:48:43262)
+    at async Object.mutationFn (http://94.20.88.27:5000/assets/index-DDmEgXFK.js:398:71756)
+mutationFn @ index-DDmEgXFK.js:398
+await in mutationFn
+fn @ index-DDmEgXFK.js:48
+w @ index-DDmEgXFK.js:48
+start @ index-DDmEgXFK.js:48
+execute @ index-DDmEgXFK.js:48
+await in execute
+mutate @ index-DDmEgXFK.js:48
+(anonymous) @ index-DDmEgXFK.js:48
+f @ index-DDmEgXFK.js:398
+(anonymous) @ index-DDmEgXFK.js:398
+await in (anonymous)
+AM @ index-DDmEgXFK.js:37
+IM @ index-DDmEgXFK.js:37
+DM @ index-DDmEgXFK.js:37
+Uv @ index-DDmEgXFK.js:37
+eN @ index-DDmEgXFK.js:37
+(anonymous) @ index-DDmEgXFK.js:37
+Bp @ index-DDmEgXFK.js:40
+Sj @ index-DDmEgXFK.js:37
+Ff @ index-DDmEgXFK.js:37
+gp @ index-DDmEgXFK.js:37
+YM @ index-DDmEgXFK.js:37Understand this error
+index-DDmEgXFK.js:398 Registration mutation error handler: Error: 400: {"message":"Invalid URL format in service configuration. Please check host and port values."}
+    at AS (index-DDmEgXFK.js:48:42890)
+    at async Le (index-DDmEgXFK.js:48:43262)
+    at async Object.mutationFn (index-DDmEgXFK.js:398:71756)

@@ -79,16 +79,23 @@ export function setupAuth(app: Express) {
         return res.status(400).json({ message: "Username already exists" });
       }
 
-      // Create a sanitized user object 
+      // Create a sanitized user object limiting to only the fields we want
       const userData: any = {
-        username: req.body.username,
+        username: req.body.username.trim(),
         password: await hashPassword(req.body.password),
       };
       
-      // Only include email if provided
-      if (req.body.email) {
-        userData.email = req.body.email;
+      // Only include email if provided and it's not empty
+      if (req.body.email && req.body.email.trim() !== '') {
+        userData.email = req.body.email.trim();
       }
+      
+      // Remove any undefined or unexpected fields
+      Object.keys(userData).forEach(key => {
+        if (userData[key] === undefined) {
+          delete userData[key];
+        }
+      });
       
       console.log("Creating user with data:", { ...userData, password: "[REDACTED]" });
       const user = await storage.createUser(userData);
