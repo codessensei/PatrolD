@@ -435,8 +435,15 @@ function buildServiceUrl(service: Service): string {
     }
     
     try {
-      // Construct URL more carefully
-      const url = `${protocol}://${host}:${port}`;
+      // Construct URL differently based on default port numbers
+      let url;
+      if ((protocol === 'http' && port === 80) || (protocol === 'https' && port === 443)) {
+        // For default ports (80 for HTTP, 443 for HTTPS), don't include the port
+        url = `${protocol}://${host}`;
+      } else {
+        // For non-default ports, include the port number
+        url = `${protocol}://${host}:${port}`;
+      }
       
       // Validate URL by trying to create a URL object
       new URL(url);
