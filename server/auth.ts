@@ -38,7 +38,7 @@ export function setupAuth(app: Express) {
       maxAge: 24 * 60 * 60 * 1000, // 1 day
       httpOnly: true,
       sameSite: 'lax',  // Allows cookies to be sent in cross-site requests
-      secure: process.env.NODE_ENV === 'production', // Only in production
+      secure: false, // Set to false for now to debug issues
       path: '/',
     }
   };
@@ -67,27 +67,77 @@ export function setupAuth(app: Express) {
 
   app.post("/api/register", async (req, res, next) => {
     try {
+      console.log("Register request body:", req.body);
+      
+      // Validate required fields
+      if (!req.body.username || !req.body.password) {
+        return res.status(400).json({ message: "Username and password are required" });
+      }
+      
       const existingUser = await storage.getUserByUsername(req.body.username);
       if (existingUser) {
-        return res.status(400).send("Username already exists");
+        return res.status(400).json({ message: "Username already exists" });
       }
 
-      const user = await storage.createUser({
-        ...req.body,
+      // Create a sanitized user object 
+      const userData: any = {
+        username: req.body.username,
         password: await hashPassword(req.body.password),
-      });
+      };
+      
+      // Only include email if provided
+      if (req.body.email) {
+        userData.email = req.body.email;
+      }
+      
+      console.log("Creating user with data:", { ...userData, password: "[REDACTED]" });
+      const user = await storage.createUser(userData);
+      console.log("User created:", { id: user.id, username: user.username });
 
       req.login(user, (err) => {
-        if (err) return next(err);
+        if (err) {
+          console.error("Login error after registration:", err);
+          return next(err);
+        }
         res.status(201).json(user);
       });
     } catch (error) {
+      console.error("Registration error:", error);
       next(error);
     }
   });
 
-  app.post("/api/login", passport.authenticate("local"), (req, res) => {
-    res.status(200).json(req.user);
+  app.post("/api/login", (req, res, next) => {
+    console.log("Login request body:", { 
+      username: req.body.username,
+      password: req.body.password ? "[REDACTED]" : undefined 
+    });
+    
+    if (!req.body.username || !req.body.password) {
+      return res.status(400).json({ message: "Username and password are required" });
+    }
+    
+    passport.authenticate("local", (err: any, user: Express.User | false, info: any) => {
+      if (err) {
+        console.error("Login error:", err);
+        return next(err);
+      }
+      
+      if (!user) {
+        console.log("Login failed: Invalid credentials");
+        return res.status(401).json({ message: "Invalid username or password" });
+      }
+      
+      req.login(user, (loginErr) => {
+        if (loginErr) {
+          console.error("Login session error:", loginErr);
+          return next(loginErr);
+        }
+        
+        console.log("Login successful for user:", user.username);
+        return res.status(200).json(user);
+      });
+    })(req, res, next);
   });
 
   app.post("/api/logout", (req, res, next) => {

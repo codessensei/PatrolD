@@ -9,17 +9,8 @@ async function throwIfResNotOk(res: Response) {
 
 // Helper to get the base API URL, accounting for different environments
 function getApiBaseUrl(): string {
-  // Check if we're in a specific environment that needs special handling
-  const isProduction = import.meta.env.PROD;
-  const hostname = window.location.hostname;
-  
-  // If on the actual production server (not localhost), use the absolute URL
-  if (isProduction && hostname !== 'localhost' && hostname !== '127.0.0.1') {
-    // Use window.location to construct the API base URL
-    return `${window.location.protocol}//${window.location.host}`;
-  }
-  
-  // For development or localhost in production, use relative URLs
+  // Always use relative URLs to ensure we're hitting the same origin
+  // This avoids CORS issues and makes sure cookies are sent properly
   return '';
 }
 

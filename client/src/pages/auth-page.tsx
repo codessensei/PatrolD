@@ -23,7 +23,11 @@ const loginSchema = z.object({
 const registerSchema = insertUserSchema.extend({
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string(),
-  email: z.string().email("Please enter a valid email").optional(),
+  // Handle email as truly optional - either a valid email or empty string
+  email: z.union([
+    z.string().email("Please enter a valid email"),
+    z.string().max(0)
+  ]).optional(),
   terms: z.boolean().refine(value => value === true, {
     message: "You must accept the terms and conditions",
   }),
