@@ -92,8 +92,21 @@ async function testDbConnection(config: DbConfig) {
     const sslParam = ssl ? "?sslmode=require" : "";
     const connectionString = `postgresql://${username}:${password}@${host}:${portNumber}/${database}${sslParam}`;
     
-    // Test bağlantısı kur
-    const pool = new Pool({ connectionString });
+    console.log(`Veritabanı bağlantısı test ediliyor: ${host}:${portNumber}/${database}`);
+    
+    // Neon veritabanı bağlantısı mı kontrol et
+    const isNeonDb = host.includes('neon.tech');
+    
+    // Test bağlantısı kur - SSL seçeneğini doğru şekilde yönet
+    const poolOptions = { 
+      connectionString, 
+      ssl: ssl || isNeonDb ? { rejectUnauthorized: false } : undefined 
+    };
+    
+    // Pool nesnesini oluştur
+    const pool = new Pool(poolOptions);
+    
+    // Bağlantıyı test et
     const client = await pool.connect();
     
     // Versiyon kontrolü
@@ -109,6 +122,7 @@ async function testDbConnection(config: DbConfig) {
     
     const tables = tablesResult.rows.map(row => row.table_name);
     
+    // Bağlantıyı kapat
     client.release();
     await pool.end();
     
@@ -120,10 +134,20 @@ async function testDbConnection(config: DbConfig) {
     };
   } catch (error) {
     console.error("Veritabanı bağlantı hatası:", error);
+    // Get detailed error message
+    let errorMessage = "Bilinmeyen hata";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'object' && error !== null) {
+      errorMessage = JSON.stringify(error);
+    } else {
+      errorMessage = String(error);
+    }
+    
     return {
       success: false,
-      message: `Veritabanı bağlantı hatası: ${error instanceof Error ? error.message : String(error)}`,
-      error: error
+      message: `Veritabanı bağlantı hatası: ${errorMessage}`,
+      error: errorMessage
     };
   }
 }
@@ -131,8 +155,15 @@ async function testDbConnection(config: DbConfig) {
 // Telegram Bot Token doğrula
 async function testTelegramToken(token: string) {
   try {
+    console.log("Telegram bot token doğrulanıyor...");
+    
+    // Bot nesnesini oluştur - polling olmadan
     const bot = new TelegramBot(token, { polling: false });
+    
+    // getMe metodu ile token kontrolü
     const botInfo = await bot.getMe();
+    
+    console.log(`Telegram bot bilgisi alındı: ${botInfo.first_name} (@${botInfo.username})`);
     
     return {
       success: true,
@@ -142,10 +173,20 @@ async function testTelegramToken(token: string) {
     };
   } catch (error) {
     console.error("Telegram token hatası:", error);
+    // Get detailed error message
+    let errorMessage = "Bilinmeyen hata";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'object' && error !== null) {
+      errorMessage = JSON.stringify(error);
+    } else {
+      errorMessage = String(error);
+    }
+    
     return {
       success: false,
-      message: `Telegram token hatası: ${error instanceof Error ? error.message : String(error)}`,
-      error: error
+      message: `Telegram token hatası: ${errorMessage}`,
+      error: errorMessage
     };
   }
 }
