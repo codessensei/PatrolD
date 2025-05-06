@@ -2,8 +2,26 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    try {
+      // Try to parse response as JSON first
+      const contentType = res.headers.get('content-type');
+      
+      if (contentType && contentType.includes('application/json')) {
+        const errorJson = await res.json();
+        // Transform to a readable format without the file paths
+        const errorMessage = errorJson.message || JSON.stringify(errorJson);
+        throw new Error(`${res.status}: ${errorMessage}`);
+      } else {
+        // Fallback to text if not JSON
+        const text = (await res.text()) || res.statusText;
+        // Remove any file paths or stack traces from the error message
+        const cleanText = text.replace(/(?:\/[\w\d\s\-_:.]+)+\.(?:js|ts|jsx|tsx)(?::\d+:\d+)?/g, '');
+        throw new Error(`${res.status}: ${cleanText}`);
+      }
+    } catch (parseError) {
+      // If we fail to parse the response, just use the status text
+      throw new Error(`${res.status}: ${res.statusText}`);
+    }
   }
 }
 
