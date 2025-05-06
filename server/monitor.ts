@@ -395,33 +395,55 @@ export async function createStatusChangeAlert(storage: IStorage, service: Servic
 
 function buildServiceUrl(service: Service): string {
   try {
-    // Check if required fields are missing or invalid
-    if (!service || !service.host || typeof service.host !== 'string') {
+    // Guard clauses for service object
+    if (!service) {
+      console.error(`Cannot build URL: Service is ${service}`);
+      return '';
+    }
+    
+    // Validate host
+    if (!service.host || typeof service.host !== 'string' || service.host.trim() === '') {
       console.error(`Invalid service configuration: Missing or invalid host for service ${service?.id || 'unknown'} (${service?.name || 'unknown'})`);
       return '';
     }
     
-    if (service.port === undefined || service.port === null || typeof service.port !== 'number') {
-      console.error(`Invalid service configuration: Missing or invalid port for service ${service.id} (${service.name})`);
+    // Validate port (more lenient validation - allow string ports too)
+    let port: number;
+    if (service.port === undefined || service.port === null) {
+      console.error(`Invalid service configuration: Missing port for service ${service.id} (${service.name})`);
+      return '';
+    } else if (typeof service.port === 'number') {
+      port = service.port;
+    } else if (typeof service.port === 'string' && !isNaN(parseInt(service.port as string))) {
+      // Try to parse string port to number
+      port = parseInt(service.port as string);
+    } else {
+      console.error(`Invalid service configuration: Invalid port type for service ${service.id} (${service.name}): ${typeof service.port}`);
       return '';
     }
     
     // Determine protocol based on port
-    const protocol = service.port === 443 ? "https" : "http";
+    const protocol = port === 443 ? "https" : "http";
     
     // Sanitize host by removing any protocol prefixes if mistakenly included
-    let host = service.host;
+    let host = service.host.trim();
     host = host.replace(/^https?:\/\//, '');
     
-    // Construct URL
-    const url = `${protocol}://${host}:${service.port}`;
+    // Handle IPv6 addresses 
+    if (host.includes(':') && !host.startsWith('[') && !host.endsWith(']')) {
+      host = `[${host}]`;
+    }
     
     try {
+      // Construct URL more carefully
+      const url = `${protocol}://${host}:${port}`;
+      
       // Validate URL by trying to create a URL object
       new URL(url);
       return url;
     } catch (urlError) {
-      console.error(`Invalid URL format for service ${service.id} (${service.name}): ${url}`);
+      console.error(`Invalid URL format for service ${service.id} (${service.name}): Host=${host}, Port=${port}`);
+      console.error(`URL Error details:`, urlError);
       return '';
     }
   } catch (error) {
