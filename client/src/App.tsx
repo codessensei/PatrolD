@@ -15,6 +15,7 @@ import SharedMapsPage from "@/pages/shared-maps-page";
 import ViewMapPage from "@/pages/view-map-page";
 import ServiceMapsPage from "@/pages/service-maps-page";
 import ServiceMapDetailPage from "@/pages/service-map-detail-page";
+import SetupWizard from "@/pages/setup-wizard";
 import { ProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
 import { ThemeProvider, ThemeToggleProvider } from "@/components/theme-provider";
@@ -44,6 +45,7 @@ function Router() {
           return <ViewMapPage />;
         }}
       </Route>
+      <Route path="/setup" component={SetupWizard} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>
