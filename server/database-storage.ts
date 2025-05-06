@@ -103,6 +103,54 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
+  async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
+    try {
+      console.log("DatabaseStorage: Updating user with ID:", id);
+      
+      // Clean up the userData
+      const updateData: Record<string, any> = {};
+      
+      if (userData.username) updateData.username = userData.username;
+      if (userData.password) updateData.password = userData.password;
+      
+      // Only add email if it exists and is not empty
+      if (typeof userData.email === 'string') {
+        if (userData.email.trim() !== '') {
+          updateData.email = userData.email;
+        } else {
+          updateData.email = null; // explicitly set empty string to null
+        }
+      }
+      
+      if (Object.keys(updateData).length === 0) {
+        console.log("DatabaseStorage: No data to update for user:", id);
+        const existingUser = await this.getUser(id);
+        return existingUser;
+      }
+      
+      // Add updated timestamp
+      updateData.updatedAt = new Date();
+      
+      const [updatedUser] = await db
+        .update(users)
+        .set(updateData)
+        .where(eq(users.id, id))
+        .returning();
+      
+      if (updatedUser) {
+        console.log("DatabaseStorage: User updated successfully");
+        this.users.set(updatedUser.id, updatedUser);
+      } else {
+        console.log("DatabaseStorage: User not found or not updated");
+      }
+      
+      return updatedUser;
+    } catch (error) {
+      console.error(`DatabaseStorage: Error updating user ${id}:`, error);
+      throw error;
+    }
+  }
+  
   // Service methods
   async getServiceById(id: number): Promise<Service | undefined> {
     const [service] = await db.select().from(services).where(eq(services.id, id));
